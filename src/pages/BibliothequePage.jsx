@@ -54,21 +54,14 @@ export default function BibliothequePage() {
     setImporting(true)
     setImportError('')
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{
-            role: 'user',
-            content: `Analyse cette URL de recette et extrait toutes les informations : ${importUrl}\n\nRéponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans backticks) :\n{\n  "title": "nom exact de la recette",\n  "source": "nom du site web",\n  "emoji": "un emoji représentant le plat",\n  "time": nombre_minutes_entier,\n  "cost": estimation_cout_CHF_entier,\n  "cats": ["parmi: vegan, vegetarien, rapide, economique, dessert, plat, entree, soupe"],\n  "ingredients": [{"name": "nom", "qty": quantite_nombre, "unit": "g ou kg ou ml ou L ou unité(s) ou sachet(s)"}],\n  "steps": ["étape 1 complète", "étape 2 complète"],\n  "notes": "conseils ou variantes si mentionnés"\n}\n\nSi tu ne peux pas accéder à la page, génère une recette plausible basée sur le titre dans l'URL.`
-          }]
-        })
+      const resp = await fetch('/api/import-recipe', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ url: importUrl })
+})
+const recipe = await resp.json()
       })
-      const data = await resp.json()
-      const text = data.content.map(i => i.text || '').join('')
-      const clean = text.replace(/```json|```/g, '').trim()
+      
       const recipe = JSON.parse(clean)
       setForm({
         title: recipe.title || '',
