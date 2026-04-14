@@ -55,14 +55,12 @@ export default function BibliothequePage() {
     setImportError('')
     try {
       const resp = await fetch('/api/import-recipe', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ url: importUrl })
-})
-const recipe = await resp.json()
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl })
       })
-      
-      const recipe = JSON.parse(clean)
+      if (!resp.ok) throw new Error('Erreur serveur')
+      const recipe = await resp.json()
       setForm({
         title: recipe.title || '',
         source: recipe.source || '',
