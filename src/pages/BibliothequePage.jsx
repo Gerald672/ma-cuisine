@@ -20,7 +20,80 @@ const TAG = {
 
 const EMPTY_FORM = {
   title: '', source: '', url: '', emoji: '🍳', time: '', cost: '',
-  cats: [], ingredients: [], steps: [], notes: ''
+  cats: [], tags: [], servings: 4,
+  ingredients: [], steps: [], notes: ''
+}
+
+// ── Adaptation des quantités selon le ratio de convives ──────────────────────
+function scaleIngredients(ingredients, baseServings, currentServings) {
+  if (!baseServings || baseServings === 0 || baseServings === currentServings) return ingredients
+  const ratio = currentServings / baseServings
+  return ingredients.map(ing => {
+    const qty = parseFloat(ing.qty)
+    if (isNaN(qty)) return ing
+    const scaled = qty * ratio
+    return { ...ing, qty: Number.isInteger(scaled) ? scaled : parseFloat(scaled.toFixed(1)) }
+  })
+}
+
+// ── Normalisation d'un tag libre ─────────────────────────────────────────────
+function normalizeTag(raw) {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+// ── Composant saisie de tags libres ──────────────────────────────────────────
+function TagsInput({ tags = [], onChange }) {
+  const [input, setInput] = useState('')
+
+  function commit() {
+    const t = normalizeTag(input)
+    if (t && !tags.includes(t)) onChange([...tags, t])
+    setInput('')
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit() }
+    if (e.key === 'Backspace' && input === '' && tags.length > 0)
+      onChange(tags.slice(0, -1))
+  }
+
+  return (
+    <div
+      onClick={() => document.getElementById('tag-free-input')?.focus()}
+      style={{
+        display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center',
+        padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '8px',
+        background: '#fafaf8', minHeight: '36px', cursor: 'text'
+      }}
+    >
+      {tags.map((t, i) => (
+        <span key={t} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '3px',
+          padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500',
+          background: '#F0F0EC', color: '#555', border: '0.5px solid #ddd'
+        }}>
+          #{t}
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(tags.filter((_, idx) => idx !== i)) }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, lineHeight: 1, fontSize: '13px' }}
+          >×</button>
+        </span>
+      ))}
+      <input
+        id="tag-free-input"
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={commit}
+        placeholder={tags.length === 0 ? 'grand-mère, été, coup de cœur…' : ''}
+        style={{
+          border: 'none', outline: 'none', fontSize: '12px', background: 'transparent',
+          minWidth: '120px', flex: 1, padding: '1px 2px', color: 'inherit'
+        }}
+      />
+    </div>
+  )
 }
 
 export default function BibliothequePage() {
@@ -29,6 +102,7 @@ export default function BibliothequePage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filtre, setFiltre] = useState('Toutes')
+  const [activeTagFilter, setActiveTagFilter] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDetail, setShowDetail] = useState(null)
@@ -39,6 +113,7 @@ export default function BibliothequePage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [detailServings, setDetailServings] = useState(4)
 
   useEffect(() => { loadRecipes() }, [user])
 
@@ -69,6 +144,8 @@ export default function BibliothequePage() {
         time: recipe.time || 30,
         cost: recipe.cost || 10,
         cats: recipe.cats || [],
+        tags: recipe.tags || [],
+        servings: recipe.servings || 4,
         ingredients: recipe.ingredients || [],
         steps: recipe.steps || [],
         notes: recipe.notes || ''
@@ -94,6 +171,8 @@ export default function BibliothequePage() {
       time: parseInt(form.time) || 30,
       cost: parseFloat(form.cost) || 0,
       cats: form.cats,
+      tags: form.tags,
+      servings: parseInt(form.servings) || 4,
       ingredients: form.ingredients,
       steps: form.steps,
       notes: form.notes
@@ -127,6 +206,8 @@ export default function BibliothequePage() {
       time: recipe.time || 30,
       cost: recipe.cost || 0,
       cats: recipe.cats || [],
+      tags: recipe.tags || [],
+      servings: recipe.servings || 4,
       ingredients: recipe.ingredients || [],
       steps: recipe.steps || [],
       notes: recipe.notes || ''
@@ -140,6 +221,11 @@ export default function BibliothequePage() {
     setForm(EMPTY_FORM)
     setShowImport(false)
     setShowEdit(true)
+  }
+
+  function openDetail(recipe) {
+    setShowDetail(recipe)
+    setDetailServings(recipe.servings || 4)
   }
 
   function addIngredient() { setForm(f => ({ ...f, ingredients: [...f.ingredients, { name: '', qty: '', unit: 'g' }] })) }
@@ -158,12 +244,20 @@ export default function BibliothequePage() {
     setForm(f => ({ ...f, cats: f.cats.includes(cat) ? f.cats.filter(c => c !== cat) : [...f.cats, cat] }))
   }
 
+  // Tous les tags libres distincts présents dans la bibliothèque
+  const allFreeTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
+
   const filteredRecipes = recipes.filter(r => {
     const matchSearch = r.title.toLowerCase().includes(search.toLowerCase())
     const key = filtre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(' principal', '').replace(' ', '')
     const matchFiltre = filtre === 'Toutes' || (r.cats || []).includes(key)
-    return matchSearch && matchFiltre
+    const matchTag = !activeTagFilter || (r.tags || []).includes(activeTagFilter)
+    return matchSearch && matchFiltre && matchTag
   })
+
+  const scaledIngredients = showDetail
+    ? scaleIngredients(showDetail.ingredients || [], showDetail.servings || 4, detailServings)
+    : []
 
   const S = { input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8', color: 'inherit' } }
   const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }
@@ -171,6 +265,7 @@ export default function BibliothequePage() {
 
   return (
     <div>
+      {/* Barre de recherche + actions */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
           style={{ flex: 1, minWidth: '160px', padding: '10px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8' }} />
@@ -180,7 +275,8 @@ export default function BibliothequePage() {
           style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+      {/* Filtres catégories fixes */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
         {FILTRES.map(f => (
           <button key={f} onClick={() => setFiltre(f)} style={{
             padding: '5px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
@@ -191,6 +287,30 @@ export default function BibliothequePage() {
         ))}
       </div>
 
+      {/* Filtres par tags libres — visibles seulement s'il en existe */}
+      {allFreeTags.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
+          <span style={{ fontSize: '11px', color: '#bbb', flexShrink: 0 }}>Tags :</span>
+          {allFreeTags.map(tag => (
+            <button key={tag} onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)} style={{
+              padding: '3px 10px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer',
+              border: '0.5px solid ' + (activeTagFilter === tag ? '#888' : '#e0e0e0'),
+              background: activeTagFilter === tag ? '#F0F0EC' : 'white',
+              color: activeTagFilter === tag ? '#333' : '#999',
+              fontWeight: activeTagFilter === tag ? '500' : '400'
+            }}>#{tag}</button>
+          ))}
+          {activeTagFilter && (
+            <button onClick={() => setActiveTagFilter(null)}
+              style={{ fontSize: '11px', color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+              effacer
+            </button>
+          )}
+        </div>
+      )}
+      {allFreeTags.length === 0 && <div style={{ marginBottom: '16px' }} />}
+
+      {/* Grille */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>Chargement...</div>
       ) : filteredRecipes.length === 0 ? (
@@ -202,7 +322,7 @@ export default function BibliothequePage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
           {filteredRecipes.map(r => (
-            <div key={r.id} onClick={() => setShowDetail(r)}
+            <div key={r.id} onClick={() => openDetail(r)}
               style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = '#5DCAA5'}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#e0e0e0'}>
@@ -215,14 +335,22 @@ export default function BibliothequePage() {
                   ))}
                   <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>{r.time} min</span>
                   {r.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>~{r.cost} CHF</span>}
+                  {r.servings > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>👥 {r.servings}</span>}
                 </div>
+                {(r.tags || []).length > 0 && (
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
+                    {r.tags.map(t => (
+                      <span key={t} style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', background: '#F0F0EC', color: '#666', border: '0.5px solid #e0e0e0' }}>#{t}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal Import URL */}
+      {/* ── Modal Import URL ── */}
       {showImport && (
         <div style={{ ...overlay, alignItems: 'center' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '480px' }}>
@@ -243,7 +371,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* Modal Détail */}
+      {/* ── Modal Détail ── */}
       {showDetail && (
         <div style={overlay}>
           <div style={modalBox}>
@@ -259,15 +387,44 @@ export default function BibliothequePage() {
                   <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>{showDetail.time} min</span>
                   {showDetail.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>~{showDetail.cost} CHF</span>}
                 </div>
+                {(showDetail.tags || []).length > 0 && (
+                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {showDetail.tags.map(t => (
+                      <span key={t} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#F0F0EC', color: '#555', border: '0.5px solid #ddd' }}>#{t}</span>
+                    ))}
+                  </div>
+                )}
               </div>
               <button onClick={() => setShowDetail(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>✕</button>
             </div>
 
-            {(showDetail.ingredients || []).length > 0 && (
+            {/* Sélecteur de convives */}
+            {(showDetail.servings || 0) > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', padding: '8px 12px', background: '#FAFAF8', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>👥 Convives :</span>
+                <button onClick={() => setDetailServings(s => Math.max(1, s - 1))}
+                  style={{ width: '26px', height: '26px', borderRadius: '50%', border: '0.5px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', flexShrink: 0 }}>−</button>
+                <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '600', fontSize: '14px', color: '#1D9E75' }}>{detailServings}</span>
+                <button onClick={() => setDetailServings(s => s + 1)}
+                  style={{ width: '26px', height: '26px', borderRadius: '50%', border: '0.5px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', flexShrink: 0 }}>+</button>
+                {detailServings !== showDetail.servings && (
+                  <>
+                    <button onClick={() => setDetailServings(showDetail.servings)}
+                      style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                      reset ({showDetail.servings})
+                    </button>
+                    <span style={{ fontSize: '11px', color: '#1D9E75', marginLeft: 'auto' }}>Quantités adaptées ✓</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Ingrédients avec quantités adaptées */}
+            {scaledIngredients.length > 0 && (
               <div style={{ marginBottom: '1.25rem' }}>
                 <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Ingrédients</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {showDetail.ingredients.map((ing, i) => (
+                  {scaledIngredients.map((ing, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#fafaf8', borderRadius: '8px', fontSize: '13px' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1D9E75', flexShrink: 0 }} />
                       {ing.qty} {ing.unit} {ing.name}
@@ -312,7 +469,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* Modal Édition complète */}
+      {/* ── Modal Édition ── */}
       {showEdit && (
         <div style={overlay}>
           <div style={modalBox}>
@@ -350,14 +507,19 @@ export default function BibliothequePage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+            {/* Temps · Coût · Personnes sur une ligne */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Temps (minutes)</label>
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Temps (min)</label>
                 <input type="number" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="45" style={S.input} />
               </div>
               <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Coût estimé (CHF)</label>
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Coût (CHF)</label>
                 <input type="number" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="12" style={S.input} />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Pour X personnes</label>
+                <input type="number" min="1" max="50" value={form.servings} onChange={e => setForm(f => ({ ...f, servings: e.target.value }))} placeholder="4" style={S.input} />
               </div>
             </div>
 
@@ -373,6 +535,15 @@ export default function BibliothequePage() {
                   }}>{cat}</button>
                 ))}
               </div>
+            </div>
+
+            {/* Tags libres */}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                Tags personnalisés
+                <span style={{ color: '#bbb', fontWeight: '400', marginLeft: '6px' }}>Entrée ou , pour valider</span>
+              </label>
+              <TagsInput tags={form.tags} onChange={tags => setForm(f => ({ ...f, tags }))} />
             </div>
 
             <div style={{ marginBottom: '12px' }}>
@@ -428,7 +599,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* Modal Confirmation suppression */}
+      {/* ── Modal Confirmation suppression ── */}
       {confirmDelete && (
         <div style={{ ...overlay, alignItems: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '360px', textAlign: 'center' }}>
