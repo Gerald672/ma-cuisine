@@ -33,7 +33,7 @@ const EMPTY_FORM = {
   title: '', source: '', url: '', emoji: '🍳', time: '', cost: '',
   cats: [], tags: [], servings: 4,
   ingredients: [], steps: [], notes: '',
-  photo_url: ''   // ← URL publique Supabase Storage (ou URL externe)
+  photo_url: ''
 }
 
 // ─── Utilitaires ──────────────────────────────────────────────────────────────
@@ -54,21 +54,18 @@ function normalizeTag(raw) {
 }
 
 /**
- * Calcule le coût estimé d'une recette à partir de la base de prix.
- * Fait du mieux possible avec les données disponibles (unités, qté).
- * Retourne null si aucun ingrédient ne peut être valorisé.
+ * Calcule le coût d'une recette depuis la priceMap.
+ * Retourne null si aucun ingrédient valorisable.
  */
-function computeCostFromPrices(ingredients, priceMap) {
-  if (!ingredients || ingredients.length === 0 || !priceMap) return null
-  let total = 0
-  let matched = 0
+function computeCost(ingredients, priceMap) {
+  if (!ingredients?.length || !priceMap) return null
+  let total = 0, matched = 0
   for (const ing of ingredients) {
     const key = ing.name?.trim().toLowerCase()
     if (!key) continue
     const entry = priceMap[key]
     if (!entry) continue
     const qty = parseFloat(ing.qty) || 0
-    // Prix stocké : price_per_unit (CHF par unité de référence)
     total += qty * entry.price_per_unit
     matched++
   }
@@ -87,7 +84,7 @@ function sortRecipes(recipes, sortKey) {
   }
 }
 
-// ─── Sous-composants ──────────────────────────────────────────────────────────
+// ─── TagsInput ────────────────────────────────────────────────────────────────
 
 function TagsInput({ tags = [], onChange }) {
   const [input, setInput] = useState('')
@@ -117,15 +114,11 @@ function TagsInput({ tags = [], onChange }) {
   )
 }
 
-/**
- * Composant upload photo : drag & drop ou clic, upload vers Supabase Storage.
- * Affiche la preview et retourne l'URL publique via onUploaded(url).
- */
+// ─── PhotoUpload ──────────────────────────────────────────────────────────────
+
 function PhotoUpload({ currentUrl, onUploaded, userId }) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState(currentUrl || '')
-  const [urlInput, setUrlInput] = useState('')
-  const [mode, setMode] = useState('upload') // 'upload' | 'url'
   const inputRef = useRef()
 
   useEffect(() => { setPreview(currentUrl || '') }, [currentUrl])
@@ -144,183 +137,161 @@ function PhotoUpload({ currentUrl, onUploaded, userId }) {
     setUploading(false)
   }
 
-  function handleDrop(e) {
-    e.preventDefault()
-    handleFile(e.dataTransfer.files[0])
-  }
-
-  function handleUrlSubmit() {
-    const url = urlInput.trim()
-    if (url) { setPreview(url); onUploaded(url) }
-  }
+  function handleDrop(e) { e.preventDefault(); handleFile(e.dataTransfer.files[0]) }
 
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <label style={{ fontSize: '12px', color: '#666' }}>Photo de la recette</label>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" onClick={() => setMode('upload')} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', border: '0.5px solid ' + (mode === 'upload' ? '#1D9E75' : '#ddd'), background: mode === 'upload' ? '#E1F5EE' : 'white', color: mode === 'upload' ? '#0F6E56' : '#888', cursor: 'pointer' }}>📁 Fichier</button>
-          <button type="button" onClick={() => setMode('url')} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', border: '0.5px solid ' + (mode === 'url' ? '#1D9E75' : '#ddd'), background: mode === 'url' ? '#E1F5EE' : 'white', color: mode === 'url' ? '#0F6E56' : '#888', cursor: 'pointer' }}>🔗 URL</button>
-        </div>
-      </div>
-
-      {/* Preview */}
-      {preview && (
-        <div style={{ position: 'relative', marginBottom: '8px' }}>
-          <img src={preview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', border: '0.5px solid #e0e0e0' }} onError={() => setPreview('')} />
+      <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '6px' }}>Photo de la recette</label>
+      {preview ? (
+        <div style={{ position: 'relative', marginBottom: '6px' }}>
+          <img src={preview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', border: '0.5px solid #e0e0e0', display: 'block' }} onError={() => setPreview('')} />
           <button type="button" onClick={() => { setPreview(''); onUploaded('') }}
-            style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-        </div>
-      )}
-
-      {mode === 'upload' ? (
-        <div
-          onDragOver={e => e.preventDefault()}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          style={{ border: '1px dashed #ccc', borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer', background: '#fafaf8', fontSize: '12px', color: '#aaa' }}>
-          {uploading ? '⏳ Upload en cours...' : '📷 Cliquer ou glisser une photo ici'}
-          <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+            style={{ position: 'absolute', top: '7px', right: '7px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://..." onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
-            style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8' }} />
-          <button type="button" onClick={handleUrlSubmit} style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>OK</button>
+        <div onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => inputRef.current?.click()}
+          style={{ border: '1px dashed #ccc', borderRadius: '10px', padding: '22px', textAlign: 'center', cursor: 'pointer', background: '#fafaf8', fontSize: '12px', color: '#aaa', lineHeight: '1.6' }}>
+          {uploading ? '⏳ Upload en cours…' : <><span style={{ fontSize: '20px', display: 'block', marginBottom: '4px' }}>📷</span>Cliquer ou glisser une photo ici</>}
+          <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
         </div>
       )}
     </div>
   )
 }
 
-// ─── Modal Base de Prix ───────────────────────────────────────────────────────
-// Table Supabase : ingredient_prices (id, user_id, name, price_per_unit, unit, updated_at)
+// ─── PriceBaseModal ───────────────────────────────────────────────────────────
+// Affiche les prix de la BDD (source Migros/Coop/Rapport Agricole) et permet
+// des corrections locales par l'utilisateur.
 
 function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
-  const [prices, setPrices] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [newName, setNewName] = useState('')
-  const [newPrice, setNewPrice] = useState('')
-  const [newUnit, setNewUnit] = useState('g')
-  const [saving, setSaving] = useState(false)
+  const [prices, setPrices]       = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [filterQ, setFilterQ]     = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editPrice, setEditPrice] = useState('')
+  const [saving, setSaving]       = useState(false)
 
   useEffect(() => { loadPrices() }, [])
 
   async function loadPrices() {
     setLoading(true)
-    const { data } = await supabase.from('ingredient_prices').select('*').eq('user_id', userId).order('name')
+    const { data } = await supabase
+      .from('ingredient_prices')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name')
     setPrices(data || [])
     setLoading(false)
   }
 
-  async function addPrice() {
-    if (!newName.trim() || !newPrice) return
+  async function updatePrice(id, newVal) {
+    const val = parseFloat(newVal)
+    if (isNaN(val) || val < 0) return
     setSaving(true)
-    await supabase.from('ingredient_prices').insert({
-      user_id: userId,
-      name: newName.trim().toLowerCase(),
-      price_per_unit: parseFloat(newPrice),
-      unit: newUnit
-    })
-    setNewName(''); setNewPrice(''); setNewUnit('g')
+    await supabase.from('ingredient_prices')
+      .update({ price_per_unit: val, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    setEditingId(null)
     await loadPrices()
-    onPricesUpdated()
+    await onPricesUpdated()
     setSaving(false)
   }
 
-  async function updatePrice(id, price) {
-    await supabase.from('ingredient_prices').update({ price_per_unit: parseFloat(price), updated_at: new Date().toISOString() }).eq('id', id)
-    setEditingId(null)
-    await loadPrices()
-    onPricesUpdated()
+  async function resetPrice(p) {
+    // "Réinitialiser" = remettre le prix de la source (on stocke original_price si disponible,
+    // sinon on indique à l'utilisateur qu'il faut relancer le seed SQL)
+    if (!window.confirm(`Réinitialiser "${p.name}" à la valeur source ?`)) return
+    if (p.original_price) {
+      await supabase.from('ingredient_prices')
+        .update({ price_per_unit: p.original_price, updated_at: new Date().toISOString() })
+        .eq('id', p.id)
+      await loadPrices()
+      await onPricesUpdated()
+    } else {
+      alert('Valeur source non disponible. Relance le seed SQL pour restaurer tous les prix.')
+    }
   }
 
-  async function deletePrice(id) {
-    await supabase.from('ingredient_prices').delete().eq('id', id)
-    await loadPrices()
-    onPricesUpdated()
-  }
+  const displayed = prices.filter(p =>
+    !filterQ || p.name.includes(filterQ.toLowerCase())
+  )
 
-  const S = { input: { padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', width: '100%', boxSizing: 'border-box' } }
+  const S = { input: { padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 70, padding: '1rem', overflowY: 'auto' }}>
-      <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '520px', marginTop: '1rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem' }}>
+
+        {/* En-tête */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: '500', margin: 0 }}>💰 Base de prix des ingrédients</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>✕</button>
         </div>
-
         <p style={{ fontSize: '12px', color: '#888', marginBottom: '1rem', lineHeight: '1.5' }}>
-          Le prix est exprimé <strong>par unité de référence</strong> (ex : CHF par gramme, par ml, par unité…).
-          Il est utilisé pour calculer automatiquement le coût des recettes.
+          Prix en CHF par unité de référence, issus des catalogues <strong>Migros</strong>, <strong>Coop</strong> et du <strong>Rapport Agricole Suisse 2023</strong>.
+          Tu peux corriger un prix si ta réalité d'achat est différente — le coût de toutes tes recettes sera recalculé automatiquement.
         </p>
 
-        {/* Formulaire d'ajout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr auto', gap: '6px', marginBottom: '1rem', alignItems: 'end' }}>
-          <div>
-            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Ingrédient</label>
-            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="farine, beurre…" style={S.input}
-              onKeyDown={e => e.key === 'Enter' && addPrice()} />
-          </div>
-          <div>
-            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Prix (CHF)</label>
-            <input type="number" step="0.001" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="0.005" style={S.input}
-              onKeyDown={e => e.key === 'Enter' && addPrice()} />
-          </div>
-          <div>
-            <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>/ unité</label>
-            <select value={newUnit} onChange={e => setNewUnit(e.target.value)} style={S.input}>
-              {UNITES.map(u => <option key={u}>{u}</option>)}
-            </select>
-          </div>
-          <button onClick={addPrice} disabled={saving || !newName.trim() || !newPrice}
-            style={{ padding: '7px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap', alignSelf: 'flex-end' }}>
-            + Ajouter
-          </button>
+        {/* Recherche */}
+        <input
+          value={filterQ}
+          onChange={e => setFilterQ(e.target.value)}
+          placeholder="🔍 Filtrer un ingrédient…"
+          style={{ ...S.input, width: '100%', marginBottom: '10px' }}
+        />
+
+        {/* Compteur */}
+        <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '8px' }}>
+          {displayed.length} ingrédient{displayed.length !== 1 ? 's' : ''} {filterQ ? 'trouvé·s' : 'au total'}
         </div>
 
         {/* Liste */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '1.5rem', color: '#aaa', fontSize: '13px' }}>Chargement…</div>
-        ) : prices.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '1.5rem', color: '#aaa', fontSize: '13px' }}>Aucun prix enregistré encore.</div>
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Chargement…</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '320px', overflowY: 'auto' }}>
-            {prices.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: '#fafaf8', borderRadius: '8px', border: '0.5px solid #f0f0ec' }}>
-                <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#333', textTransform: 'capitalize' }}>{p.name}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+            {displayed.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: editingId === p.id ? '#F0FDF4' : '#fafaf8', borderRadius: '8px', border: '0.5px solid ' + (editingId === p.id ? '#5DCAA5' : '#f0f0ec'), transition: 'background 0.15s' }}>
+                {/* Nom */}
+                <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#333', textTransform: 'capitalize', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+
                 {editingId === p.id ? (
                   <>
-                    <input type="number" step="0.001" defaultValue={p.price_per_unit} ref={r => r && (r._val = p.price_per_unit)}
+                    <input
+                      type="number" step="0.00001" min="0"
+                      defaultValue={p.price_per_unit}
                       onChange={e => setEditPrice(e.target.value)}
-                      style={{ width: '80px', padding: '4px 8px', border: '0.5px solid #1D9E75', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
-                      onKeyDown={e => e.key === 'Enter' && updatePrice(p.id, editPrice || p.price_per_unit)} />
-                    <span style={{ fontSize: '11px', color: '#888' }}>/ {p.unit}</span>
-                    <button onClick={() => updatePrice(p.id, editPrice || p.price_per_unit)}
-                      style={{ padding: '4px 10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>✓</button>
+                      onKeyDown={e => { if (e.key === 'Enter') updatePrice(p.id, editPrice || p.price_per_unit); if (e.key === 'Escape') setEditingId(null) }}
+                      autoFocus
+                      style={{ width: '90px', ...S.input, border: '0.5px solid #1D9E75' }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#888', flexShrink: 0 }}>CHF / {p.unit}</span>
+                    <button onClick={() => updatePrice(p.id, editPrice || p.price_per_unit)} disabled={saving}
+                      style={{ padding: '4px 10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✓</button>
                     <button onClick={() => setEditingId(null)}
-                      style={{ padding: '4px 8px', background: 'none', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#888' }}>✕</button>
+                      style={{ padding: '4px 8px', background: 'none', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#888', flexShrink: 0 }}>✕</button>
                   </>
                 ) : (
                   <>
-                    <span style={{ fontSize: '13px', color: '#1D9E75', fontWeight: '500', fontVariantNumeric: 'tabular-nums' }}>{p.price_per_unit} CHF</span>
-                    <span style={{ fontSize: '11px', color: '#888' }}>/ {p.unit}</span>
+                    <span style={{ fontSize: '13px', color: '#1D9E75', fontWeight: '500', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{p.price_per_unit} CHF</span>
+                    <span style={{ fontSize: '11px', color: '#aaa', flexShrink: 0 }}>/ {p.unit}</span>
+                    {p.source && <span style={{ fontSize: '10px', color: '#ccc', flexShrink: 0, display: 'none' }} title={p.source}>ℹ</span>}
                     <button onClick={() => { setEditingId(p.id); setEditPrice(String(p.price_per_unit)) }}
-                      style={{ padding: '4px 10px', background: 'none', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#555' }}>✏️</button>
-                    <button onClick={() => deletePrice(p.id)}
-                      style={{ padding: '4px 8px', background: 'none', border: '0.5px solid #FCEBEB', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#E24B4A' }}>🗑</button>
+                      style={{ padding: '4px 10px', background: 'none', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#555', flexShrink: 0 }}>✏️</button>
                   </>
                 )}
               </div>
             ))}
+            {displayed.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>
+                Aucun ingrédient trouvé pour « {filterQ} »
+              </div>
+            )}
           </div>
         )}
 
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec', display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Fermer</button>
+          <button onClick={onClose} style={{ padding: '8px 18px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Fermer</button>
         </div>
       </div>
     </div>
@@ -331,27 +302,29 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
 
 export default function BibliothequePage() {
   const { user } = useAuth()
-  const [recipes, setRecipes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filtre, setFiltre] = useState('Toutes')
-  const [sortKey, setSortKey] = useState('date_desc')
+  const [recipes, setRecipes]             = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [search, setSearch]               = useState('')
+  const [filtre, setFiltre]               = useState('Toutes')
+  const [sortKey, setSortKey]             = useState('date_desc')
   const [activeTagFilter, setActiveTagFilter] = useState(null)
-  const [showImport, setShowImport] = useState(false)
-  const [showEdit, setShowEdit] = useState(false)
-  const [showDetail, setShowDetail] = useState(null)
+  const [showImport, setShowImport]       = useState(false)
+  const [showEdit, setShowEdit]           = useState(false)
+  const [showDetail, setShowDetail]       = useState(null)
   const [showPriceBase, setShowPriceBase] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [importUrl, setImportUrl] = useState('')
-  const [importing, setImporting] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [importUrl, setImportUrl]         = useState('')
+  const [importing, setImporting]         = useState(false)
+  const [importError, setImportError]     = useState('')
+  const [form, setForm]                   = useState(EMPTY_FORM)
+  const [editingId, setEditingId]         = useState(null)
+  const [saving, setSaving]               = useState(false)
   const [detailServings, setDetailServings] = useState(4)
-  const [priceMap, setPriceMap] = useState({}) // { 'farine': { price_per_unit, unit }, ... }
+  const [priceMap, setPriceMap]           = useState({})
 
   useEffect(() => { loadRecipes(); loadPriceMap() }, [user])
+
+  // ── Chargement ─────────────────────────────────────────────────────────────
 
   async function loadRecipes() {
     setLoading(true)
@@ -365,44 +338,44 @@ export default function BibliothequePage() {
     const map = {}
     for (const row of (data || [])) map[row.name.toLowerCase()] = row
     setPriceMap(map)
+    return map
   }
 
-  // Quand la base de prix change → recalculer le cost de toutes les recettes en BDD
-  async function onPricesUpdated() {
-    await loadPriceMap()
-    // Recharger le priceMap frais pour recalcul
-    const { data: priceData } = await supabase.from('ingredient_prices').select('*').eq('user_id', user.id)
-    const map = {}
-    for (const row of (priceData || [])) map[row.name.toLowerCase()] = row
+  // ── Recalcul de toutes les recettes après changement de prix ───────────────
 
+  async function onPricesUpdated() {
+    const freshMap = await loadPriceMap()
     const { data: recipeData } = await supabase.from('recipes').select('id, ingredients, cost').eq('user_id', user.id)
     for (const r of (recipeData || [])) {
-      const computed = computeCostFromPrices(r.ingredients || [], map)
-      if (computed !== null && computed !== r.cost) {
+      const computed = computeCost(r.ingredients || [], freshMap)
+      if (computed !== null && Math.abs(computed - (r.cost || 0)) > 0.005) {
         await supabase.from('recipes').update({ cost: computed }).eq('id', r.id)
       }
     }
     await loadRecipes()
   }
 
+  // ── Import URL ─────────────────────────────────────────────────────────────
+
   async function importFromUrl() {
     if (!importUrl.trim()) return
     setImporting(true); setImportError('')
     try {
       const resp = await fetch('/api/import-recipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: importUrl }) })
-      if (!resp.ok) throw new Error('Erreur serveur')
+      if (!resp.ok) throw new Error()
       const recipe = await resp.json()
-      setForm({ title: recipe.title || '', source: recipe.source || '', url: importUrl, emoji: recipe.emoji || '🍳', time: recipe.time || 30, cost: recipe.cost || 10, cats: recipe.cats || [], tags: recipe.tags || [], servings: recipe.servings || 4, ingredients: recipe.ingredients || [], steps: recipe.steps || [], notes: recipe.notes || '', photo_url: recipe.photo_url || '' })
+      setForm({ title: recipe.title || '', source: recipe.source || '', url: importUrl, emoji: recipe.emoji || '🍳', time: recipe.time || 30, cost: recipe.cost || 0, cats: recipe.cats || [], tags: recipe.tags || [], servings: recipe.servings || 4, ingredients: recipe.ingredients || [], steps: recipe.steps || [], notes: recipe.notes || '', photo_url: recipe.photo_url || '' })
       setShowImport(false); setEditingId(null); setShowEdit(true)
-    } catch (e) { setImportError('Impossible d\'analyser cette URL. Tu peux saisir la recette manuellement.') }
+    } catch { setImportError('Impossible d\'analyser cette URL. Tu peux saisir la recette manuellement.') }
     setImporting(false)
   }
+
+  // ── Sauvegarde ─────────────────────────────────────────────────────────────
 
   async function saveRecipe() {
     if (!form.title.trim()) return
     setSaving(true)
-    // Calculer le coût automatiquement si possible, sinon garder la saisie manuelle
-    const autoCost = computeCostFromPrices(form.ingredients, priceMap)
+    const autoCost = computeCost(form.ingredients, priceMap)
     const payload = {
       user_id: user.id, title: form.title, source: form.source, url: form.url, emoji: form.emoji,
       time: parseInt(form.time) || 30,
@@ -417,28 +390,32 @@ export default function BibliothequePage() {
     loadRecipes()
   }
 
+  // ── Suppression ────────────────────────────────────────────────────────────
+
   async function deleteRecipe(id) {
     await supabase.from('recipes').delete().eq('id', id)
     setConfirmDelete(null); setShowDetail(null); loadRecipes()
   }
+
+  // ── Helpers formulaire ─────────────────────────────────────────────────────
 
   function openEdit(recipe) {
     setEditingId(recipe.id)
     setForm({ title: recipe.title || '', source: recipe.source || '', url: recipe.url || '', emoji: recipe.emoji || '🍳', time: recipe.time || 30, cost: recipe.cost || 0, cats: recipe.cats || [], tags: recipe.tags || [], servings: recipe.servings || 4, ingredients: recipe.ingredients || [], steps: recipe.steps || [], notes: recipe.notes || '', photo_url: recipe.photo_url || '' })
     setShowDetail(null); setShowEdit(true)
   }
-
   function openNew() { setEditingId(null); setForm(EMPTY_FORM); setShowImport(false); setShowEdit(true) }
   function openDetail(recipe) { setShowDetail(recipe); setDetailServings(recipe.servings || 4) }
 
   function addIngredient() { setForm(f => ({ ...f, ingredients: [...f.ingredients, { name: '', qty: '', unit: 'g' }] })) }
   function updateIngredient(i, key, val) { setForm(f => { const ings = [...f.ingredients]; ings[i] = { ...ings[i], [key]: val }; return { ...f, ingredients: ings } }) }
   function removeIngredient(i) { setForm(f => ({ ...f, ingredients: f.ingredients.filter((_, idx) => idx !== i) })) }
-
   function addStep() { setForm(f => ({ ...f, steps: [...f.steps, ''] })) }
   function updateStep(i, val) { setForm(f => { const steps = [...f.steps]; steps[i] = val; return { ...f, steps } }) }
   function removeStep(i) { setForm(f => ({ ...f, steps: f.steps.filter((_, idx) => idx !== i) })) }
   function toggleCat(cat) { setForm(f => ({ ...f, cats: f.cats.includes(cat) ? f.cats.filter(c => c !== cat) : [...f.cats, cat] })) }
+
+  // ── Données dérivées ───────────────────────────────────────────────────────
 
   const allFreeTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
 
@@ -453,15 +430,27 @@ export default function BibliothequePage() {
     sortKey
   )
 
-  const scaledIngredients = showDetail ? scaleIngredients(showDetail.ingredients || [], showDetail.servings || 4, detailServings) : []
-  const autoCostDetail = showDetail ? computeCostFromPrices(showDetail.ingredients || [], priceMap) : null
+  const scaledIngredients = showDetail
+    ? scaleIngredients(showDetail.ingredients || [], showDetail.servings || 4, detailServings)
+    : []
+
+  // Coût recalculé pour le détail (sur les quantités adaptées aux convives)
+  const autoCostDetail = scaledIngredients.length ? computeCost(scaledIngredients, priceMap) : null
+
+  // Coût recalculé en temps réel dans le formulaire
+  const autoCostForm = computeCost(form.ingredients, priceMap)
+
+  // ── Styles partagés ────────────────────────────────────────────────────────
 
   const S = { input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8', color: 'inherit' } }
   const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }
-  const modalBox = { background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem' }
+  const modalBox = { background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem', overflow: 'hidden' }
+
+  // ── Rendu ──────────────────────────────────────────────────────────────────
 
   return (
     <div>
+
       {/* ── Barre actions ── */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
@@ -474,7 +463,7 @@ export default function BibliothequePage() {
           style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
       </div>
 
-      {/* ── Filtres catégories + tri ── */}
+      {/* ── Filtres catégories + sélecteur de tri ── */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center' }}>
         {FILTRES.map(f => (
           <button key={f} onClick={() => setFiltre(f)} style={{
@@ -484,14 +473,13 @@ export default function BibliothequePage() {
             color: filtre === f ? '#0F6E56' : '#888', fontWeight: filtre === f ? '500' : '400'
           }}>{f}</button>
         ))}
-        {/* Sélecteur de tri — aligné à droite */}
         <select value={sortKey} onChange={e => setSortKey(e.target.value)}
           style={{ marginLeft: 'auto', padding: '5px 10px', borderRadius: '8px', border: '0.5px solid #e0e0e0', fontSize: '12px', background: 'white', color: '#555', outline: 'none', cursor: 'pointer' }}>
           {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
 
-      {/* ── Filtres tags libres ── */}
+      {/* ── Tags libres ── */}
       {allFreeTags.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb', flexShrink: 0 }}>Tags :</span>
@@ -503,9 +491,7 @@ export default function BibliothequePage() {
               color: activeTagFilter === tag ? '#333' : '#999', fontWeight: activeTagFilter === tag ? '500' : '400'
             }}>#{tag}</button>
           ))}
-          {activeTagFilter && (
-            <button onClick={() => setActiveTagFilter(null)} style={{ fontSize: '11px', color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>effacer</button>
-          )}
+          {activeTagFilter && <button onClick={() => setActiveTagFilter(null)} style={{ fontSize: '11px', color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>effacer</button>}
         </div>
       )}
       {allFreeTags.length === 0 && <div style={{ marginBottom: '16px' }} />}
@@ -526,12 +512,10 @@ export default function BibliothequePage() {
               style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = '#5DCAA5'}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#e0e0e0'}>
-              {/* Vignette : photo réelle ou emoji */}
-              {r.photo_url ? (
-                <img src={r.photo_url} alt={r.title} style={{ width: '100%', height: '110px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-              ) : (
-                <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', background: '#fafaf8' }}>{r.emoji}</div>
-              )}
+              {r.photo_url
+                ? <img src={r.photo_url} alt={r.title} style={{ width: '100%', height: '110px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                : <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', background: '#fafaf8' }}>{r.emoji}</div>
+              }
               <div style={{ padding: '10px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>{r.title}</div>
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
@@ -558,8 +542,8 @@ export default function BibliothequePage() {
         <div style={{ ...overlay, alignItems: 'center' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '480px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '500', marginBottom: '6px' }}>Importer une recette par URL</h3>
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '1rem' }}>L'IA lit la page et extrait automatiquement tous les détails. Tu pourras tout vérifier et corriger avant d'enregistrer.</p>
-            <input value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://actu.marieclaire.fr/cuisine/..." style={{ ...S.input, marginBottom: '8px' }} />
+            <p style={{ fontSize: '13px', color: '#888', marginBottom: '1rem' }}>L'IA lit la page et extrait automatiquement tous les détails.</p>
+            <input value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://..." style={{ ...S.input, marginBottom: '8px' }} />
             {importError && <div style={{ background: '#FCEBEB', color: '#791F1F', padding: '10px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px' }}>{importError}</div>}
             <p style={{ fontSize: '11px', color: '#aaa', marginBottom: '1rem' }}>Compatible : Marie Claire, Marmiton, 750g, Cuisine Actuelle, et la plupart des sites de recettes.</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -576,22 +560,22 @@ export default function BibliothequePage() {
       {/* ── Modal Détail ── */}
       {showDetail && (
         <div style={overlay}>
-          <div style={{ ...modalBox, padding: 0, overflow: 'hidden' }}>
-            {/* Photo header */}
+          <div style={modalBox}>
+            {/* Bannière photo */}
             {showDetail.photo_url ? (
               <div style={{ position: 'relative' }}>
                 <img src={showDetail.photo_url} alt={showDetail.title} style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
                 <button onClick={() => setShowDetail(null)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.45)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
               </div>
             ) : (
-              <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem', background: '#fafaf8', borderBottom: '0.5px solid #f0f0ec' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: '#fafaf8', borderBottom: '0.5px solid #f0f0ec' }}>
                 <span style={{ fontSize: '36px' }}>{showDetail.emoji}</span>
                 <button onClick={() => setShowDetail(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>✕</button>
               </div>
             )}
 
             <div style={{ padding: '1.25rem 1.5rem' }}>
-              {/* En-tête info */}
+              {/* Titre + méta */}
               <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '0.5px solid #f0f0ec' }}>
                 <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '4px' }}>{showDetail.title}</div>
                 {showDetail.source && <div style={{ fontSize: '12px', color: '#1D9E75', marginBottom: '6px' }}>{showDetail.source}</div>}
@@ -600,11 +584,10 @@ export default function BibliothequePage() {
                     <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
                   ))}
                   <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>{showDetail.time} min</span>
-                  {showDetail.cost > 0 && (
-                    <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>
-                      ~{showDetail.cost} CHF {autoCostDetail !== null && autoCostDetail !== showDetail.cost ? '(calculé)' : ''}
-                    </span>
-                  )}
+                  {autoCostDetail !== null
+                    ? <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>~{autoCostDetail} CHF <span style={{ fontWeight: '400', opacity: 0.7 }}>calculé</span></span>
+                    : showDetail.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>~{showDetail.cost} CHF</span>
+                  }
                 </div>
                 {(showDetail.tags || []).length > 0 && (
                   <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
@@ -629,18 +612,18 @@ export default function BibliothequePage() {
                 </div>
               )}
 
-              {/* Ingrédients */}
+              {/* Ingrédients avec prix unitaires */}
               {scaledIngredients.length > 0 && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Ingrédients</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     {scaledIngredients.map((ing, i) => {
-                      const priceEntry = priceMap[ing.name?.toLowerCase()]
-                      const linePrice = priceEntry ? parseFloat((parseFloat(ing.qty) * priceEntry.price_per_unit).toFixed(2)) : null
+                      const entry = priceMap[ing.name?.toLowerCase()]
+                      const linePrice = entry ? parseFloat((parseFloat(ing.qty || 0) * entry.price_per_unit).toFixed(2)) : null
                       return (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#fafaf8', borderRadius: '8px', fontSize: '13px' }}>
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1D9E75', flexShrink: 0 }} />
-                          <span style={{ flex: 1 }}>{ing.qty} {ing.unit} {ing.name}</span>
+                          <span style={{ flex: 1, minWidth: 0 }}>{ing.qty} {ing.unit} {ing.name}</span>
                           {linePrice !== null && <span style={{ fontSize: '10px', color: '#854F0B', flexShrink: 0 }}>{linePrice} CHF</span>}
                         </div>
                       )
@@ -685,7 +668,7 @@ export default function BibliothequePage() {
       {/* ── Modal Édition ── */}
       {showEdit && (
         <div style={overlay}>
-          <div style={modalBox}>
+          <div style={{ ...modalBox, padding: '1.5rem' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '500', marginBottom: '1.25rem' }}>
               {editingId ? '✏️ Modifier la recette' : '+ Nouvelle recette'}
             </h3>
@@ -701,11 +684,7 @@ export default function BibliothequePage() {
             </div>
 
             {/* Photo */}
-            <PhotoUpload
-              currentUrl={form.photo_url}
-              userId={user.id}
-              onUploaded={url => setForm(f => ({ ...f, photo_url: url }))}
-            />
+            <PhotoUpload currentUrl={form.photo_url} userId={user.id} onUploaded={url => setForm(f => ({ ...f, photo_url: url }))} />
 
             {/* Nom */}
             <div style={{ marginBottom: '10px' }}>
@@ -716,7 +695,7 @@ export default function BibliothequePage() {
             {/* Source + URL */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Source (site)</label>
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Source</label>
                 <input value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} placeholder="Ex : Marmiton" style={S.input} />
               </div>
               <div>
@@ -734,14 +713,16 @@ export default function BibliothequePage() {
               <div>
                 <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>
                   Coût (CHF)
-                  {computeCostFromPrices(form.ingredients, priceMap) !== null && (
-                    <span style={{ color: '#1D9E75', marginLeft: '4px', fontWeight: '400' }}>↻ auto</span>
-                  )}
+                  {autoCostForm !== null && <span style={{ color: '#1D9E75', marginLeft: '4px', fontWeight: '400' }}>↻ auto</span>}
                 </label>
-                <input type="number" value={computeCostFromPrices(form.ingredients, priceMap) ?? form.cost}
-                  readOnly={computeCostFromPrices(form.ingredients, priceMap) !== null}
-                  onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="12"
-                  style={{ ...S.input, background: computeCostFromPrices(form.ingredients, priceMap) !== null ? '#E1F5EE' : '#fafaf8', color: computeCostFromPrices(form.ingredients, priceMap) !== null ? '#0F6E56' : 'inherit' }} />
+                <input
+                  type="number"
+                  value={autoCostForm !== null ? autoCostForm : form.cost}
+                  readOnly={autoCostForm !== null}
+                  onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}
+                  placeholder="12"
+                  style={{ ...S.input, background: autoCostForm !== null ? '#E1F5EE' : '#fafaf8', color: autoCostForm !== null ? '#0F6E56' : 'inherit' }}
+                />
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Pour X personnes</label>
@@ -759,7 +740,7 @@ export default function BibliothequePage() {
               </div>
             </div>
 
-            {/* Tags libres */}
+            {/* Tags */}
             <div style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
                 Tags personnalisés <span style={{ color: '#bbb', fontWeight: '400' }}>Entrée ou , pour valider</span>
@@ -774,19 +755,17 @@ export default function BibliothequePage() {
                 <button onClick={addIngredient} style={{ fontSize: '12px', color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}>+ Ajouter</button>
               </div>
               {form.ingredients.map((ing, i) => {
-                const priceEntry = priceMap[ing.name?.trim().toLowerCase()]
-                const linePrice = priceEntry && ing.qty ? parseFloat((parseFloat(ing.qty) * priceEntry.price_per_unit).toFixed(2)) : null
+                const entry = priceMap[ing.name?.trim().toLowerCase()]
+                const linePrice = entry && ing.qty ? parseFloat((parseFloat(ing.qty) * entry.price_per_unit).toFixed(2)) : null
                 return (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '6px', marginBottom: '6px', alignItems: 'start' }}>
                     <input value={ing.name} onChange={e => updateIngredient(i, 'name', e.target.value)} placeholder="Ingrédient" style={S.input} />
                     <input type="number" value={ing.qty} onChange={e => updateIngredient(i, 'qty', e.target.value)} placeholder="Qté" style={S.input} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <select value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={S.input}>
-                        {UNITES.map(u => <option key={u}>{u}</option>)}
-                      </select>
-                      {linePrice !== null && <span style={{ fontSize: '10px', color: '#854F0B', textAlign: 'center' }}>~{linePrice} CHF</span>}
+                    <div>
+                      <select value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={S.input}>{UNITES.map(u => <option key={u}>{u}</option>)}</select>
+                      {linePrice !== null && <div style={{ fontSize: '10px', color: '#854F0B', textAlign: 'center', marginTop: '2px' }}>~{linePrice} CHF</div>}
                     </div>
-                    <button onClick={() => removeIngredient(i)} style={{ background: 'none', border: 'none', color: '#E24B4A', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                    <button onClick={() => removeIngredient(i)} style={{ background: 'none', border: 'none', color: '#E24B4A', cursor: 'pointer', fontSize: '16px', paddingTop: '6px' }}>✕</button>
                   </div>
                 )
               })}
@@ -848,6 +827,7 @@ export default function BibliothequePage() {
           onPricesUpdated={onPricesUpdated}
         />
       )}
+
     </div>
   )
 }
