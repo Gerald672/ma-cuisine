@@ -1,55 +1,177 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { PRIX_DB, calculerCout } from '../lib/prixDB'
+
+// ─── Calcul du coût d'un ingrédient ──────────────────────────────────────────
+// priceMap : { 'farine': { price_per_unit, unit }, ... }
+// factor   : ratio personnes / personnes de base (2)
+// overrides: { 'farine': 0.0028, ... } — corrections locales de l'utilisateur
+
+function calculerCout(ing, factor, priceMap, overrides) {
+  const key = ing.name?.toLowerCase()
+  if (!key) return 0
+  const qty = parseFloat(ing.qty || 0) * factor
+  if (isNaN(qty)) return 0
+
+  // Prix : override local > base Supabase > 0
+  const price = overrides[ing.name] !== undefined
+    ? overrides[ing.name]
+    : priceMap[key]?.price_per_unit ?? 0
+
+  return qty * price
+}
+
+// Convertit price_per_unit (CHF/g ou CHF/ml) en affichage (CHF/kg ou CHF/L)
+function displayPrice(ing, priceMap, overrides) {
+  const key = ing.name?.toLowerCase()
+  const raw = overrides[ing.name] !== undefined
+    ? overrides[ing.name]
+    : priceMap[key]?.price_per_unit ?? 1
+
+  if (ing.unit === 'g')  return { value: raw * 1000, label: 'CHF/kg' }
+  if (ing.unit === 'ml') return { value: raw * 1000, label: 'CHF/L' }
+  return { value: raw, label: 'CHF/unité' }
+}
+
+function parseDisplayPrice(displayVal, unit) {
+  const v = parseFloat(displayVal) || 0
+  if (unit === 'g' || unit === 'ml') return v / 1000
+  return v
+}
 
 export default function BudgetPage() {
   const { user } = useAuth()
-  const [recipes, setRecipes] = useState([])
-  const [selected, setSelected] = useState(new Set())
-  const [persons, setPersons] = useState(2)
-  const [budgetMax, setBudgetMax] = useState(30)
-  const [customPrices, setCustomPrices] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [showPrixDB, setShowPrixDB] = useState(false)
-  const [prixSearch, setPrixSearch] = useState('')
+  const [recipes, setRecipes]         = useState([])
+  const [selected, setSelected]       = useState(new Set())
+  const [persons, setPersons]         = useState(2)
+  const [budgetMax, setBudgetMax]     = useState(30)
+  const [overrides, setOverrides]     = useState({}) // corrections locales { ingName: price_per_unit }
+  const [priceMap, setPriceMap]       = useState({}) // { name: { price_per_unit, unit, source } }
+  const [loading, setLoading]         = useState(true)
+  const [showPrixDB, setShowPrixDB]   = useState(false)
+  const [prixSearch, setPrixSearch]   = useState('')
+  const [savingPrice, setSavingPrice] = useState(null) // nom de l'ingrédient en cours de sauvegarde
+
+  // ── Chargement ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    supabase.from('recipes').select('*').eq('user_id', user.id)
-      .then(({ data }) => { setRecipes(data || []); setLoading(false) })
+    loadAll()
   }, [user])
+
+  async function loadAll() {
+    setLoading(true)
+    const [{ data: recipeData }, { data: priceData }] = await Promise.all([
+      supabase.from('recipes').select('*').eq('user_id', user.id),
+      supabase.from('ingredient_prices').select('*').eq('user_id', user.id)
+    ])
+    setRecipes(recipeData || [])
+    const map = {}
+    for (const row of (priceData || [])) map[row.name.toLowerCase()] = row
+    setPriceMap(map)
+    setLoading(false)
+  }
+
+  async function loadPriceMap() {
+    const { data } = await supabase.from('ingredient_prices').select('*').eq('user_id', user.id)
+    const map = {}
+    for (const row of (data || [])) map[row.name.toLowerCase()] = row
+    setPriceMap(map)
+    return map
+  }
+
+  // ── Modification d'un prix unitaire ─────────────────────────────────────────
+  // 1. Met à jour l'affichage immédiatement (override local)
+  // 2. Persiste dans Supabase ingredient_prices
+  // 3. Recalcule le cost de toutes les recettes concernées
+
+  async function handlePriceChange(ing, displayVal) {
+    const newPricePerUnit = parseDisplayPrice(displayVal, ing.unit)
+    const ingKey = ing.name.toLowerCase()
+
+    // 1. Override local immédiat → le total se recalcule via le render
+    setOverrides(prev => ({ ...prev, [ing.name]: newPricePerUnit }))
+
+    // 2. Persistance Supabase
+    setSavingPrice(ing.name)
+    const existing = priceMap[ingKey]
+    if (existing) {
+      await supabase.from('ingredient_prices')
+        .update({ price_per_unit: newPricePerUnit, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+    } else {
+      // Ingrédient inconnu → on l'ajoute à la base
+      await supabase.from('ingredient_prices').insert({
+        user_id: user.id,
+        name: ingKey,
+        price_per_unit: newPricePerUnit,
+        unit: ing.unit,
+        source: 'Saisie manuelle'
+      })
+    }
+
+    // 3. Recharger le priceMap puis recalculer le cost de toutes les recettes
+    const freshMap = await loadPriceMap()
+    const { data: allRecipes } = await supabase
+      .from('recipes').select('id, ingredients, cost').eq('user_id', user.id)
+
+    for (const r of (allRecipes || [])) {
+      const newCost = (r.ingredients || []).reduce((sum, i) => {
+        const k = i.name?.toLowerCase()
+        const p = freshMap[k]?.price_per_unit ?? 0
+        return sum + (parseFloat(i.qty || 0) * p)
+      }, 0)
+      const rounded = parseFloat(newCost.toFixed(2))
+      if (Math.abs(rounded - (r.cost || 0)) > 0.005) {
+        await supabase.from('recipes').update({ cost: rounded }).eq('id', r.id)
+      }
+    }
+
+    // Recharger les recettes pour refléter les nouveaux coûts
+    const { data: freshRecipes } = await supabase
+      .from('recipes').select('*').eq('user_id', user.id)
+    setRecipes(freshRecipes || [])
+    setSavingPrice(null)
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function toggleRecipe(id) {
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   const factor = persons / 2
-
   const selectedRecipes = recipes.filter(r => selected.has(r.id))
-  const grandTotal = selectedRecipes.reduce((sum, r) => {
-    return sum + (r.ingredients || []).reduce((s, ing) => s + calculerCout(ing, factor, customPrices), 0)
-  }, 0)
+
+  const grandTotal = selectedRecipes.reduce((sum, r) =>
+    sum + (r.ingredients || []).reduce((s, ing) =>
+      s + calculerCout(ing, factor, priceMap, overrides), 0), 0)
 
   const perPerson = persons > 0 ? grandTotal / persons : 0
-  const reste = budgetMax - grandTotal
-  const pct = Math.min(100, Math.round(grandTotal / budgetMax * 100))
+  const reste     = budgetMax - grandTotal
+  const pct       = Math.min(100, Math.round(grandTotal / budgetMax * 100))
   const fillColor = pct < 80 ? '#1D9E75' : pct < 100 ? '#BA7517' : '#E24B4A'
 
-  const filteredPrix = PRIX_DB.filter(p =>
-    p.nom.toLowerCase().includes(prixSearch.toLowerCase()) ||
-    p.cat.toLowerCase().includes(prixSearch.toLowerCase())
+  // Prix affichés dans la table de la base (avec overrides appliqués)
+  const allPrices = Object.values(priceMap).map(p => ({
+    ...p,
+    displayed: overrides[p.name] !== undefined ? overrides[p.name] : p.price_per_unit
+  }))
+  const filteredPrix = allPrices.filter(p =>
+    !prixSearch || p.name.toLowerCase().includes(prixSearch.toLowerCase())
   )
 
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
   return (
     <div>
-      {/* Sélection */}
+
+      {/* ── Sélection des recettes ── */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>Simuler le coût d'un repas</div>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-          Prix pré-chargés depuis la base Migros/Coop Suisse — avril 2026. Modifiables à tout moment.
+          Prix chargés depuis ta base Supabase (Migros/Coop/Rapport Agricole CH). Modifiables ligne par ligne — chaque modification est sauvegardée et répercutée sur toutes tes recettes.
         </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {recipes.map(r => (
             <div key={r.id} onClick={() => toggleRecipe(r.id)} style={{
@@ -58,7 +180,9 @@ export default function BudgetPage() {
               display: 'flex', alignItems: 'center', gap: '8px',
               background: selected.has(r.id) ? '#E1F5EE' : 'white'
             }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#ddd'), background: selected.has(r.id) ? '#1D9E75' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>{selected.has(r.id) ? '✓' : ''}</div>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#ddd'), background: selected.has(r.id) ? '#1D9E75' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+                {selected.has(r.id) ? '✓' : ''}
+              </div>
               <div style={{ fontSize: '20px' }}>{r.emoji}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
@@ -67,11 +191,13 @@ export default function BudgetPage() {
             </div>
           ))}
         </div>
+
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label style={{ fontSize: '12px', color: '#666' }}>Personnes :</label>
-            <select value={persons} onChange={e => setPersons(parseInt(e.target.value))} style={{ padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px' }}>
-              {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
+            <select value={persons} onChange={e => setPersons(parseInt(e.target.value))}
+              style={{ padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px' }}>
+              {[1,2,3,4,6,8].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -79,59 +205,78 @@ export default function BudgetPage() {
             <input type="number" value={budgetMax} onChange={e => setBudgetMax(parseFloat(e.target.value) || 30)}
               style={{ width: '75px', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px' }} />
           </div>
-          <button onClick={() => setShowPrixDB(!showPrixDB)} style={{ padding: '6px 12px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white' }}>
-            {showPrixDB ? 'Masquer' : 'Voir'} la base de prix
+          <button onClick={() => setShowPrixDB(!showPrixDB)}
+            style={{ padding: '6px 12px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white' }}>
+            {showPrixDB ? 'Masquer' : 'Voir'} la base de prix ({allPrices.length})
           </button>
         </div>
       </div>
 
-      {/* Base de prix */}
+      {/* ── Base de prix Supabase ── */}
       {showPrixDB && (
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix Suisse 2026</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Sources : Migros, Coop, Rapport Agricole Suisse</div>
+              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix Suisse</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Sources : Migros, Coop, Rapport Agricole Suisse — modifications sauvegardées automatiquement</div>
             </div>
             <input value={prixSearch} onChange={e => setPrixSearch(e.target.value)} placeholder="Rechercher..."
-              style={{ padding: '7px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', width: '160px' }} />
+              style={{ padding: '7px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', width: '160px', outline: 'none' }} />
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr>
-                  {['Ingrédient', 'Catégorie', 'Prix moyen', 'Unité', 'Source'].map(h => (
+                  {['Ingrédient', 'Prix unitaire', 'Unité', 'Source'].map(h => (
                     <th key={h} style={{ padding: '8px 10px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #e0e0e0' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredPrix.map(p => (
-                  <tr key={p.nom}>
-                    <td style={{ padding: '8px 10px', fontWeight: '500' }}>{p.nom}</td>
-                    <td style={{ padding: '8px 10px' }}><span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', background: '#f0f0ec', color: '#666' }}>{p.cat}</span></td>
-                    <td style={{ padding: '8px 10px', fontWeight: '500', color: '#0F6E56' }}>{p.prix.toFixed(2)} CHF</td>
-                    <td style={{ padding: '8px 10px', color: '#888', fontSize: '12px' }}>{p.unite}</td>
-                    <td style={{ padding: '8px 10px' }}><span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source}</span></td>
-                  </tr>
-                ))}
+                {filteredPrix.sort((a,b) => a.name.localeCompare(b.name, 'fr')).map(p => {
+                  const dispUnit = p.unit === 'g' ? 'CHF/kg' : p.unit === 'ml' ? 'CHF/L' : 'CHF/unité'
+                  const dispVal  = p.unit === 'g' || p.unit === 'ml' ? p.displayed * 1000 : p.displayed
+                  const isModified = overrides[p.name] !== undefined
+                  return (
+                    <tr key={p.id} style={{ borderBottom: '0.5px solid #f5f5f2' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: '500', textTransform: 'capitalize' }}>
+                        {p.name}
+                        {isModified && <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>modifié</span>}
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type="number" step="0.01" defaultValue={dispVal.toFixed(2)}
+                            onBlur={e => handlePriceChange({ name: p.name, unit: p.unit }, e.target.value)}
+                            style={{ width: '75px', padding: '3px 6px', border: '0.5px solid #ddd', borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isModified ? '#FFFBF0' : '#fafaf8' }}
+                          />
+                          {savingPrice === p.name && <span style={{ fontSize: '10px', color: '#1D9E75' }}>↻</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#888', fontSize: '12px' }}>{dispUnit}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source || 'Base CH'}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Récapitulatif budget */}
+      {/* ── Récapitulatif budget ── */}
       {selected.size > 0 && (
         <>
           <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
             <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px' }}>Récapitulatif</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
               {[
-                { label: 'Coût total estimé', value: grandTotal.toFixed(2) + ' CHF' },
-                { label: 'Coût par personne', value: perPerson.toFixed(2) + ' CHF' },
-                { label: 'Budget restant', value: (reste >= 0 ? '+' : '') + reste.toFixed(2) + ' CHF', color: reste >= 0 ? '#0F6E56' : '#A32D2D' },
-                { label: 'Recettes', value: selected.size + ' recette' + (selected.size > 1 ? 's' : '') },
+                { label: 'Coût total estimé',  value: grandTotal.toFixed(2) + ' CHF' },
+                { label: 'Coût par personne',  value: perPerson.toFixed(2) + ' CHF' },
+                { label: 'Budget restant',      value: (reste >= 0 ? '+' : '') + reste.toFixed(2) + ' CHF', color: reste >= 0 ? '#0F6E56' : '#A32D2D' },
+                { label: 'Recettes',            value: selected.size + ' recette' + (selected.size > 1 ? 's' : '') },
               ].map(item => (
                 <div key={item.label} style={{ background: '#fafaf8', borderRadius: '8px', padding: '12px' }}>
                   <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{item.label}</div>
@@ -146,15 +291,17 @@ export default function BudgetPage() {
               <div style={{ height: '100%', width: pct + '%', background: fillColor, borderRadius: '5px', transition: 'width 0.4s' }} />
             </div>
             <div style={{ fontSize: '12px', color: fillColor }}>
-              {pct < 80 ? `Dans le budget — il reste ${reste.toFixed(2)} CHF`
-                : pct < 100 ? 'Attention, tu approches de ton budget !'
-                : `Budget dépassé de ${Math.abs(reste).toFixed(2)} CHF`}
+              {pct < 80  ? `Dans le budget — il reste ${reste.toFixed(2)} CHF`
+               : pct < 100 ? 'Attention, tu approches de ton budget !'
+               : `Budget dépassé de ${Math.abs(reste).toFixed(2)} CHF`}
             </div>
           </div>
 
-          {/* Détail par recette */}
+          {/* ── Détail par recette ── */}
           {selectedRecipes.map(r => {
-            const recipeTotal = (r.ingredients || []).reduce((s, ing) => s + calculerCout(ing, factor, customPrices), 0)
+            const recipeTotal = (r.ingredients || []).reduce((s, ing) =>
+              s + calculerCout(ing, factor, priceMap, overrides), 0)
+
             return (
               <div key={r.id} style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
                 <div style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '0.5px solid #e0e0e0' }}>
@@ -168,6 +315,7 @@ export default function BudgetPage() {
                     <div style={{ fontSize: '11px', color: '#888' }}>{(recipeTotal / persons).toFixed(2)} CHF/pers.</div>
                   </div>
                 </div>
+
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -178,29 +326,45 @@ export default function BudgetPage() {
                   </thead>
                   <tbody>
                     {(r.ingredients || []).map((ing, i) => {
-                      const cost = calculerCout(ing, factor, customPrices)
-                      const fromDB = PRIX_DB.find(p => p.nom.toLowerCase() === ing.name.toLowerCase())
-                      const priceLabel = ing.unit === 'g' ? 'CHF/kg' : ing.unit === 'ml' ? 'CHF/L' : 'CHF/unité'
-                      const currentPrice = customPrices[ing.name] ?? (fromDB ? fromDB.prix : 1)
+                      const cost      = calculerCout(ing, factor, priceMap, overrides)
+                      const { value: dispVal, label: dispUnit } = displayPrice(ing, priceMap, overrides)
+                      const fromDB    = !!priceMap[ing.name?.toLowerCase()]
+                      const isOverrid = overrides[ing.name] !== undefined
+                      const unknown   = !fromDB && !isOverrid
+
                       return (
-                        <tr key={i} style={{ borderBottom: '0.5px solid #f5f5f2' }}>
+                        <tr key={i} style={{ borderBottom: '0.5px solid #f5f5f2', background: unknown ? '#FFFBF0' : 'white' }}>
                           <td style={{ padding: '9px 1.25rem', fontSize: '13px' }}>
                             {ing.name}
-                            {fromDB && !customPrices[ing.name] && (
+                            {fromDB && !isOverrid && (
                               <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>base CH</span>
                             )}
+                            {isOverrid && (
+                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>modifié</span>
+                            )}
+                            {unknown && (
+                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#FEF2F2', color: '#991B1B' }}>prix inconnu</span>
+                            )}
                           </td>
-                          <td style={{ padding: '9px 1.25rem', fontSize: '12px', color: '#888' }}>{(ing.qty || 0) * factor} {ing.unit}</td>
+                          <td style={{ padding: '9px 1.25rem', fontSize: '12px', color: '#888' }}>
+                            {(parseFloat(ing.qty || 0) * factor)} {ing.unit}
+                          </td>
                           <td style={{ padding: '9px 1.25rem', textAlign: 'right' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                              <input type="number" step="0.01" defaultValue={currentPrice.toFixed(2)}
-                                onBlur={e => setCustomPrices(p => ({ ...p, [ing.name]: parseFloat(e.target.value) || 0 }))}
-                                style={{ width: '65px', padding: '3px 6px', border: '0.5px solid #ddd', borderRadius: '5px', fontSize: '12px', textAlign: 'right' }}
+                              <input
+                                type="number"
+                                step="0.01"
+                                defaultValue={dispVal.toFixed(2)}
+                                onBlur={e => handlePriceChange(ing, e.target.value)}
+                                style={{ width: '65px', padding: '3px 6px', border: '0.5px solid ' + (unknown ? '#FCA5A5' : '#ddd'), borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isOverrid ? '#FFFBF0' : '#fafaf8' }}
                               />
-                              <span style={{ fontSize: '10px', color: '#888' }}>{priceLabel}</span>
+                              <span style={{ fontSize: '10px', color: '#888' }}>{dispUnit}</span>
+                              {savingPrice === ing.name && <span style={{ fontSize: '10px', color: '#1D9E75' }}>↻</span>}
                             </div>
                           </td>
-                          <td style={{ padding: '9px 1.25rem', textAlign: 'right', fontWeight: '500', fontSize: '13px' }}>{cost.toFixed(2)} CHF</td>
+                          <td style={{ padding: '9px 1.25rem', textAlign: 'right', fontWeight: '500', fontSize: '13px', color: unknown ? '#aaa' : 'inherit' }}>
+                            {cost.toFixed(2)} CHF
+                          </td>
                         </tr>
                       )
                     })}
