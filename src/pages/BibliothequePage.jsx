@@ -72,6 +72,75 @@ function computeCost(ingredients, priceMap) {
   return matched > 0 ? parseFloat(total.toFixed(2)) : null
 }
 
+// ─── Impression & partage recette ────────────────────────────────────────────
+
+function printRecipe(recipe, scaledIngredients, convives) {
+  const ingList = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
+    .map(i => `<li style="padding:4px 0;border-bottom:1px solid #f0f0ec;font-size:13px">${i.qty} ${i.unit} ${i.name}</li>`)
+    .join('')
+
+  const stepList = (recipe.steps || [])
+    .map((s, i) => `<li style="padding:6px 0;border-bottom:1px solid #f0f0ec;font-size:13px"><strong style="color:#1D9E75">${i + 1}.</strong> ${s}</li>`)
+    .join('')
+
+  const photo = recipe.photo_url
+    ? `<img src="${recipe.photo_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block">`
+    : ''
+
+  const meta = [
+    recipe.time ? `⏱ ${recipe.time} min` : '',
+    convives ? `👥 ${convives} personne${convives > 1 ? 's' : ''}` : '',
+    recipe.cost > 0 ? `💰 ~${recipe.cost} CHF` : '',
+    recipe.source || '',
+  ].filter(Boolean).join('  ·  ')
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${recipe.title}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 32px; max-width: 680px; margin: 0 auto; color: #333 }
+    h1 { font-size: 22px; margin: 0 0 6px }
+    .meta { color: #888; font-size: 12px; margin-bottom: 20px }
+    h2 { font-size: 14px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin: 20px 0 8px }
+    ul, ol { margin: 0; padding: 0; list-style: none }
+    .notes { background: #FAEEDA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #633806; margin-top: 16px }
+    @media print { button { display: none } body { padding: 16px } }
+  </style>
+  </head><body>
+    ${photo}
+    <h1>${recipe.emoji || ''} ${recipe.title}</h1>
+    <p class="meta">${meta}</p>
+    ${ingList ? `<h2>Ingrédients</h2><ul>${ingList}</ul>` : ''}
+    ${stepList ? `<h2>Préparation</h2><ol>${stepList}</ol>` : ''}
+    ${recipe.notes ? `<div class="notes"><strong>Notes :</strong> ${recipe.notes}</div>` : ''}
+    <br><button onclick="window.print()" style="padding:8px 16px;background:#1D9E75;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨️ Imprimer</button>
+  </body></html>`
+
+  const w = window.open('', '_blank')
+  w.document.write(html)
+  w.document.close()
+}
+
+function shareRecipeByEmail(recipe, scaledIngredients, convives) {
+  const subject = encodeURIComponent(`Recette : ${recipe.title} ${recipe.emoji || ''}`)
+  const ings = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
+    .map(i => `  • ${i.qty} ${i.unit} ${i.name}`).join('\n')
+  const steps = (recipe.steps || []).map((s, i) => `  ${i + 1}. ${s}`).join('\n')
+  const meta = [
+    recipe.time ? `${recipe.time} min` : '',
+    convives ? `${convives} personne${convives > 1 ? 's' : ''}` : '',
+    recipe.cost > 0 ? `~${recipe.cost} CHF` : '',
+  ].filter(Boolean).join(' · ')
+
+  const body = encodeURIComponent(
+    `${recipe.emoji || ''} ${recipe.title}\n${meta}\n\n` +
+    (ings ? `INGRÉDIENTS\n${ings}\n\n` : '') +
+    (steps ? `PRÉPARATION\n${steps}\n\n` : '') +
+    (recipe.notes ? `NOTES\n${recipe.notes}\n\n` : '') +
+    (recipe.url ? `Source : ${recipe.url}\n` : '') +
+    `\nEnvoyé depuis Ma Cuisine 🍳`
+  )
+  window.location.href = `mailto:?subject=${subject}&body=${body}`
+}
+
 function sortRecipes(recipes, sortKey) {
   const arr = [...recipes]
   switch (sortKey) {
@@ -656,8 +725,10 @@ export default function BibliothequePage() {
                 <a href={showDetail.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#1D9E75', display: 'block', marginBottom: '1rem', wordBreak: 'break-all' }}>🔗 Voir la recette originale</a>
               )}
 
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec' }}>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec', flexWrap: 'wrap' }}>
                 <button onClick={() => setConfirmDelete(showDetail)} style={{ background: 'none', border: '0.5px solid #E24B4A', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#E24B4A' }}>Supprimer</button>
+                <button onClick={() => shareRecipeByEmail(showDetail, scaledIngredients, detailServings)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>✉️ Partager</button>
+                <button onClick={() => printRecipe(showDetail, scaledIngredients, detailServings)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>🖨️ Imprimer</button>
                 <button onClick={() => openEdit(showDetail)} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>✏️ Modifier</button>
               </div>
             </div>
