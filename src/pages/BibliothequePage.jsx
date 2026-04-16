@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+// --- Constantes ---------------------------------------------------------------
 
 const FILTRES = ['Toutes', 'Végan', 'Végétarien', 'Rapide', 'Économique', 'Dessert', 'Plat principal']
 const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entree', 'soupe']
@@ -37,7 +37,7 @@ const EMPTY_FORM = {
   nutrition: null
 }
 
-// ─── Utilitaires ──────────────────────────────────────────────────────────────
+// --- Utilitaires --------------------------------------------------------------
 
 function scaleIngredients(ingredients, baseServings, currentServings) {
   if (!baseServings || baseServings === 0 || baseServings === currentServings) return ingredients
@@ -215,7 +215,7 @@ function sortRecipes(recipes, sortKey) {
   }
 }
 
-// ─── TagsInput ────────────────────────────────────────────────────────────────
+// --- TagsInput ----------------------------------------------------------------
 
 function TagsInput({ tags = [], onChange }) {
   const [input, setInput] = useState('')
@@ -245,7 +245,7 @@ function TagsInput({ tags = [], onChange }) {
   )
 }
 
-// ─── PhotoUpload ──────────────────────────────────────────────────────────────
+// --- PhotoUpload --------------------------------------------------------------
 
 function PhotoUpload({ currentUrl, onUploaded, userId }) {
   const [uploading, setUploading] = useState(false)
@@ -290,7 +290,7 @@ function PhotoUpload({ currentUrl, onUploaded, userId }) {
   )
 }
 
-// ─── PriceBaseModal ───────────────────────────────────────────────────────────
+// --- PriceBaseModal -----------------------------------------------------------
 // Affiche les prix de la BDD (source Migros/Coop/Rapport Agricole) et permet
 // des corrections locales par l'utilisateur.
 
@@ -429,7 +429,7 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
   )
 }
 
-// ─── Composant principal ──────────────────────────────────────────────────────
+// --- Composant principal ------------------------------------------------------
 
 export default function BibliothequePage() {
   const { user } = useAuth()
@@ -456,7 +456,7 @@ export default function BibliothequePage() {
 
   useEffect(() => { loadRecipes(); loadPriceMap(); loadNutMap() }, [user])
 
-  // ── Chargement ─────────────────────────────────────────────────────────────
+  // -- Chargement -------------------------------------------------------------
 
   async function loadRecipes() {
     setLoading(true)
@@ -473,7 +473,7 @@ export default function BibliothequePage() {
     return map
   }
 
-  // ── Recalcul de toutes les recettes après changement de prix ───────────────
+  // -- Recalcul de toutes les recettes après changement de prix ---------------
 
   async function loadNutMap() {
     const { data } = await supabase.from('ingredient_nutrition').select('*')
@@ -494,7 +494,7 @@ export default function BibliothequePage() {
     await loadRecipes()
   }
 
-  // ── Import URL ─────────────────────────────────────────────────────────────
+  // -- Import URL -------------------------------------------------------------
 
   async function importFromUrl() {
     if (!importUrl.trim()) return
@@ -509,7 +509,7 @@ export default function BibliothequePage() {
     setImporting(false)
   }
 
-  // ── Sauvegarde ─────────────────────────────────────────────────────────────
+  // -- Sauvegarde -------------------------------------------------------------
 
   async function saveRecipe() {
     if (!form.title.trim()) return
@@ -529,14 +529,14 @@ export default function BibliothequePage() {
     loadRecipes()
   }
 
-  // ── Suppression ────────────────────────────────────────────────────────────
+  // -- Suppression ------------------------------------------------------------
 
   async function deleteRecipe(id) {
     await supabase.from('recipes').delete().eq('id', id)
     setConfirmDelete(null); setShowDetail(null); loadRecipes()
   }
 
-  // ── Helpers formulaire ─────────────────────────────────────────────────────
+  // -- Helpers formulaire -----------------------------------------------------
 
   function openEdit(recipe) {
     setEditingId(recipe.id)
@@ -554,7 +554,7 @@ export default function BibliothequePage() {
   function removeStep(i) { setForm(f => ({ ...f, steps: f.steps.filter((_, idx) => idx !== i) })) }
   function toggleCat(cat) { setForm(f => ({ ...f, cats: f.cats.includes(cat) ? f.cats.filter(c => c !== cat) : [...f.cats, cat] })) }
 
-  // ── Données dérivées ───────────────────────────────────────────────────────
+  // -- Données dérivées -------------------------------------------------------
 
   const allFreeTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
 
@@ -585,18 +585,18 @@ export default function BibliothequePage() {
         : computeNutrition(scaledIngredients, nutMap, showDetail.servings || 4, detailServings))
     : null
 
-  // ── Styles partagés ────────────────────────────────────────────────────────
+  // -- Styles partagés --------------------------------------------------------
 
   const S = { input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8', color: 'inherit' } }
   const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }
   const modalBox = { background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem', overflow: 'hidden' }
 
-  // ── Rendu ──────────────────────────────────────────────────────────────────
+  // -- Rendu ------------------------------------------------------------------
 
   return (
     <div>
 
-      {/* ── Barre actions ── */}
+      {/* -- Barre actions -- */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
           style={{ flex: 1, minWidth: '160px', padding: '10px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8' }} />
@@ -608,7 +608,7 @@ export default function BibliothequePage() {
           style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
       </div>
 
-      {/* ── Filtres catégories + sélecteur de tri ── */}
+      {/* -- Filtres catégories + sélecteur de tri -- */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center' }}>
         {FILTRES.map(f => (
           <button key={f} onClick={() => setFiltre(f)} style={{
@@ -624,7 +624,7 @@ export default function BibliothequePage() {
         </select>
       </div>
 
-      {/* ── Tags libres ── */}
+      {/* -- Tags libres -- */}
       {allFreeTags.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#bbb', flexShrink: 0 }}>Tags :</span>
@@ -641,7 +641,7 @@ export default function BibliothequePage() {
       )}
       {allFreeTags.length === 0 && <div style={{ marginBottom: '16px' }} />}
 
-      {/* ── Grille ── */}
+      {/* -- Grille -- */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>Chargement...</div>
       ) : filteredAndSorted.length === 0 ? (
@@ -682,7 +682,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* ── Modal Import URL ── */}
+      {/* -- Modal Import URL -- */}
       {showImport && (
         <div style={{ ...overlay, alignItems: 'center' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '480px' }}>
@@ -702,7 +702,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* ── Modal Détail ── */}
+      {/* -- Modal Détail -- */}
       {showDetail && (
         <div style={overlay}>
           <div style={modalBox}>
@@ -836,7 +836,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* ── Modal Édition ── */}
+      {/* -- Modal Édition -- */}
       {showEdit && (
         <div style={overlay}>
           <div style={{ ...modalBox, padding: '1.5rem' }}>
@@ -1017,7 +1017,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* ── Modal Confirmation suppression ── */}
+      {/* -- Modal Confirmation suppression -- */}
       {confirmDelete && (
         <div style={{ ...overlay, alignItems: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '360px', textAlign: 'center' }}>
@@ -1032,7 +1032,7 @@ export default function BibliothequePage() {
         </div>
       )}
 
-      {/* ── Modal Base de prix ── */}
+      {/* -- Modal Base de prix -- */}
       {showPriceBase && (
         <PriceBaseModal
           userId={user.id}
