@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Autoriser uniquement les requêtes POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -20,7 +19,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 2000,
+        max_tokens: 3000,
         messages: [{
           role: 'user',
           content: `Analyse cette URL de recette et extrait toutes les informations : ${url}
@@ -32,13 +31,26 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans backticks) :
   "emoji": "un emoji représentant le plat",
   "time": nombre_minutes_entier,
   "cost": estimation_cout_CHF_entier,
+  "servings": nombre_portions_entier,
   "cats": ["parmi: vegan, vegetarien, rapide, economique, dessert, plat, entree, soupe"],
-  "ingredients": [{"name": "nom", "qty": quantite_nombre, "unit": "g ou kg ou ml ou L ou unité(s) ou sachet(s)"}],
-  "steps": ["étape 1 complète", "étape 2 complète"],
-  "notes": "conseils ou variantes si mentionnés"
+  "ingredients": [{"name": "nom", "qty": quantite_nombre, "unit": "g ou kg ou ml ou L ou unite(s) ou sachet(s)"}],
+  "steps": ["etape 1 complete", "etape 2 complete"],
+  "notes": "conseils ou variantes si mentionnes",
+  "nutrition": {
+    "calories": nombre_kcal_par_portion,
+    "proteines": nombre_g_par_portion,
+    "glucides": nombre_g_par_portion,
+    "lipides": nombre_g_par_portion,
+    "fibres": nombre_g_par_portion_ou_null,
+    "sel": nombre_g_par_portion_ou_null
+  }
 }
 
-Si tu ne peux pas accéder à la page, génère une recette plausible basée sur le titre dans l'URL.`
+Regles importantes :
+- Pour la nutrition : si le site affiche des valeurs nutritionnelles, utilise-les exactement. Sinon, calcule-les a partir des ingredients de facon realiste. Les valeurs sont TOUJOURS par portion individuelle.
+- calories, proteines, glucides, lipides sont obligatoires (jamais null).
+- fibres et sel peuvent etre null si vraiment impossibles a estimer.
+- Si tu ne peux pas acceder a la page, genere une recette plausible basee sur le titre dans l URL.`
         }]
       })
     })
@@ -56,6 +68,6 @@ Si tu ne peux pas accéder à la page, génère une recette plausible basée sur
     return res.status(200).json(recipe)
 
   } catch (error) {
-    return res.status(500).json({ error: 'Erreur lors de l\'analyse', details: error.message })
+    return res.status(500).json({ error: "Erreur lors de l'analyse", details: error.message })
   }
 }
