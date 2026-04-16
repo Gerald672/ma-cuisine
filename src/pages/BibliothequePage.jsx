@@ -73,144 +73,129 @@ function computeCost(ingredients, priceMap) {
   return matched > 0 ? parseFloat(total.toFixed(2)) : null
 }
 
-// ─── Nutrition : calcul depuis la base ingredient_nutrition ──────────────────
-// nutMap : { 'farine': { calories, proteines, glucides, lipides, fibres, sel, unit_ref } }
+
+// ─── Nutrition ────────────────────────────────────────────────────────────────
 
 function computeNutrition(ingredients, nutMap, baseServings, currentServings) {
-  if (!ingredients?.length || !nutMap) return null
+  if (!ingredients || !ingredients.length || !nutMap) return null
   const ratio = (baseServings && currentServings) ? currentServings / baseServings : 1
-  let result = { calories: 0, proteines: 0, glucides: 0, lipides: 0, fibres: 0, sel: 0 }
-  let matched = 0
-
+  let cal = 0, prot = 0, gluc = 0, lip = 0, fib = 0, sel = 0, matched = 0
   for (const ing of ingredients) {
-    const key = ing.name?.trim().toLowerCase()
-    if (!key) continue
+    const key = (ing.name || '').trim().toLowerCase()
     const entry = nutMap[key]
     if (!entry) continue
-
     const qty = parseFloat(ing.qty || 0) * ratio
     let factor = 0
-
-    if (entry.unit_ref === 'unité') {
-      factor = qty // déjà par unité
+    if (entry.unit_ref === 'unite') {
+      factor = qty
     } else {
-      // unit_ref = '100g' ou '100ml' → factor = qty / 100
       if (ing.unit === 'kg') factor = qty * 1000 / 100
       else if (ing.unit === 'L') factor = qty * 1000 / 100
       else factor = qty / 100
     }
-
-    result.calories  += (entry.calories  || 0) * factor
-    result.proteines += (entry.proteines || 0) * factor
-    result.glucides  += (entry.glucides  || 0) * factor
-    result.lipides   += (entry.lipides   || 0) * factor
-    result.fibres    += (entry.fibres    || 0) * factor
-    result.sel       += (entry.sel       || 0) * factor
+    cal  += (entry.calories  || 0) * factor
+    prot += (entry.proteines || 0) * factor
+    gluc += (entry.glucides  || 0) * factor
+    lip  += (entry.lipides   || 0) * factor
+    fib  += (entry.fibres    || 0) * factor
+    sel  += (entry.sel       || 0) * factor
     matched++
   }
-
   if (matched === 0) return null
   return {
-    calories:  Math.round(result.calories),
-    proteines: parseFloat(result.proteines.toFixed(1)),
-    glucides:  parseFloat(result.glucides.toFixed(1)),
-    lipides:   parseFloat(result.lipides.toFixed(1)),
-    fibres:    parseFloat(result.fibres.toFixed(1)),
-    sel:       parseFloat(result.sel.toFixed(2)),
+    calories:  Math.round(cal),
+    proteines: parseFloat(prot.toFixed(1)),
+    glucides:  parseFloat(gluc.toFixed(1)),
+    lipides:   parseFloat(lip.toFixed(1)),
+    fibres:    parseFloat(fib.toFixed(1)),
+    sel:       parseFloat(sel.toFixed(2)),
   }
 }
 
-// ─── Impression & partage recette ────────────────────────────────────────────
+// ─── Impression recette ───────────────────────────────────────────────────────
 
 function printRecipe(recipe, scaledIngredients, convives, nutrition) {
-  const ingList = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
-    .map(i => `<li style="padding:4px 0;border-bottom:1px solid #f0f0ec;font-size:13px">${i.qty} ${i.unit} ${i.name}</li>`)
-    .join('')
-
-  const stepList = (recipe.steps || [])
-    .map((s, i) => `<li style="padding:6px 0;border-bottom:1px solid #f0f0ec;font-size:13px"><strong style="color:#1D9E75">${i + 1}.</strong> ${s}</li>`)
-    .join('')
-
+  const ings = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
+  const ingRows = ings.map(function(i) {
+    return '<li style="padding:4px 0;border-bottom:1px solid #f0f0ec;font-size:13px">' + i.qty + ' ' + i.unit + ' ' + i.name + '</li>'
+  }).join('')
+  const stepRows = (recipe.steps || []).map(function(s, i) {
+    return '<li style="padding:6px 0;border-bottom:1px solid #f0f0ec;font-size:13px"><strong style="color:#1D9E75">' + (i+1) + '.</strong> ' + s + '</li>'
+  }).join('')
   const photo = recipe.photo_url
-    ? `<img src="${recipe.photo_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block">`
+    ? '<img src="' + recipe.photo_url + '" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block">'
     : ''
-
-  const meta = [
-    recipe.time ? `⏱ ${recipe.time} min` : '',
-    convives ? `👥 ${convives} personne${convives > 1 ? 's' : ''}` : '',
-    recipe.cost > 0 ? `💰 ~${recipe.cost} CHF` : '',
-    recipe.source || '',
-  ].filter(Boolean).join('  ·  ')
-
-  const nutHtml = nutrition ? `
-    <h2>Apport nutritionnel par portion</h2>
-    <table style="border-collapse:collapse;font-size:12px;width:100%">
-      <tr style="background:#f5f5f0">
-        <td style="padding:6px 10px;font-weight:600">Calories</td>
-        <td style="padding:6px 10px;text-align:right;font-weight:600;color:#1D9E75">${nutrition.calories} kcal</td>
-        <td style="padding:6px 10px;font-weight:600">Protéines</td>
-        <td style="padding:6px 10px;text-align:right">${nutrition.proteines} g</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 10px">Glucides</td>
-        <td style="padding:6px 10px;text-align:right">${nutrition.glucides} g</td>
-        <td style="padding:6px 10px">Lipides</td>
-        <td style="padding:6px 10px;text-align:right">${nutrition.lipides} g</td>
-      </tr>
-      ${nutrition.fibres ? `<tr style="background:#f5f5f0"><td style="padding:6px 10px">Fibres</td><td style="padding:6px 10px;text-align:right">${nutrition.fibres} g</td><td style="padding:6px 10px">Sel</td><td style="padding:6px 10px;text-align:right">${nutrition.sel} g</td></tr>` : ''}
-    </table>` : ''
-
-  const html = \`<!DOCTYPE html><html><head><meta charset="utf-8"><title>\${recipe.title}</title>
-  <style>
-    body { font-family: system-ui, sans-serif; padding: 32px; max-width: 680px; margin: 0 auto; color: #333 }
-    h1 { font-size: 22px; margin: 0 0 6px }
-    .meta { color: #888; font-size: 12px; margin-bottom: 20px }
-    h2 { font-size: 14px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin: 20px 0 8px }
-    ul, ol { margin: 0; padding: 0; list-style: none }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 12px }
-    .notes { background: #FAEEDA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #633806; margin-top: 16px }
-    @media print { button { display: none } body { padding: 16px } }
-  </style>
-  </head><body>
-    \${photo}
-    <h1>\${recipe.emoji || ''} \${recipe.title}</h1>
-    <p class="meta">\${meta}</p>
-    \${ingList ? \`<h2>Ingrédients</h2><ul>\${ingList}</ul>\` : ''}
-    \${nutHtml}
-    \${stepList ? \`<h2>Préparation</h2><ol>\${stepList}</ol>\` : ''}
-    \${recipe.notes ? \`<div class="notes"><strong>Notes :</strong> \${recipe.notes}</div>\` : ''}
-    <br><button onclick="window.print()" style="padding:8px 16px;background:#1D9E75;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨️ Imprimer</button>
-  </body></html>\`
-
+  const metaParts = []
+  if (recipe.time) metaParts.push('⏱ ' + recipe.time + ' min')
+  if (convives) metaParts.push('👥 ' + convives + ' personne' + (convives > 1 ? 's' : ''))
+  if (recipe.cost > 0) metaParts.push('💰 ~' + recipe.cost + ' CHF')
+  if (recipe.source) metaParts.push(recipe.source)
+  const meta = metaParts.join('  ·  ')
+  let nutHtml = ''
+  if (nutrition) {
+    nutHtml = '<h2>Apport nutritionnel par portion</h2>'
+      + '<table style="border-collapse:collapse;font-size:12px;width:100%">'
+      + '<tr style="background:#f5f5f0">'
+      + '<td style="padding:6px 10px;font-weight:600">Calories</td><td style="padding:6px 10px;text-align:right;font-weight:600;color:#1D9E75">' + nutrition.calories + ' kcal</td>'
+      + '<td style="padding:6px 10px;font-weight:600">Protéines</td><td style="padding:6px 10px;text-align:right">' + nutrition.proteines + ' g</td>'
+      + '</tr><tr>'
+      + '<td style="padding:6px 10px">Glucides</td><td style="padding:6px 10px;text-align:right">' + nutrition.glucides + ' g</td>'
+      + '<td style="padding:6px 10px">Lipides</td><td style="padding:6px 10px;text-align:right">' + nutrition.lipides + ' g</td>'
+      + '</tr>'
+      + (nutrition.fibres != null ? '<tr style="background:#f5f5f0"><td style="padding:6px 10px">Fibres</td><td style="padding:6px 10px;text-align:right">' + nutrition.fibres + ' g</td><td style="padding:6px 10px">Sel</td><td style="padding:6px 10px;text-align:right">' + nutrition.sel + ' g</td></tr>' : '')
+      + '</table>'
+  }
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + recipe.title + '</title>'
+    + '<style>body{font-family:system-ui,sans-serif;padding:32px;max-width:680px;margin:0 auto;color:#333}'
+    + 'h1{font-size:22px;margin:0 0 6px}.meta{color:#888;font-size:12px;margin-bottom:20px}'
+    + 'h2{font-size:14px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.04em;margin:20px 0 8px}'
+    + 'ul,ol{margin:0;padding:0;list-style:none}table{border-collapse:collapse;width:100%;margin-bottom:12px}'
+    + '.notes{background:#FAEEDA;border-radius:8px;padding:10px 14px;font-size:13px;color:#633806;margin-top:16px}'
+    + '@media print{button{display:none}body{padding:16px}}</style></head><body>'
+    + photo
+    + '<h1>' + (recipe.emoji || '') + ' ' + recipe.title + '</h1>'
+    + '<p class="meta">' + meta + '</p>'
+    + (ingRows ? '<h2>Ingrédients</h2><ul>' + ingRows + '</ul>' : '')
+    + nutHtml
+    + (stepRows ? '<h2>Préparation</h2><ol>' + stepRows + '</ol>' : '')
+    + (recipe.notes ? '<div class="notes"><strong>Notes :</strong> ' + recipe.notes + '</div>' : '')
+    + '<br><button onclick="window.print()" style="padding:8px 16px;background:#1D9E75;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">Imprimer</button>'
+    + '</body></html>'
   const w = window.open('', '_blank')
   w.document.write(html)
   w.document.close()
 }
 
-function shareRecipeByEmail(recipe, scaledIngredients, convives, nutrition) {
-  const subject = encodeURIComponent(\`Recette : \${recipe.title} \${recipe.emoji || ''}\`)
-  const ings = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
-    .map(i => \`  • \${i.qty} \${i.unit} \${i.name}\`).join('\n')
-  const steps = (recipe.steps || []).map((s, i) => \`  \${i + 1}. \${s}\`).join('\n')
-  const meta = [
-    recipe.time ? \`\${recipe.time} min\` : '',
-    convives ? \`\${convives} personne\${convives > 1 ? 's' : ''}\` : '',
-    recipe.cost > 0 ? \`~\${recipe.cost} CHF\` : '',
-  ].filter(Boolean).join(' · ')
-  const nutPart = nutrition
-    ? \`NUTRITION (par portion)\n  Calories: \${nutrition.calories} kcal · Protéines: \${nutrition.proteines}g · Glucides: \${nutrition.glucides}g · Lipides: \${nutrition.lipides}g\${nutrition.fibres ? \` · Fibres: \${nutrition.fibres}g\` : ''}\${nutrition.sel ? \` · Sel: \${nutrition.sel}g\` : ''}\n\n\`
-    : ''
+// ─── Partage email recette ────────────────────────────────────────────────────
 
-  const body = encodeURIComponent(
-    \`\${recipe.emoji || ''} \${recipe.title}\n\${meta}\n\n\` +
-    (ings ? \`INGRÉDIENTS\n\${ings}\n\n\` : '') +
-    nutPart +
-    (steps ? \`PRÉPARATION\n\${steps}\n\n\` : '') +
-    (recipe.notes ? \`NOTES\n\${recipe.notes}\n\n\` : '') +
-    (recipe.url ? \`Source : \${recipe.url}\n\` : '') +
-    \`\nEnvoyé depuis Ma Cuisine 🍳\`
-  )
-  window.location.href = \`mailto:?subject=\${subject}&body=\${body}\`
+function shareRecipeByEmail(recipe, scaledIngredients, convives, nutrition) {
+  const ings = (scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
+    .map(function(i) { return '  - ' + i.qty + ' ' + i.unit + ' ' + i.name }).join('\n')
+  const steps = (recipe.steps || []).map(function(s, i) { return '  ' + (i+1) + '. ' + s }).join('\n')
+  const metaParts = []
+  if (recipe.time) metaParts.push(recipe.time + ' min')
+  if (convives) metaParts.push(convives + ' personne' + (convives > 1 ? 's' : ''))
+  if (recipe.cost > 0) metaParts.push('~' + recipe.cost + ' CHF')
+  const meta = metaParts.join(' - ')
+  let nutPart = ''
+  if (nutrition) {
+    nutPart = 'NUTRITION (par portion)\n'
+      + '  Calories: ' + nutrition.calories + ' kcal\n'
+      + '  Proteines: ' + nutrition.proteines + 'g  Glucides: ' + nutrition.glucides + 'g  Lipides: ' + nutrition.lipides + 'g'
+      + (nutrition.fibres != null ? '  Fibres: ' + nutrition.fibres + 'g' : '')
+      + (nutrition.sel != null ? '  Sel: ' + nutrition.sel + 'g' : '')
+      + '\n\n'
+  }
+  const bodyText = (recipe.emoji || '') + ' ' + recipe.title + '\n' + meta + '\n\n'
+    + (ings ? 'INGREDIENTS\n' + ings + '\n\n' : '')
+    + nutPart
+    + (steps ? 'PREPARATION\n' + steps + '\n\n' : '')
+    + (recipe.notes ? 'NOTES\n' + recipe.notes + '\n\n' : '')
+    + (recipe.url ? 'Source : ' + recipe.url + '\n' : '')
+    + '\nEnvoye depuis Ma Cuisine'
+  const subject = encodeURIComponent('Recette : ' + recipe.title)
+  const body = encodeURIComponent(bodyText)
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + body
 }
 
 function sortRecipes(recipes, sortKey) {
@@ -589,10 +574,10 @@ export default function BibliothequePage() {
   // Coût recalculé en temps réel dans le formulaire
   const autoCostForm = computeCost(form.ingredients, priceMap)
 
-  // Nutrition calculée pour la vue détail
+  // Nutrition pour la vue détail : priorité aux valeurs importées du site, sinon calcul auto
   const nutritionDetail = showDetail
-    ? (showDetail.nutrition && showDetail.nutrition.calories
-        ? showDetail.nutrition  // valeurs importées depuis le site
+    ? ((showDetail.nutrition && showDetail.nutrition.calories)
+        ? showDetail.nutrition
         : computeNutrition(scaledIngredients, nutMap, showDetail.servings || 4, detailServings))
     : null
 
@@ -803,7 +788,7 @@ export default function BibliothequePage() {
                 </div>
               )}
 
-              {/* Nutrition */}
+              {/* Apport nutritionnel */}
               {nutritionDetail && (
                 <div style={{ marginBottom: '1.25rem' }}>
                   <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
@@ -811,21 +796,21 @@ export default function BibliothequePage() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                     {[
-                      { label: 'Calories',  value: nutritionDetail.calories,  unit: 'kcal', highlight: true },
+                      { label: 'Calories',  value: nutritionDetail.calories,  unit: 'kcal', hi: true },
                       { label: 'Protéines', value: nutritionDetail.proteines, unit: 'g' },
                       { label: 'Glucides',  value: nutritionDetail.glucides,  unit: 'g' },
                       { label: 'Lipides',   value: nutritionDetail.lipides,   unit: 'g' },
                       nutritionDetail.fibres != null ? { label: 'Fibres', value: nutritionDetail.fibres, unit: 'g' } : null,
                       nutritionDetail.sel    != null ? { label: 'Sel',    value: nutritionDetail.sel,    unit: 'g' } : null,
                     ].filter(Boolean).map(item => (
-                      <div key={item.label} style={{ background: item.highlight ? '#E1F5EE' : '#fafaf8', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
+                      <div key={item.label} style={{ background: item.hi ? '#E1F5EE' : '#fafaf8', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '2px' }}>{item.label}</div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: item.highlight ? '#0F6E56' : '#333' }}>{item.value}</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: item.hi ? '#0F6E56' : '#333' }}>{item.value}</div>
                         <div style={{ fontSize: '10px', color: '#aaa' }}>{item.unit}</div>
                       </div>
                     ))}
                   </div>
-                  {showDetail.nutrition?.calories && (
+                  {showDetail.nutrition && showDetail.nutrition.calories && (
                     <div style={{ fontSize: '10px', color: '#bbb', marginTop: '4px', textAlign: 'right' }}>Source : données importées du site</div>
                   )}
                 </div>
@@ -984,44 +969,29 @@ export default function BibliothequePage() {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', color: '#666' }}>
-                  Apport nutritionnel <span style={{ fontWeight: '400', color: '#aaa' }}>par portion (optionnel)</span>
+                  Apport nutritionnel <span style={{ fontWeight: '400', color: '#aaa' }}>par portion — optionnel</span>
                 </label>
-                {form.nutrition?.calories && (
+                {form.nutrition && form.nutrition.calories && (
                   <button type="button" onClick={() => setForm(f => ({ ...f, nutrition: null }))}
                     style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
                     Effacer
                   </button>
                 )}
               </div>
-              {/* Aperçu si valeurs déjà présentes */}
-              {form.nutrition?.calories && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                  {[
-                    { label: 'Calories', value: form.nutrition.calories, unit: 'kcal' },
-                    { label: 'Protéines', value: form.nutrition.proteines, unit: 'g' },
-                    { label: 'Glucides', value: form.nutrition.glucides, unit: 'g' },
-                    { label: 'Lipides', value: form.nutrition.lipides, unit: 'g' },
-                  ].map(item => (
-                    <span key={item.label} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '11px', background: '#E1F5EE', color: '#0F6E56' }}>
-                      {item.label} : {item.value} {item.unit}
-                    </span>
-                  ))}
-                </div>
-              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                 {[
                   { key: 'calories',  label: 'Calories (kcal)', placeholder: '350' },
-                  { key: 'proteines', label: 'Protéines (g)',    placeholder: '12' },
-                  { key: 'glucides',  label: 'Glucides (g)',     placeholder: '45' },
-                  { key: 'lipides',   label: 'Lipides (g)',      placeholder: '8' },
-                  { key: 'fibres',    label: 'Fibres (g)',       placeholder: '3' },
+                  { key: 'proteines', label: 'Protéines (g)',    placeholder: '12'  },
+                  { key: 'glucides',  label: 'Glucides (g)',     placeholder: '45'  },
+                  { key: 'lipides',   label: 'Lipides (g)',      placeholder: '8'   },
+                  { key: 'fibres',    label: 'Fibres (g)',       placeholder: '3'   },
                   { key: 'sel',       label: 'Sel (g)',          placeholder: '0.5' },
                 ].map(field => (
                   <div key={field.key}>
                     <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>{field.label}</label>
                     <input
                       type="number" step="0.1" min="0"
-                      value={form.nutrition?.[field.key] ?? ''}
+                      value={(form.nutrition && form.nutrition[field.key] != null) ? form.nutrition[field.key] : ''}
                       onChange={e => {
                         const val = e.target.value === '' ? null : parseFloat(e.target.value)
                         setForm(f => ({ ...f, nutrition: { ...(f.nutrition || {}), [field.key]: val } }))
@@ -1033,7 +1003,7 @@ export default function BibliothequePage() {
                 ))}
               </div>
               <p style={{ fontSize: '10px', color: '#bbb', marginTop: '4px' }}>
-                Laisse vide pour calculer automatiquement depuis la base nutritionnelle. Valeurs importées automatiquement si disponibles sur le site.
+                Laisse vide pour calculer automatiquement. Rempli automatiquement lors de l'import d'une URL.
               </p>
             </div>
 
