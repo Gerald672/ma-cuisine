@@ -4,8 +4,8 @@ import { useAuth } from '../hooks/useAuth'
 
 // --- Constantes ---------------------------------------------------------------
 
-const FILTRES = ['Toutes', 'Végan', 'Végétarien', 'Rapide', 'Économique', 'Dessert', 'Plat principal']
-const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entree', 'soupe']
+const FILTRES = ['Toutes', 'Végan', 'Végétarien', 'Rapide', 'Économique', 'Dessert', 'Plat principal', 'Accompagnement', 'Air Fryer', 'Apéritif', 'Entrée', 'Healthy', 'Viennoiserie', 'Thermomix', 'Sauce', 'Sans gluten']
+const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entree', 'soupe', 'accompagnement', 'airfryer', 'aperitif', 'healthy', 'viennoiserie', 'thermomix', 'sauce', 'sansgluten']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unité(s)', 'sachet(s)', 'boîte(s)', 'c. à soupe', 'c. à café', 'pincée']
 const EMOJIS = ['🍳','🍰','🥗','🍝','🥘','🍲','🥧','🧁','🍜','🥞','🫕','🥩','🐟','🍵']
 
@@ -19,14 +19,22 @@ const SORT_OPTIONS = [
 ]
 
 const TAG = {
-  vegan:       { label: 'Végan',       bg: '#EAF3DE', color: '#3B6D11' },
-  vegetarien:  { label: 'Végétarien',  bg: '#EAF3DE', color: '#3B6D11' },
-  rapide:      { label: 'Rapide',      bg: '#E6F1FB', color: '#185FA5' },
-  economique:  { label: 'Éco.',        bg: '#FAEEDA', color: '#854F0B' },
-  dessert:     { label: 'Dessert',     bg: '#EEEDFE', color: '#3C3489' },
-  plat:        { label: 'Plat',        bg: '#E1F5EE', color: '#085041' },
-  entree:      { label: 'Entrée',      bg: '#FAECE7', color: '#712B13' },
-  soupe:       { label: 'Soupe',       bg: '#E6F1FB', color: '#0C447C' },
+  vegan:          { label: 'Végan',         bg: '#EAF3DE', color: '#3B6D11' },
+  vegetarien:     { label: 'Végétarien',    bg: '#EAF3DE', color: '#3B6D11' },
+  rapide:         { label: 'Rapide',        bg: '#E6F1FB', color: '#185FA5' },
+  economique:     { label: 'Éco.',          bg: '#FAEEDA', color: '#854F0B' },
+  dessert:        { label: 'Dessert',       bg: '#EEEDFE', color: '#3C3489' },
+  plat:           { label: 'Plat',          bg: '#E1F5EE', color: '#085041' },
+  entree:         { label: 'Entrée',        bg: '#FAECE7', color: '#712B13' },
+  soupe:          { label: 'Soupe',         bg: '#E6F1FB', color: '#0C447C' },
+  accompagnement: { label: 'Accomp.',       bg: '#F0FDF4', color: '#166534' },
+  airfryer:       { label: 'Air Fryer',     bg: '#FFF7ED', color: '#C2410C' },
+  aperitif:       { label: 'Apéritif',      bg: '#FDF4FF', color: '#7E22CE' },
+  healthy:        { label: 'Healthy',       bg: '#ECFDF5', color: '#065F46' },
+  viennoiserie:   { label: 'Viennoiserie',  bg: '#FFFBEB', color: '#92400E' },
+  thermomix:      { label: 'Thermomix',     bg: '#EFF6FF', color: '#1D4ED8' },
+  sauce:          { label: 'Sauce',         bg: '#FFF1F2', color: '#9F1239' },
+  sansgluten:     { label: 'Sans gluten',   bg: '#F7FEE7', color: '#3F6212' },
 }
 
 const EMPTY_FORM = {
@@ -561,7 +569,7 @@ export default function BibliothequePage() {
   const filteredAndSorted = sortRecipes(
     recipes.filter(r => {
       const matchSearch = r.title.toLowerCase().includes(search.toLowerCase())
-      const key = filtre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(' principal', '').replace(' ', '')
+      const key = filtre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(' principal', '').replace(' fryer', 'fryer').replace(' gluten', 'gluten').replace(/\s+/g, '')
       const matchFiltre = filtre === 'Toutes' || (r.cats || []).includes(key)
       const matchTag = !activeTagFilter || (r.tags || []).includes(activeTagFilter)
       return matchSearch && matchFiltre && matchTag
