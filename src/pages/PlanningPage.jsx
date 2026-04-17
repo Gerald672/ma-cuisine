@@ -1,54 +1,46 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-const REPAS = ['Petit-déjeuner', 'Dîner', 'Souper']
-
-const REPAS_ICON = {
-  'Petit-déjeuner': '☕',
-  'Dîner':          '🍽️',
-  'Souper':         '🌙',
-}
+const REPAS = ['Petit-dejeuner', 'Diner', 'Souper']
+const REPAS_LABEL = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
+const REPAS_ICON  = { 'Petit-dejeuner': 'cafe', 'Diner': 'assiette', 'Souper': 'lune' }
+const REPAS_EMOJI = { 'Petit-dejeuner': 'Cafe', 'Diner': 'Assiette', 'Souper': 'Lune' }
 
 const CAT_STYLE = {
-  'Épicerie':          { bg: '#E6F1FB', color: '#185FA5' },
+  'Epicerie':          { bg: '#E6F1FB', color: '#185FA5' },
   'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits & légumes':  { bg: '#E1F5EE', color: '#085041' },
+  'Fruits legumes':    { bg: '#E1F5EE', color: '#085041' },
   'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
-  'Viande & poisson':  { bg: '#FAECE7', color: '#712B13' },
-  'Surgelés':          { bg: '#EEEDFE', color: '#3C3489' },
+  'Viande poisson':    { bg: '#FAECE7', color: '#712B13' },
   'Autres':            { bg: '#f0f0ec', color: '#666' },
 }
 
 const ING_CATS = {
-  'farine': 'Épicerie', 'sucre': 'Épicerie', 'riz': 'Épicerie', 'quinoa': 'Épicerie',
-  'huile': 'Épicerie', 'vin': 'Épicerie', 'pâtes': 'Épicerie', 'bouillon': 'Épicerie',
-  'lait': 'Produits laitiers', 'beurre': 'Produits laitiers', 'crème': 'Produits laitiers',
-  'fromage': 'Produits laitiers', 'parmesan': 'Produits laitiers', 'gruyère': 'Produits laitiers',
-  'mozzarella': 'Produits laitiers', 'yaourt': 'Produits laitiers',
-  'œuf': 'Frais', 'menthe': 'Frais', 'basilic': 'Frais', 'thym': 'Frais', 'persil': 'Frais',
-  'champignon': 'Fruits & légumes', 'oignon': 'Fruits & légumes', 'ail': 'Fruits & légumes',
-  'tomate': 'Fruits & légumes', 'carotte': 'Fruits & légumes', 'pomme': 'Fruits & légumes',
-  'citron': 'Fruits & légumes', 'courgette': 'Fruits & légumes', 'banane': 'Fruits & légumes',
-  'poulet': 'Viande & poisson', 'bœuf': 'Viande & poisson', 'saumon': 'Viande & poisson', 'lardon': 'Viande & poisson',
+  'farine': 'Epicerie', 'sucre': 'Epicerie', 'riz': 'Epicerie', 'pates': 'Epicerie',
+  'huile': 'Epicerie', 'bouillon': 'Epicerie',
+  'lait': 'Produits laitiers', 'beurre': 'Produits laitiers', 'creme': 'Produits laitiers',
+  'fromage': 'Produits laitiers', 'parmesan': 'Produits laitiers', 'gruyere': 'Produits laitiers',
+  'oeuf': 'Frais', 'menthe': 'Frais', 'basilic': 'Frais', 'thym': 'Frais', 'persil': 'Frais',
+  'champignon': 'Fruits legumes', 'oignon': 'Fruits legumes', 'ail': 'Fruits legumes',
+  'tomate': 'Fruits legumes', 'carotte': 'Fruits legumes', 'pomme': 'Fruits legumes',
+  'poulet': 'Viande poisson', 'boeuf': 'Viande poisson', 'saumon': 'Viande poisson',
 }
 
 function getCat(name) {
   const lower = (name || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   for (const [key, cat] of Object.entries(ING_CATS)) {
     if (lower.includes(key)) return cat
   }
   return 'Autres'
 }
 
-// Calcule le lundi de la semaine courante
-function getLundi(offset = 0) {
-  const d = new Date()
-  const day = d.getDay() || 7
-  d.setDate(d.getDate() - day + 1 + offset * 7)
+function getLundi(offset) {
+  var d = new Date()
+  var day = d.getDay() || 7
+  d.setDate(d.getDate() - day + 1 + (offset || 0) * 7)
   d.setHours(0, 0, 0, 0)
   return d
 }
@@ -61,376 +53,345 @@ function weekKey(lundi) {
   return lundi.toISOString().slice(0, 10)
 }
 
-// ─── Composant PrintView ──────────────────────────────────────────────────────
-
-function printPlanning(plan, recipes, lundi) {
-  const recipeMap = {}
-  recipes.forEach(r => { recipeMap[r.id] = r })
-
-  const rows = JOURS.map((jour, ji) => {
-    const date = new Date(lundi); date.setDate(date.getDate() + ji)
-    const cells = REPAS.map(repas => {
-      const slot = plan[ji]?.[repas]
-      const r = slot ? recipeMap[slot.recipe_id] : null
-      return `<td style="border:1px solid #e0e0e0;padding:8px;vertical-align:top;min-width:120px">
-        ${r ? `<div style="font-weight:500;font-size:13px">${r.emoji} ${r.title}</div><div style="color:#888;font-size:11px">${r.time} min</div>` : '<span style="color:#ccc;font-size:12px">—</span>'}
-      </td>`
-    }).join('')
-    return `<tr>
-      <td style="border:1px solid #e0e0e0;padding:8px;font-weight:500;font-size:13px;white-space:nowrap">${jour}<br><span style="font-weight:400;color:#888;font-size:11px">${formatDate(date)}</span></td>
-      ${cells}
-    </tr>`
-  }).join('')
-
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning semaine</title>
-  <style>body{font-family:system-ui,sans-serif;padding:24px}h2{margin-bottom:16px}table{border-collapse:collapse;width:100%}th{background:#f5f5f0;padding:8px;border:1px solid #e0e0e0;font-size:13px}@media print{button{display:none}}</style>
-  </head><body>
-  <h2>🍳 Planning semaine du ${formatDate(lundi)}</h2>
-  <table><thead><tr><th></th>${REPAS.map(r => `<th>${REPAS_ICON[r]} ${r}</th>`).join('')}</tr></thead>
-  <tbody>${rows}</tbody></table>
-  <br><button onclick="window.print()">Imprimer</button>
-  </body></html>`
-
-  const w = window.open('', '_blank')
-  w.document.write(html)
-  w.document.close()
-}
-
-function printCourses(coursesList, lundi) {
-  const aAcheter = coursesList.filter(i => !i.enStock)
-  const groups = {}
-  aAcheter.forEach(item => {
-    if (!groups[item.cat]) groups[item.cat] = []
-    groups[item.cat].push(item)
-  })
-
-  const sections = Object.entries(groups).map(([cat, items]) => `
-    <div style="margin-bottom:16px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#555">${cat}</div>
-      ${items.map(i => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f0ec">
-        <span style="width:14px;height:14px;border:1px solid #ccc;display:inline-block;border-radius:3px;flex-shrink:0"></span>
-        <span style="flex:1;font-size:13px">${i.name}</span>
-        <span style="font-size:12px;color:#888">${i.manque} ${i.unit}</span>
-      </div>`).join('')}
-    </div>`).join('')
-
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Liste de courses</title>
-  <style>body{font-family:system-ui,sans-serif;padding:24px;max-width:600px}h2{margin-bottom:4px}p{color:#888;font-size:13px;margin-bottom:20px}@media print{button{display:none}}</style>
-  </head><body>
-  <h2>🛒 Liste de courses</h2>
-  <p>Semaine du ${formatDate(lundi)} · ${aAcheter.length} article${aAcheter.length > 1 ? 's' : ''}</p>
-  ${sections}
-  <br><button onclick="window.print()">Imprimer</button>
-  </body></html>`
-
-  const w = window.open('', '_blank')
-  w.document.write(html)
-  w.document.close()
-}
-
-// ─── Composant principal ──────────────────────────────────────────────────────
+// plan structure:
+// {
+//   jourIndex: {
+//     repas: {
+//       id: uuid,           // meal_plan row id
+//       convives: number,
+//       invites: string[],
+//       recipes: [{ id: uuid, recipe_id: uuid, position: number }]
+//     }
+//   }
+// }
 
 export default function PlanningPage() {
   const { user } = useAuth()
-  const [recipes, setRecipes]       = useState([])
-  const [stock, setStock]           = useState([])
-  const [plan, setPlan]             = useState({}) // { jourIndex: { repas: { recipe_id } } }
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [loading, setLoading]       = useState(true)
-  const [saving, setSaving]         = useState(false)
+  const [recipes, setRecipes]         = useState([])
+  const [stock, setStock]             = useState([])
+  const [plan, setPlan]               = useState({})
+  const [weekOffset, setWeekOffset]   = useState(0)
+  const [loading, setLoading]         = useState(true)
+  const [saving, setSaving]           = useState(false)
   const [showCourses, setShowCourses] = useState(false)
-  const [showRecipePicker, setShowRecipePicker] = useState(null) // { jourIndex, repas }
+
+  // Picker de recette
+  const [picker, setPicker]           = useState(null) // { jourIndex, repas }
   const [pickerSearch, setPickerSearch] = useState('')
-  const [dragSource, setDragSource]   = useState(null) // { jourIndex, repas }
-  const [dragOver, setDragOver]       = useState(null)
-  const [persons, setPersons]         = useState(2)
+
+  // Invites
+  const [showInvites, setShowInvites] = useState(null) // { jourIndex, repas }
+  const [inviteInput, setInviteInput] = useState('')
+
+  // Carnet d'invites
+  const [showCarnet, setShowCarnet]   = useState(false)
+  const [carnet, setCarnet]           = useState([]) // { name, repas[] }
 
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
 
   useEffect(() => { loadAll() }, [user])
   useEffect(() => { loadPlan() }, [wKey, user])
+  useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
 
   async function loadAll() {
-    const [{ data: r }, { data: s }] = await Promise.all([
+    var [r, s] = await Promise.all([
       supabase.from('recipes').select('*').eq('user_id', user.id),
       supabase.from('stock').select('*').eq('user_id', user.id)
     ])
-    setRecipes(r || [])
-    setStock(s || [])
+    setRecipes(r.data || [])
+    setStock(s.data || [])
     setLoading(false)
   }
 
   async function loadPlan() {
-    const { data } = await supabase
+    // Charger les slots (convives, invites) et les recipes du slot
+    var { data: slots } = await supabase
       .from('meal_plan')
-      .select('*')
+      .select('*, meal_plan_recipes(*)')
       .eq('user_id', user.id)
       .eq('week_start', wKey)
-    const p = {}
-    for (const row of (data || [])) {
-      if (!p[row.jour_index]) p[row.jour_index] = {}
-      p[row.jour_index][row.repas] = { id: row.id, recipe_id: row.recipe_id }
+
+    var p = {}
+    for (var slot of (slots || [])) {
+      if (!p[slot.jour_index]) p[slot.jour_index] = {}
+      p[slot.jour_index][slot.repas] = {
+        id: slot.id,
+        convives: slot.convives || 2,
+        invites: slot.invites || [],
+        recipes: (slot.meal_plan_recipes || []).sort(function(a, b) { return a.position - b.position })
+      }
     }
     setPlan(p)
   }
 
-  const recipeMap = {}
-  recipes.forEach(r => { recipeMap[r.id] = r })
+  async function loadCarnet() {
+    // Charger tous les slots avec invites non vides + leurs recettes
+    var { data: slots } = await supabase
+      .from('meal_plan')
+      .select('*, meal_plan_recipes(*)')
+      .eq('user_id', user.id)
+      .not('invites', 'eq', '{}')
+      .order('week_start', { ascending: false })
 
-  // ── Assigner une recette à un slot ─────────────────────────────────────────
-
-  async function assignRecipe(jourIndex, repas, recipeId) {
-    setSaving(true)
-    const existing = plan[jourIndex]?.[repas]
-
-    if (existing) {
-      // Mise à jour
-      await supabase.from('meal_plan').update({ recipe_id: recipeId }).eq('id', existing.id)
-    } else {
-      // Insertion
-      await supabase.from('meal_plan').insert({
-        user_id: user.id, week_start: wKey,
-        jour_index: jourIndex, repas, recipe_id: recipeId
-      })
+    var personMap = {}
+    for (var slot of (slots || [])) {
+      if (!slot.invites || !slot.invites.length) continue
+      for (var invite of slot.invites) {
+        if (!personMap[invite]) personMap[invite] = []
+        personMap[invite].push({
+          date: slot.week_start,
+          jour: JOURS[slot.jour_index],
+          repas: slot.repas,
+          recipe_ids: (slot.meal_plan_recipes || []).map(function(r) { return r.recipe_id })
+        })
+      }
     }
+    setCarnet(Object.entries(personMap).map(function(e) { return { name: e[0], repas: e[1] } }))
+  }
+
+  var recipeMap = {}
+  recipes.forEach(function(r) { recipeMap[r.id] = r })
+
+  // -- Gestion slot -------------------------------------------------------------
+
+  async function ensureSlot(jourIndex, repas) {
+    // Retourne l'id du slot, le cree si inexistant
+    var existing = plan[jourIndex]?.[repas]
+    if (existing) return existing.id
+    var { data } = await supabase.from('meal_plan').insert({
+      user_id: user.id,
+      week_start: wKey,
+      jour_index: jourIndex,
+      repas: repas,
+      convives: 2,
+      invites: []
+    }).select().single()
+    return data.id
+  }
+
+  async function addRecipeToSlot(jourIndex, repas, recipeId) {
+    setSaving(true)
+    var slotId = await ensureSlot(jourIndex, repas)
+    var existing = plan[jourIndex]?.[repas]
+    var position = existing ? (existing.recipes || []).length : 0
+    await supabase.from('meal_plan_recipes').insert({
+      meal_plan_id: slotId,
+      recipe_id: recipeId,
+      position: position
+    })
     await loadPlan()
     setSaving(false)
-    setShowRecipePicker(null)
+    setPicker(null)
     setPickerSearch('')
   }
 
-  async function removeSlot(jourIndex, repas) {
-    const existing = plan[jourIndex]?.[repas]
-    if (!existing) return
-    await supabase.from('meal_plan').delete().eq('id', existing.id)
+  async function removeRecipeFromSlot(jourIndex, repas, mprId) {
+    await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
+    // Si plus de recettes dans le slot, supprimer le slot
+    var slot = plan[jourIndex]?.[repas]
+    if (slot && slot.recipes.length <= 1) {
+      await supabase.from('meal_plan').delete().eq('id', slot.id)
+    }
     await loadPlan()
   }
 
-  // ── Drag & drop ────────────────────────────────────────────────────────────
-
-  function handleDragStart(e, jourIndex, repas) {
-    setDragSource({ jourIndex, repas })
-    e.dataTransfer.effectAllowed = 'move'
+  async function updateConvives(jourIndex, repas, val) {
+    var slot = plan[jourIndex]?.[repas]
+    if (!slot) return
+    await supabase.from('meal_plan').update({ convives: val }).eq('id', slot.id)
+    await loadPlan()
   }
 
-  function handleDragOver(e, jourIndex, repas) {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOver({ jourIndex, repas })
+  async function addInvite(jourIndex, repas, name) {
+    if (!name.trim()) return
+    var slot = plan[jourIndex]?.[repas]
+    if (!slot) return
+    var newList = [...(slot.invites || []), name.trim()]
+    await supabase.from('meal_plan').update({ invites: newList }).eq('id', slot.id)
+    setInviteInput('')
+    await loadPlan()
   }
 
-  function handleDrop(e, jourIndex, repas) {
-    e.preventDefault()
-    setDragOver(null)
-    if (!dragSource) return
-    const srcRecipe = plan[dragSource.jourIndex]?.[dragSource.repas]
-    const dstRecipe = plan[jourIndex]?.[repas]
+  async function removeInvite(jourIndex, repas, name) {
+    var slot = plan[jourIndex]?.[repas]
+    if (!slot) return
+    var newList = (slot.invites || []).filter(function(i) { return i !== name })
+    await supabase.from('meal_plan').update({ invites: newList }).eq('id', slot.id)
+    await loadPlan()
+  }
 
-    // Échanger les deux slots
-    const doSwap = async () => {
-      setSaving(true)
-      if (srcRecipe) await supabase.from('meal_plan').update({ jour_index: jourIndex, repas }).eq('id', srcRecipe.id)
-      if (dstRecipe) await supabase.from('meal_plan').update({ jour_index: dragSource.jourIndex, repas: dragSource.repas }).eq('id', dstRecipe.id)
-      await loadPlan()
-      setSaving(false)
+  // -- Courses depuis le planning (avec convives par repas) ------------------
+
+  var needed = {}
+  for (var ji = 0; ji < 7; ji++) {
+    for (var repas of REPAS) {
+      var slot = plan[ji]?.[repas]
+      if (!slot) continue
+      var convives = slot.convives || 2
+      for (var slotRecipe of (slot.recipes || [])) {
+        var recipe = recipeMap[slotRecipe.recipe_id]
+        if (!recipe) continue
+        var base = recipe.servings || 2
+        var ratio = convives / base
+        for (var ing of (recipe.ingredients || [])) {
+          var key = ing.name
+          if (!needed[key]) needed[key] = { name: ing.name, qty: 0, unit: ing.unit }
+          needed[key].qty += (ing.qty || 0) * ratio
+        }
+      }
     }
-    doSwap()
-    setDragSource(null)
   }
 
-  function handleDragEnd() { setDragSource(null); setDragOver(null) }
-
-  // ── Liste de courses depuis le planning ────────────────────────────────────
-
-  const factor = persons / 2
-  const plannedRecipes = [...new Set(
-    Object.values(plan).flatMap(day => Object.values(day).map(s => s.recipe_id))
-  )].map(id => recipeMap[id]).filter(Boolean)
-
-  const needed = {}
-  plannedRecipes.forEach(r => {
-    (r.ingredients || []).forEach(ing => {
-      if (!needed[ing.name]) needed[ing.name] = { name: ing.name, qty: 0, unit: ing.unit }
-      needed[ing.name].qty += (ing.qty || 0) * factor
+  var coursesList = Object.values(needed).map(function(item) {
+    var inStock = stock.find(function(s) { return s.name.toLowerCase() === item.name.toLowerCase() })
+    var stockQty = inStock ? inStock.qty : 0
+    var manque = Math.max(0, item.qty - stockQty)
+    return Object.assign({}, item, {
+      inStock: stockQty,
+      manque: Math.ceil(manque * 10) / 10,
+      enStock: manque <= 0,
+      cat: getCat(item.name)
     })
   })
 
-  const coursesList = Object.values(needed).map(item => {
-    const inStock = stock.find(s => s.name.toLowerCase() === item.name.toLowerCase())
-    const stockQty = inStock ? inStock.qty : 0
-    const manque = Math.max(0, item.qty - stockQty)
-    return { ...item, inStock: stockQty, manque: Math.ceil(manque), enStock: manque <= 0, cat: getCat(item.name) }
-  })
-
-  const aAcheter  = coursesList.filter(i => !i.enStock)
-  const dejaDispo = coursesList.filter(i => i.enStock)
-  const coursesGroups = {}
-  aAcheter.forEach(item => {
+  var aAcheter  = coursesList.filter(function(i) { return !i.enStock })
+  var dejaDispo = coursesList.filter(function(i) { return i.enStock })
+  var coursesGroups = {}
+  aAcheter.forEach(function(item) {
     if (!coursesGroups[item.cat]) coursesGroups[item.cat] = []
     coursesGroups[item.cat].push(item)
   })
 
-  // ── Partage email ──────────────────────────────────────────────────────────
-
-  function shareByEmail(type) {
-    let subject, body
-
-    if (type === 'planning') {
-      subject = encodeURIComponent(`Planning repas semaine du ${formatDate(lundi)}`)
-      const lines = JOURS.map((jour, ji) => {
-        const date = new Date(lundi); date.setDate(date.getDate() + ji)
-        const repasLines = REPAS.map(repas => {
-          const slot = plan[ji]?.[repas]
-          const r = slot ? recipeMap[slot.recipe_id] : null
-          return `  ${REPAS_ICON[repas]} ${repas} : ${r ? r.title : '—'}`
-        }).join('\n')
-        return `${jour} ${formatDate(date)}\n${repasLines}`
-      }).join('\n\n')
-      body = encodeURIComponent(`Planning semaine du ${formatDate(lundi)}\n\n${lines}\n\nEnvoyé depuis Ma Cuisine 🍳`)
-    } else {
-      subject = encodeURIComponent(`Liste de courses — semaine du ${formatDate(lundi)}`)
-      const lines = Object.entries(coursesGroups).map(([cat, items]) =>
-        `${cat}:\n${items.map(i => `  • ${i.name} — ${i.manque} ${i.unit}`).join('\n')}`
-      ).join('\n\n')
-      body = encodeURIComponent(`Liste de courses — semaine du ${formatDate(lundi)}\n\n${lines}\n\nEnvoyé depuis Ma Cuisine 🍳`)
+  var totalRecipeCount = 0
+  for (var ji2 = 0; ji2 < 7; ji2++) {
+    for (var r2 of REPAS) {
+      totalRecipeCount += (plan[ji2]?.[r2]?.recipes || []).length
     }
-
-    window.location.href = `mailto:?subject=${subject}&body=${body}`
   }
 
-  // ── Recettes filtrées pour le picker ───────────────────────────────────────
-
-  const filteredRecipes = recipes.filter(r =>
-    !pickerSearch || r.title.toLowerCase().includes(pickerSearch.toLowerCase())
-  )
+  var filteredRecipes = recipes.filter(function(r) {
+    return !pickerSearch || r.title.toLowerCase().includes(pickerSearch.toLowerCase())
+  })
 
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
-  // ── Rendu ──────────────────────────────────────────────────────────────────
+  var S = {
+    btn: { background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer' },
+    tag: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#666', display: 'inline-flex', alignItems: 'center', gap: '3px' }
+  }
 
   return (
     <div>
 
-      {/* ── En-tête semaine ── */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => setWeekOffset(w => w - 1)}
-          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '14px' }}>‹</button>
+      {/* En-tete semaine */}
+      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <button onClick={function() { setWeekOffset(function(w) { return w - 1 }) }} style={S.btn}>&#8249;</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>
-            {weekOffset === 0 ? 'Cette semaine' : weekOffset === 1 ? 'Semaine prochaine' : weekOffset === -1 ? 'Semaine dernière' : `Semaine du ${formatDate(lundi)}`}
+            {weekOffset === 0 ? 'Cette semaine' : weekOffset === 1 ? 'Semaine prochaine' : weekOffset === -1 ? 'Semaine derniere' : 'Semaine du ' + formatDate(lundi)}
           </div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{formatDate(lundi)} → {formatDate(new Date(lundi.getTime() + 6 * 86400000))}</div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{formatDate(lundi)} - {formatDate(new Date(lundi.getTime() + 6 * 86400000))}</div>
         </div>
-        <button onClick={() => setWeekOffset(w => w + 1)}
-          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '14px' }}>›</button>
+        <button onClick={function() { setWeekOffset(function(w) { return w + 1 }) }} style={S.btn}>&#8250;</button>
         {weekOffset !== 0 && (
-          <button onClick={() => setWeekOffset(0)}
-            style={{ background: 'none', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '12px', color: '#1D9E75' }}>Aujourd'hui</button>
+          <button onClick={function() { setWeekOffset(0) }} style={{ ...S.btn, border: '0.5px solid #1D9E75', color: '#1D9E75' }}>Auj.</button>
         )}
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: '#666' }}>👥</label>
-            <select value={persons} onChange={e => setPersons(parseInt(e.target.value))}
-              style={{ padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px' }}>
-              {[1,2,3,4,6,8].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <button onClick={() => setShowCourses(s => !s)}
-            style={{ padding: '6px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: showCourses ? '#E1F5EE' : 'white', color: showCourses ? '#0F6E56' : '#555' }}>
-            🛒 Courses
+        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+          <button onClick={function() { setShowCourses(function(s) { return !s }) }}
+            style={{ ...S.btn, background: showCourses ? '#E1F5EE' : 'white', color: showCourses ? '#0F6E56' : '#555', border: '0.5px solid ' + (showCourses ? '#1D9E75' : '#ddd') }}>
+            {'Courses'} Courses
           </button>
-          <button onClick={() => shareByEmail('planning')}
-            style={{ padding: '6px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: 'white' }}>
-            ✉️ Partager
-          </button>
-          <button onClick={() => printPlanning(plan, recipes, lundi)}
-            style={{ padding: '6px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: 'white' }}>
-            🖨️ Imprimer
+          <button onClick={function() { setShowCarnet(true) }}
+            style={{ ...S.btn }}>
+            {'Invites'} Invites
           </button>
         </div>
-        {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>↻ Sauvegarde…</span>}
+        {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Sauvegarde...</span>}
       </div>
 
-      {/* ── Grille planning ── */}
+      {/* Grille planning */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
-        {/* En-tête colonnes */}
-        <div style={{ display: 'grid', gridTemplateColumns: '90px repeat(3, 1fr)', borderBottom: '0.5px solid #e0e0e0', background: '#fafaf8' }}>
-          <div style={{ padding: '10px 12px', fontSize: '11px', color: '#aaa' }} />
-          {REPAS.map(repas => (
-            <div key={repas} style={{ padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #e0e0e0' }}>
-              {REPAS_ICON[repas]} {repas}
-            </div>
-          ))}
+        {/* En-tete colonnes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: '0.5px solid #e0e0e0', background: '#fafaf8' }}>
+          <div />
+          {REPAS.map(function(repas) {
+            return (
+              <div key={repas} style={{ padding: '10px 8px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #e0e0e0' }}>
+                {REPAS_EMOJI[repas]} {repas}
+              </div>
+            )
+          })}
         </div>
 
         {/* Lignes jours */}
-        {JOURS.map((jour, ji) => {
-          const date = new Date(lundi); date.setDate(date.getDate() + ji)
-          const isToday = new Date().toDateString() === date.toDateString()
+        {JOURS.map(function(jour, ji) {
+          var date = new Date(lundi); date.setDate(date.getDate() + ji)
+          var isToday = new Date().toDateString() === date.toDateString()
           return (
-            <div key={jour} style={{ display: 'grid', gridTemplateColumns: '90px repeat(3, 1fr)', borderBottom: ji < 6 ? '0.5px solid #e0e0e0' : 'none' }}>
-              {/* Libellé jour */}
-              <div style={{ padding: '12px', background: isToday ? '#E1F5EE' : '#fafaf8', borderRight: '0.5px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: isToday ? '600' : '500', color: isToday ? '#0F6E56' : '#333' }}>{jour}</div>
-                <div style={{ fontSize: '11px', color: '#aaa' }}>{formatDate(date)}</div>
+            <div key={jour} style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: ji < 6 ? '0.5px solid #e0e0e0' : 'none' }}>
+              {/* Libelle jour */}
+              <div style={{ padding: '10px 8px', background: isToday ? '#E1F5EE' : '#fafaf8', borderRight: '0.5px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: '11px', fontWeight: isToday ? '600' : '500', color: isToday ? '#0F6E56' : '#333' }}>{jour}</div>
+                <div style={{ fontSize: '10px', color: '#aaa' }}>{formatDate(date)}</div>
               </div>
 
               {/* Slots repas */}
-              {REPAS.map(repas => {
-                const slot    = plan[ji]?.[repas]
-                const recipe  = slot ? recipeMap[slot.recipe_id] : null
-                const isDragOver = dragOver?.jourIndex === ji && dragOver?.repas === repas
-                const isDragSrc  = dragSource?.jourIndex === ji && dragSource?.repas === repas
+              {REPAS.map(function(repas) {
+                var slot = plan[ji]?.[repas]
+                var slotRecipes = slot ? slot.recipes : []
+                var convives = slot ? slot.convives : 2
+                var invites = slot ? (slot.invites || []) : []
 
                 return (
-                  <div
-                    key={repas}
-                    onDragOver={e => handleDragOver(e, ji, repas)}
-                    onDrop={e => handleDrop(e, ji, repas)}
-                    style={{
-                      borderLeft: '0.5px solid #e0e0e0', padding: '8px',
-                      minHeight: '70px', position: 'relative',
-                      background: isDragOver ? '#E1F5EE' : isDragSrc ? '#f0fdf4' : 'white',
-                      transition: 'background 0.15s',
-                    }}
-                  >
-                    {recipe ? (
-                      <div
-                        draggable
-                        onDragStart={e => handleDragStart(e, ji, repas)}
-                        onDragEnd={handleDragEnd}
-                        style={{
-                          background: '#f5f5f0', borderRadius: '8px', padding: '7px 8px',
-                          cursor: 'grab', opacity: isDragSrc ? 0.4 : 1,
-                          display: 'flex', alignItems: 'flex-start', gap: '6px',
-                        }}
-                      >
-                        <span style={{ fontSize: '16px', flexShrink: 0 }}>{recipe.emoji}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '11px', fontWeight: '500', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{recipe.title}</div>
-                          <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px' }}>{recipe.time} min</div>
+                  <div key={repas} style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+                    {/* Recettes dans le slot */}
+                    {slotRecipes.map(function(sr) {
+                      var r = recipeMap[sr.recipe_id]
+                      if (!r) return null
+                      return (
+                        <div key={sr.id} style={{ background: '#f5f5f0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                          <span style={{ fontSize: '14px', flexShrink: 0 }}>{r.emoji}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.title}</div>
+                            <div style={{ fontSize: '9px', color: '#aaa' }}>{r.time} min</div>
+                          </div>
+                          <button onClick={function() { removeRecipeFromSlot(ji, repas, sr.id) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: 0, lineHeight: 1, flexShrink: 0 }}>x</button>
                         </div>
+                      )
+                    })}
+
+                    {/* Bouton ajouter recette */}
+                    <button
+                      onClick={function() { setPicker({ jourIndex: ji, repas: repas }); setPickerSearch('') }}
+                      style={{ width: '100%', border: '1px dashed #ddd', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
+                      onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#ccc' }}
+                    >
+                      + {slotRecipes.length === 0 ? 'Ajouter' : 'Ajouter plat'}
+                    </button>
+
+                    {/* Convives + invites (visible si slot existe) */}
+                    {slot && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        {/* Convives */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <button onClick={function() { updateConvives(ji, repas, Math.max(1, convives - 1)) }}
+                            style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>-</button>
+                          <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{'Invites'} {convives}</span>
+                          <button onClick={function() { updateConvives(ji, repas, convives + 1) }}
+                            style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>+</button>
+                        </div>
+                        {/* Bouton invites */}
                         <button
-                          onClick={e => { e.stopPropagation(); removeSlot(ji, repas) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '14px', padding: 0, lineHeight: 1, flexShrink: 0 }}
-                        >×</button>
+                          onClick={function() { setShowInvites({ jourIndex: ji, repas: repas }); setInviteInput('') }}
+                          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: invites.length > 0 ? '#1D9E75' : '#aaa' }}
+                        >
+                          {invites.length > 0 ? invites.length + ' invite' + (invites.length > 1 ? 's' : '') : '+ Invites'}
+                        </button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => { setShowRecipePicker({ jourIndex: ji, repas }); setPickerSearch('') }}
-                        style={{
-                          width: '100%', height: '100%', minHeight: '52px',
-                          background: 'none', border: '1px dashed #e0e0e0', borderRadius: '8px',
-                          cursor: 'pointer', color: '#ccc', fontSize: '18px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'border-color 0.15s, color 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.color = '#ccc' }}
-                      >+</button>
                     )}
                   </div>
                 )
@@ -440,41 +401,38 @@ export default function PlanningPage() {
         })}
       </div>
 
-      {/* ── Liste de courses du planning ── */}
+      {/* Courses */}
       {showCourses && (
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>🛒 Courses de la semaine</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>{plannedRecipes.length} recette{plannedRecipes.length > 1 ? 's' : ''} planifiée{plannedRecipes.length > 1 ? 's' : ''} · {persons} personne{persons > 1 ? 's' : ''}</div>
-            </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={() => shareByEmail('courses')}
-                style={{ padding: '6px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: 'white' }}>✉️ Partager</button>
-              <button onClick={() => printCourses(coursesList, lundi)}
-                style={{ padding: '6px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: 'white' }}>🖨️ Imprimer</button>
+              <div style={{ fontSize: '14px', fontWeight: '500' }}>{'Courses'} Courses de la semaine</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>{totalRecipeCount} plat(s) planifie(s) - quantites adaptees par repas</div>
             </div>
           </div>
 
-          {plannedRecipes.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette planifiée cette semaine.</div>
+          {totalRecipeCount === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette planifiee cette semaine.</div>
           ) : (
             <>
               {aAcheter.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '500', color: '#333', marginBottom: '10px' }}>À acheter ({aAcheter.length})</div>
-                  {Object.entries(coursesGroups).map(([cat, items]) => {
-                    const cs = CAT_STYLE[cat] || CAT_STYLE['Autres']
+                  <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>A acheter ({aAcheter.length})</div>
+                  {Object.entries(coursesGroups).map(function(entry) {
+                    var cat = entry[0], items = entry[1]
+                    var cs = CAT_STYLE[cat] || CAT_STYLE['Autres']
                     return (
-                      <div key={cat} style={{ marginBottom: '12px' }}>
+                      <div key={cat} style={{ marginBottom: '10px' }}>
                         <span style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
-                        <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '6px' }}>
-                          {items.map(item => (
-                            <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderBottom: '0.5px solid #f0f0ec', fontSize: '13px' }}>
-                              <div style={{ flex: 1 }}>{item.name}</div>
-                              <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>{item.manque} {item.unit}</span>
-                            </div>
-                          ))}
+                        <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
+                          {items.map(function(item) {
+                            return (
+                              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: '0.5px solid #f0f0ec', fontSize: '13px' }}>
+                                <div style={{ flex: 1 }}>{item.name}</div>
+                                <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>{item.manque} {item.unit}</span>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -483,11 +441,11 @@ export default function PlanningPage() {
               )}
               {dejaDispo.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: '500', color: '#3B6D11', marginBottom: '8px' }}>✓ Déjà en stock ({dejaDispo.length})</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {dejaDispo.map(item => (
-                      <span key={item.name} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', background: '#EAF3DE', color: '#3B6D11' }}>{item.name}</span>
-                    ))}
+                  <div style={{ fontSize: '12px', fontWeight: '500', color: '#3B6D11', marginBottom: '6px' }}>Deja en stock</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {dejaDispo.map(function(item) {
+                      return <span key={item.name} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#EAF3DE', color: '#3B6D11' }}>{item.name}</span>
+                    })}
                   </div>
                 </div>
               )}
@@ -496,51 +454,166 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* ── Modal picker de recette ── */}
-      {showRecipePicker && (
+      {/* Modal picker de recette */}
+      {picker && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.25rem', width: '100%', maxWidth: '480px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '500' }}>Choisir une recette</div>
+                <div style={{ fontSize: '14px', fontWeight: '500' }}>Ajouter une recette</div>
                 <div style={{ fontSize: '12px', color: '#888' }}>
-                  {JOURS[showRecipePicker.jourIndex]} · {REPAS_ICON[showRecipePicker.repas]} {showRecipePicker.repas}
+                  {JOURS[picker.jourIndex]} - {REPAS_EMOJI[picker.repas]} {picker.repas}
                 </div>
               </div>
-              <button onClick={() => setShowRecipePicker(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>✕</button>
+              <button onClick={function() { setPicker(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
             </div>
             <input
               autoFocus
               value={pickerSearch}
-              onChange={e => setPickerSearch(e.target.value)}
-              placeholder="Rechercher…"
+              onChange={function(e) { setPickerSearch(e.target.value) }}
+              placeholder="Rechercher..."
               style={{ padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '10px' }}
             />
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {filteredRecipes.map(r => (
-                <div key={r.id}
-                  onClick={() => assignRecipe(showRecipePicker.jourIndex, showRecipePicker.repas, r.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '0.5px solid #e0e0e0', borderRadius: '10px', cursor: 'pointer', background: 'white' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.background = '#E1F5EE' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.background = 'white' }}
-                >
-                  {r.photo_url
-                    ? <img src={r.photo_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-                    : <div style={{ width: '40px', height: '40px', background: '#f5f5f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{r.emoji}</div>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.title}</div>
-                    <div style={{ fontSize: '11px', color: '#888' }}>{r.time} min · {r.servings} pers.</div>
+              {filteredRecipes.map(function(r) {
+                return (
+                  <div key={r.id}
+                    onClick={function() { addRecipeToSlot(picker.jourIndex, picker.repas, r.id) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '0.5px solid #e0e0e0', borderRadius: '10px', cursor: 'pointer', background: 'white' }}
+                    onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.background = '#E1F5EE' }}
+                    onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.background = 'white' }}
+                  >
+                    {r.photo_url
+                      ? <img src={r.photo_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
+                      : <div style={{ width: '40px', height: '40px', background: '#f5f5f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{r.emoji}</div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.title}</div>
+                      <div style={{ fontSize: '11px', color: '#888' }}>{r.time} min - base {r.servings} pers.</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
               {filteredRecipes.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette trouvée</div>
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette trouvee</div>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal invites */}
+      {showInvites && (function() {
+        var slot = plan[showInvites.jourIndex]?.[showInvites.repas]
+        var invites = slot ? (slot.invites || []) : []
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '380px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '500' }}>Invites</div>
+                  <div style={{ fontSize: '12px', color: '#888' }}>
+                    {JOURS[showInvites.jourIndex]} - {REPAS_EMOJI[showInvites.repas]} {showInvites.repas}
+                  </div>
+                </div>
+                <button onClick={function() { setShowInvites(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+              </div>
+
+              {/* Liste invites */}
+              {invites.length === 0 ? (
+                <div style={{ fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '12px' }}>Aucun invite pour ce repas</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                  {invites.map(function(name) {
+                    return (
+                      <span key={name} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', background: '#E1F5EE', color: '#0F6E56', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {name}
+                        <button onClick={function() { removeInvite(showInvites.jourIndex, showInvites.repas, name) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, lineHeight: 1, fontSize: '13px' }}>x</button>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Ajouter un invite */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  autoFocus
+                  value={inviteInput}
+                  onChange={function(e) { setInviteInput(e.target.value) }}
+                  onKeyDown={function(e) { if (e.key === 'Enter') addInvite(showInvites.jourIndex, showInvites.repas, inviteInput) }}
+                  placeholder="Prenom de l'invite..."
+                  style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+                />
+                <button onClick={function() { addInvite(showInvites.jourIndex, showInvites.repas, inviteInput) }}
+                  style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  Ajouter
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Carnet d'invites */}
+      {showCarnet && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '500' }}>Carnet d'invites</div>
+                <div style={{ fontSize: '12px', color: '#888' }}>Historique de tous vos repas partages</div>
+              </div>
+              <button onClick={function() { setShowCarnet(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+            </div>
+
+            {carnet.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{'Invites'}</div>
+                <div style={{ fontSize: '13px' }}>Aucun invite enregistre encore.</div>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>Ajoutez des invites sur les repas du planning pour les voir apparaitre ici.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {carnet.sort(function(a, b) { return a.name.localeCompare(b.name) }).map(function(person) {
+                  return (
+                    <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
+                          {person.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '500' }}>{person.name}</div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>{person.repas.length} repas partage{person.repas.length > 1 ? 's' : ''}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {person.repas.map(function(r, idx) {
+                          var recipeNames = r.recipe_ids.map(function(rid) {
+                            return recipeMap[rid] ? recipeMap[rid].emoji + ' ' + recipeMap[rid].title : null
+                          }).filter(Boolean)
+                          return (
+                            <div key={idx} style={{ fontSize: '12px', color: '#555' }}>
+                              <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {REPAS_EMOJI[r.repas]} {r.repas}</span>
+                              {recipeNames.length > 0 && (
+                                <div style={{ marginTop: '2px', color: '#888', fontSize: '11px' }}>
+                                  {recipeNames.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
