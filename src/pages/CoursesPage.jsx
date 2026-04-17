@@ -101,6 +101,7 @@ export default function CoursesPage() {
   const [persons, setPersons]   = useState(2)
   const [checked, setChecked]   = useState(new Set())
   const [loading, setLoading]   = useState(true)
+  const [checkedNeutral, setCheckedNeutral] = useState(new Set())
 
   useEffect(() => {
     Promise.all([
@@ -153,10 +154,70 @@ export default function CoursesPage() {
   const selectedRecipes = recipes.filter(r => selected.has(r.id))
   const recipeNames = selectedRecipes.map(r => r.title)
 
+  // Ingredients sous le seuil (stock faible ou epuise), non deja dans la liste recettes
+  const stockFaible = stock.filter(s => s.seuil > 0 && s.qty <= s.seuil)
+
+  function toggleNeutral(name) {
+    setCheckedNeutral(c => { const n = new Set(c); n.has(name) ? n.delete(name) : n.add(name); return n })
+  }
+
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
   return (
     <div>
+      {/* Stock faible - liste neutre independante des recettes */}
+      {stockFaible.length > 0 && (
+        <div style={{ background: 'white', border: '0.5px solid #EF9F27', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#854F0B' }}>
+                ⚠️ Stock faible — à racheter
+              </div>
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                {stockFaible.filter(i => !checkedNeutral.has(i.name)).length} article{stockFaible.filter(i => !checkedNeutral.has(i.name)).length !== 1 ? 's' : ''} sous le seuil d'alerte
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={() => setCheckedNeutral(new Set(stockFaible.map(i => i.name)))}
+                style={{ padding: '4px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white' }}>Tout cocher</button>
+              <button onClick={() => setCheckedNeutral(new Set())}
+                style={{ padding: '4px 10px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white' }}>Décocher</button>
+            </div>
+          </div>
+
+          <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+            {stockFaible.map(item => {
+              const isChecked = checkedNeutral.has(item.name)
+              const manqueNeutral = Math.max(0, item.seuil - item.qty)
+              const etat = item.qty === 0 ? { label: 'Épuisé', bg: '#FCEBEB', color: '#791F1F' } : { label: 'Faible', bg: '#FAEEDA', color: '#854F0B' }
+              const catStyle = CAT_STYLE[item.cat] || CAT_STYLE['Autres']
+              return (
+                <div key={item.name} onClick={() => toggleNeutral(item.name)} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                  borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer',
+                  opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
+                }}>
+                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#EF9F27'), background: isChecked ? '#1D9E75' : '#FFFBF0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+                    {isChecked ? '✓' : ''}
+                  </div>
+                  <div style={{ flex: 1, fontSize: '13px', fontWeight: '500' }}>{item.name}</div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#888' }}>Stock : {item.qty} {item.unit}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: etat.bg, color: etat.color }}>{etat.label}</span>
+                    {manqueNeutral > 0 && (
+                      <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>
+                        +{manqueNeutral} {item.unit}
+                      </span>
+                    )}
+                    <span style={{ padding: '2px 6px', borderRadius: '6px', fontSize: '10px', background: catStyle.bg, color: catStyle.color }}>{item.cat}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Sélection des recettes */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>Choisir les recettes</div>
