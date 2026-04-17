@@ -300,11 +300,11 @@ export default function PlanningPage() {
         <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <button onClick={function() { setShowCourses(function(s) { return !s }) }}
             style={{ ...S.btn, background: showCourses ? '#E1F5EE' : 'white', color: showCourses ? '#0F6E56' : '#555', border: '0.5px solid ' + (showCourses ? '#1D9E75' : '#ddd') }}>
-            {'Courses'} Courses
+            Courses
           </button>
           <button onClick={function() { setShowCarnet(true) }}
             style={{ ...S.btn }}>
-            {'Invites'} Invites
+            Invites
           </button>
         </div>
         {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Sauvegarde...</span>}
@@ -406,7 +406,7 @@ export default function PlanningPage() {
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>{'Courses'} Courses de la semaine</div>
+              <div style={{ fontSize: '14px', fontWeight: '500' }}>Courses de la semaine</div>
               <div style={{ fontSize: '12px', color: '#888' }}>{totalRecipeCount} plat(s) planifie(s) - quantites adaptees par repas</div>
             </div>
           </div>
