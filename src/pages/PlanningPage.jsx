@@ -85,7 +85,12 @@ export default function PlanningPage() {
 
   // Carnet d'invites
   const [showCarnet, setShowCarnet]   = useState(false)
-  const [carnet, setCarnet]           = useState([]) // { name, repas[] }
+  const [carnet, setCarnet]           = useState([])
+  const [carnetSearch, setCarnetSearch] = useState('')
+
+  // Plat libre (sans recette)
+  const [showPlatLibre, setShowPlatLibre] = useState(null) // { jourIndex, repas }
+  const [platLibreInput, setPlatLibreInput] = useState('')
 
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
@@ -194,6 +199,25 @@ export default function PlanningPage() {
       await supabase.from('meal_plan').delete().eq('id', slot.id)
     }
     await loadPlan()
+  }
+
+  async function addPlatLibre(jourIndex, repas, nom) {
+    if (!nom.trim()) return
+    setSaving(true)
+    var slotId = await ensureSlot(jourIndex, repas)
+    var existing = plan[jourIndex]?.[repas]
+    var position = existing ? (existing.recipes || []).length : 0
+    // On stocke les plats libres comme des meal_plan_recipes sans recipe_id mais avec note
+    await supabase.from('meal_plan_recipes').insert({
+      meal_plan_id: slotId,
+      recipe_id: null,
+      position: position,
+      note: nom.trim()
+    })
+    await loadPlan()
+    setSaving(false)
+    setShowPlatLibre(null)
+    setPlatLibreInput('')
   }
 
   async function updateConvives(jourIndex, repas, val) {
@@ -318,7 +342,7 @@ export default function PlanningPage() {
           {REPAS.map(function(repas) {
             return (
               <div key={repas} style={{ padding: '10px 8px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #e0e0e0' }}>
-                {REPAS_EMOJI[repas]} {repas}
+                {repas}
               </div>
             )
           })}
@@ -346,9 +370,20 @@ export default function PlanningPage() {
                 return (
                   <div key={repas} style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
 
-                    {/* Recettes dans le slot */}
+                    {/* Recettes et plats libres dans le slot */}
                     {slotRecipes.map(function(sr) {
-                      var r = recipeMap[sr.recipe_id]
+                      var r = sr.recipe_id ? recipeMap[sr.recipe_id] : null
+                      // Plat libre (pas de recipe_id, juste une note)
+                      if (!r && sr.note) {
+                        return (
+                          <div key={sr.id} style={{ background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '12px', flexShrink: 0 }}>*</span>
+                            <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500' }}>{sr.note}</div>
+                            <button onClick={function() { removeRecipeFromSlot(ji, repas, sr.id) }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: 0, lineHeight: 1, flexShrink: 0 }}>x</button>
+                          </div>
+                        )
+                      }
                       if (!r) return null
                       return (
                         <div key={sr.id} style={{ background: '#f5f5f0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
@@ -373,6 +408,16 @@ export default function PlanningPage() {
                       + {slotRecipes.length === 0 ? 'Ajouter' : 'Ajouter plat'}
                     </button>
 
+                    {/* Bouton plat libre */}
+                    <button
+                      onClick={function() { setShowPlatLibre({ jourIndex: ji, repas: repas }); setPlatLibreInput('') }}
+                      style={{ width: '100%', border: '1px dashed #bbf7d0', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#86efac', fontSize: '11px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
+                      onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#bbf7d0'; e.currentTarget.style.color = '#86efac' }}
+                    >
+                      + Plat libre
+                    </button>
+
                     {/* Convives + invites (visible si slot existe) */}
                     {slot && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -380,7 +425,7 @@ export default function PlanningPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <button onClick={function() { updateConvives(ji, repas, Math.max(1, convives - 1)) }}
                             style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>-</button>
-                          <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{'Invites'} {convives}</span>
+                          <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>Pers. {convives}</span>
                           <button onClick={function() { updateConvives(ji, repas, convives + 1) }}
                             style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>+</button>
                         </div>
@@ -556,17 +601,57 @@ export default function PlanningPage() {
         )
       })()}
 
+      {/* Modal plat libre */}
+      {showPlatLibre && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '380px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '500' }}>Ajouter un plat libre</div>
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  {JOURS[showPlatLibre.jourIndex]} - {showPlatLibre.repas}
+                </div>
+              </div>
+              <button onClick={function() { setShowPlatLibre(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+            </div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
+              Pour un accompagnement ou plat simple sans recette (frites, salade, pain...).
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                autoFocus
+                value={platLibreInput}
+                onChange={function(e) { setPlatLibreInput(e.target.value) }}
+                onKeyDown={function(e) { if (e.key === 'Enter') addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput) }}
+                placeholder="Ex: Frites, Salade verte, Pain..."
+                style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+              />
+              <button onClick={function() { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput) }}
+                style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                Ajouter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Carnet d'invites */}
       {showCarnet && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '500' }}>Carnet d'invites</div>
                 <div style={{ fontSize: '12px', color: '#888' }}>Historique de tous vos repas partages</div>
               </div>
               <button onClick={function() { setShowCarnet(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
             </div>
+            <input
+              value={carnetSearch}
+              onChange={function(e) { setCarnetSearch(e.target.value) }}
+              placeholder="Rechercher un invite..."
+              style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box' }}
+            />
 
             {carnet.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>
@@ -576,7 +661,7 @@ export default function PlanningPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {carnet.sort(function(a, b) { return a.name.localeCompare(b.name) }).map(function(person) {
+                {carnet.filter(function(p) { return !carnetSearch || p.name.toLowerCase().includes(carnetSearch.toLowerCase()) }).sort(function(a, b) { return a.name.localeCompare(b.name) }).map(function(person) {
                   return (
                     <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
                       <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
