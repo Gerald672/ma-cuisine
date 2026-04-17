@@ -58,11 +58,7 @@ export default function BudgetPage() {
 
   // ── Chargement ──────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    loadAll()
-    loadCurrencyPref()
-    fetchRates()
-  }, [user])
+  useEffect(() => { loadAll() }, [user])
 
   async function loadAll() {
     setLoading(true)
@@ -86,6 +82,7 @@ export default function BudgetPage() {
   }
 
 
+  // Devise et taux de change
   async function loadCurrencyPref() {
     const { data } = await supabase
       .from('user_preferences').select('currency').eq('user_id', user.id).single()
@@ -112,6 +109,12 @@ export default function BudgetPage() {
     setLoadingRates(false)
   }
 
+  // Appel apres definition des fonctions
+  useEffect(() => {
+    loadCurrencyPref()
+    fetchRates()
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function toDisplay(amountChf) {
     return currency === 'EUR' ? amountChf * rates.CHF_EUR : amountChf
   }
@@ -119,7 +122,7 @@ export default function BudgetPage() {
   const sym = currency === 'EUR' ? 'EUR' : 'CHF'
 
   async function seedFrenchPrices() {
-    if (!window.confirm('Initialiser les prix avec les tarifs francais (Carrefour/Leclerc 2024) ?')) return
+    if (!window.confirm('Initialiser les prix francais (Carrefour/Leclerc 2024) ?')) return
     setSeedingPrices(true)
     await saveCurrencyPref('EUR')
     const PRIX_FR = [
@@ -149,19 +152,19 @@ export default function BudgetPage() {
       ['banane', 0.00140, 'g'], ['citron', 0.40, 'unite(s)'],
       ['fraise', 0.00800, 'g'], ['fraises', 0.00800, 'g'],
       ['huile d'olive', 0.00700, 'ml'], ['huile', 0.00280, 'ml'],
-      ['vinaigre', 0.00180, 'ml'], ['vinaigre balsamique', 0.00800, 'ml'],
-      ['moutarde', 0.00500, 'g'], ['sauce soja', 0.00400, 'ml'],
-      ['chocolat noir', 0.01500, 'g'], ['cacao en poudre', 0.01800, 'g'],
-      ['miel', 0.00800, 'g'], ['levure chimique', 0.02000, 'g'],
-      ['sel', 0.00030, 'g'], ['poivre', 0.01200, 'g'],
-      ['thym', 0.02000, 'g'], ['basilic', 0.05000, 'g'],
-      ['persil', 0.03500, 'g'], ['bouillon de legumes', 0.00120, 'ml'],
-      ['pates', 0.00160, 'g'], ['spaghetti', 0.00160, 'g'],
-      ['riz', 0.00160, 'g'], ['riz basmati', 0.00220, 'g'],
-      ['couscous', 0.00180, 'g'], ['quinoa', 0.00550, 'g'],
-      ['lentilles', 0.00220, 'g'], ['amandes', 0.01400, 'g'],
-      ['noix', 0.01200, 'g'], ['lait de coco', 0.00320, 'ml'],
-      ['pain', 0.00380, 'g'], ['maizena', 0.00280, 'g'],
+      ['vinaigre', 0.00180, 'ml'], ['moutarde', 0.00500, 'g'],
+      ['sauce soja', 0.00400, 'ml'], ['chocolat noir', 0.01500, 'g'],
+      ['cacao en poudre', 0.01800, 'g'], ['miel', 0.00800, 'g'],
+      ['levure chimique', 0.02000, 'g'], ['sel', 0.00030, 'g'],
+      ['poivre', 0.01200, 'g'], ['thym', 0.02000, 'g'],
+      ['basilic', 0.05000, 'g'], ['persil', 0.03500, 'g'],
+      ['bouillon de legumes', 0.00120, 'ml'], ['bouillon de poulet', 0.00150, 'ml'],
+      ['pates', 0.00160, 'g'], ['riz', 0.00160, 'g'],
+      ['riz basmati', 0.00220, 'g'], ['couscous', 0.00180, 'g'],
+      ['quinoa', 0.00550, 'g'], ['lentilles', 0.00220, 'g'],
+      ['amandes', 0.01400, 'g'], ['noix', 0.01200, 'g'],
+      ['lait de coco', 0.00320, 'ml'], ['pain', 0.00380, 'g'],
+      ['maizena', 0.00280, 'g'],
     ]
     for (const [name, price, unit] of PRIX_FR) {
       const { data: ex } = await supabase
@@ -176,7 +179,7 @@ export default function BudgetPage() {
     }
     await loadAll()
     setSeedingPrices(false)
-    alert('Prix francais initialises ! Devise passee en EUR.')
+    alert('Prix francais initialises !')
   }
 
   // ── Modification d'un prix unitaire ─────────────────────────────────────────
@@ -277,7 +280,7 @@ export default function BudgetPage() {
           </div>
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-          Prix en {sym} — modifiables ligne par ligne, sauvegardes automatiquement.
+          Prix en {sym}. Modifiables ligne par ligne.
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
@@ -326,7 +329,10 @@ export default function BudgetPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix — {sym}</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Modifications sauvegardees automatiquement. {currency === 'EUR' && rates.CHF_EUR && <span>Taux : 1 EUR = {(1/rates.CHF_EUR).toFixed(3)} CHF</span>}</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                Modifications sauvegardees auto.
+                {currency === 'EUR' && <span style={{ marginLeft: '6px' }}>Taux: 1 EUR = {(1/rates.CHF_EUR).toFixed(3)} CHF</span>}
+              </div>
             </div>
             <input value={prixSearch} onChange={e => setPrixSearch(e.target.value)} placeholder="Rechercher..."
               style={{ padding: '7px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', width: '160px', outline: 'none' }} />
