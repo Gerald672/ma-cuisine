@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -22,15 +22,15 @@ function calculerCout(ing, factor, priceMap, overrides) {
 }
 
 // Convertit price_per_unit (CHF/g ou CHF/ml) en affichage (CHF/kg ou CHF/L)
-function displayPrice(ing, priceMap, overrides, currency) {
+function displayPrice(ing, priceMap, overrides) {
   const key = ing.name?.toLowerCase()
   const raw = overrides[ing.name] !== undefined
     ? overrides[ing.name]
     : priceMap[key]?.price_per_unit ?? 1
-  const sym = currency === 'EUR' ? 'EUR' : 'CHF'
-  if (ing.unit === 'g')  return { value: raw * 1000, label: sym + '/kg' }
-  if (ing.unit === 'ml') return { value: raw * 1000, label: sym + '/L' }
-  return { value: raw, label: sym + '/unite' }
+
+  if (ing.unit === 'g')  return { value: raw * 1000, label: 'CHF/kg' }
+  if (ing.unit === 'ml') return { value: raw * 1000, label: 'CHF/L' }
+  return { value: raw, label: 'CHF/unité' }
 }
 
 function parseDisplayPrice(displayVal, unit) {
@@ -50,8 +50,8 @@ export default function BudgetPage() {
   const [loading, setLoading]         = useState(true)
   const [showPrixDB, setShowPrixDB]   = useState(false)
   const [prixSearch, setPrixSearch]   = useState('')
-  const [savingPrice, setSavingPrice] = useState(null) // nom de l'ingredient en cours de sauvegarde
-  const [currency, setCurrency]       = useState('CHF') // 'CHF' ou 'EUR'
+  const [savingPrice, setSavingPrice] = useState(null)
+  const [currency, setCurrency]       = useState('CHF')
   const [rates, setRates]             = useState({ CHF_EUR: 0.95, EUR_CHF: 1.053 })
   const [loadingRates, setLoadingRates] = useState(false)
   const [seedingPrices, setSeedingPrices] = useState(false)
@@ -60,8 +60,8 @@ export default function BudgetPage() {
 
   useEffect(() => {
     loadAll()
-    loadCurrency()
-    loadRates()
+    loadCurrencyPref()
+    fetchRates()
   }, [user])
 
   async function loadAll() {
@@ -85,15 +85,107 @@ export default function BudgetPage() {
     return map
   }
 
+
+  async function loadCurrencyPref() {
+    const { data } = await supabase
+      .from('user_preferences').select('currency').eq('user_id', user.id).single()
+    if (data && data.currency) setCurrency(data.currency)
+  }
+
+  async function saveCurrencyPref(cur) {
+    setCurrency(cur)
+    const { data: ex } = await supabase
+      .from('user_preferences').select('id').eq('user_id', user.id).single()
+    if (ex) {
+      await supabase.from('user_preferences').update({ currency: cur }).eq('user_id', user.id)
+    } else {
+      await supabase.from('user_preferences').insert({ user_id: user.id, currency: cur })
+    }
+  }
+
+  async function fetchRates() {
+    setLoadingRates(true)
+    try {
+      const resp = await fetch('/api/exchange-rate')
+      if (resp.ok) { const d = await resp.json(); setRates(d) }
+    } catch (e) {}
+    setLoadingRates(false)
+  }
+
+  function toDisplay(amountChf) {
+    return currency === 'EUR' ? amountChf * rates.CHF_EUR : amountChf
+  }
+
+  const sym = currency === 'EUR' ? 'EUR' : 'CHF'
+
+  async function seedFrenchPrices() {
+    if (!window.confirm('Initialiser les prix avec les tarifs francais (Carrefour/Leclerc 2024) ?')) return
+    setSeedingPrices(true)
+    await saveCurrencyPref('EUR')
+    const PRIX_FR = [
+      ['farine', 0.00085, 'g'], ['farine complete', 0.00120, 'g'],
+      ['sucre', 0.00090, 'g'], ['sucre roux', 0.00130, 'g'],
+      ['beurre', 0.01200, 'g'], ['beurre doux', 0.01200, 'g'],
+      ['lait', 0.00110, 'ml'], ['lait entier', 0.00120, 'ml'],
+      ['creme', 0.00320, 'ml'], ['creme fraiche', 0.00350, 'ml'],
+      ['creme liquide', 0.00300, 'ml'], ['yaourt nature', 0.00280, 'g'],
+      ['fromage blanc', 0.00300, 'g'], ['mascarpone', 0.00750, 'g'],
+      ['gruyere', 0.01400, 'g'], ['emmental', 0.01200, 'g'],
+      ['parmesan', 0.02200, 'g'], ['mozzarella', 0.01000, 'g'],
+      ['oeuf', 0.28, 'unite(s)'], ['oeufs', 0.28, 'unite(s)'],
+      ['poulet', 0.00850, 'g'], ['blanc de poulet', 0.01400, 'g'],
+      ['boeuf', 0.02200, 'g'], ['boeuf hache', 0.01400, 'g'],
+      ['veau', 0.02800, 'g'], ['porc', 0.01100, 'g'],
+      ['lardons', 0.01100, 'g'], ['jambon', 0.01600, 'g'],
+      ['saumon', 0.02800, 'g'], ['thon en boite', 0.01200, 'g'],
+      ['oignon', 0.00100, 'g'], ['oignons', 0.00100, 'g'],
+      ['ail', 0.00500, 'g'], ['carotte', 0.00090, 'g'],
+      ['carottes', 0.00090, 'g'], ['pomme de terre', 0.00070, 'g'],
+      ['pommes de terre', 0.00070, 'g'], ['courgette', 0.00160, 'g'],
+      ['tomate', 0.00180, 'g'], ['tomates', 0.00180, 'g'],
+      ['epinards', 0.00250, 'g'], ['brocoli', 0.00180, 'g'],
+      ['champignons', 0.00500, 'g'], ['avocat', 0.90, 'unite(s)'],
+      ['poivron', 0.00230, 'g'], ['pomme', 0.00170, 'g'],
+      ['banane', 0.00140, 'g'], ['citron', 0.40, 'unite(s)'],
+      ['fraise', 0.00800, 'g'], ['fraises', 0.00800, 'g'],
+      ['huile d'olive', 0.00700, 'ml'], ['huile', 0.00280, 'ml'],
+      ['vinaigre', 0.00180, 'ml'], ['vinaigre balsamique', 0.00800, 'ml'],
+      ['moutarde', 0.00500, 'g'], ['sauce soja', 0.00400, 'ml'],
+      ['chocolat noir', 0.01500, 'g'], ['cacao en poudre', 0.01800, 'g'],
+      ['miel', 0.00800, 'g'], ['levure chimique', 0.02000, 'g'],
+      ['sel', 0.00030, 'g'], ['poivre', 0.01200, 'g'],
+      ['thym', 0.02000, 'g'], ['basilic', 0.05000, 'g'],
+      ['persil', 0.03500, 'g'], ['bouillon de legumes', 0.00120, 'ml'],
+      ['pates', 0.00160, 'g'], ['spaghetti', 0.00160, 'g'],
+      ['riz', 0.00160, 'g'], ['riz basmati', 0.00220, 'g'],
+      ['couscous', 0.00180, 'g'], ['quinoa', 0.00550, 'g'],
+      ['lentilles', 0.00220, 'g'], ['amandes', 0.01400, 'g'],
+      ['noix', 0.01200, 'g'], ['lait de coco', 0.00320, 'ml'],
+      ['pain', 0.00380, 'g'], ['maizena', 0.00280, 'g'],
+    ]
+    for (const [name, price, unit] of PRIX_FR) {
+      const { data: ex } = await supabase
+        .from('ingredient_prices').select('id').eq('user_id', user.id).eq('name', name).single()
+      if (ex) {
+        await supabase.from('ingredient_prices')
+          .update({ price_per_unit: price, unit, source: 'Carrefour/Leclerc 2024' }).eq('id', ex.id)
+      } else {
+        await supabase.from('ingredient_prices')
+          .insert({ user_id: user.id, name, price_per_unit: price, unit, source: 'Carrefour/Leclerc 2024' })
+      }
+    }
+    await loadAll()
+    setSeedingPrices(false)
+    alert('Prix francais initialises ! Devise passee en EUR.')
+  }
+
   // ── Modification d'un prix unitaire ─────────────────────────────────────────
   // 1. Met à jour l'affichage immédiatement (override local)
   // 2. Persiste dans Supabase ingredient_prices
   // 3. Recalcule le cost de toutes les recettes concernées
 
   async function handlePriceChange(ing, displayVal) {
-    // displayVal est dans la devise affichee, on stocke toujours en devise native
-    const displayRaw = parseDisplayPrice(displayVal, ing.unit)
-    const newPricePerUnit = currency === 'EUR' ? displayRaw : displayRaw
+    const newPricePerUnit = parseDisplayPrice(displayVal, ing.unit)
     const ingKey = ing.name.toLowerCase()
 
     // 1. Override local immédiat → le total se recalcule via le render
@@ -175,27 +267,17 @@ export default function BudgetPage() {
 
       {/* ── Sélection des recettes ── */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>Simuler le cout d'un repas</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {loadingRates && <span style={{ fontSize: '10px', color: '#aaa' }}>Taux...</span>}
-            <button
-              onClick={() => saveCurrency('CHF')}
-              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: currency === 'CHF' ? '600' : '400', border: '0.5px solid ' + (currency === 'CHF' ? '#1D9E75' : '#ddd'), background: currency === 'CHF' ? '#E1F5EE' : 'white', color: currency === 'CHF' ? '#0F6E56' : '#888' }}>
-              CHF
-            </button>
-            <button
-              onClick={() => saveCurrency('EUR')}
-              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: currency === 'EUR' ? '600' : '400', border: '0.5px solid ' + (currency === 'EUR' ? '#1D9E75' : '#ddd'), background: currency === 'EUR' ? '#E1F5EE' : 'white', color: currency === 'EUR' ? '#0F6E56' : '#888' }}>
-              EUR
-            </button>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            {loadingRates && <span style={{ fontSize: '10px', color: '#aaa' }}>...</span>}
+            {['CHF', 'EUR'].map(c => (
+              <button key={c} onClick={() => saveCurrencyPref(c)} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: currency === c ? '600' : '400', border: '0.5px solid ' + (currency === c ? '#1D9E75' : '#ddd'), background: currency === c ? '#E1F5EE' : 'white', color: currency === c ? '#0F6E56' : '#888' }}>{c}</button>
+            ))}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-          Prix en {sym} charges depuis ta base. Modifiables ligne par ligne.
-          {currency === 'EUR' && rates.updated !== 'fallback' && (
-            <span style={{ marginLeft: '6px', color: '#aaa' }}>Taux: 1 EUR = {(1/rates.CHF_EUR).toFixed(4)} CHF</span>
-          )}
+          Prix en {sym} — modifiables ligne par ligne, sauvegardes automatiquement.
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
@@ -243,21 +325,15 @@ export default function BudgetPage() {
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix — {currency}</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Modifications sauvegardees automatiquement</div>
+              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix — {sym}</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Modifications sauvegardees automatiquement. {currency === 'EUR' && rates.CHF_EUR && <span>Taux : 1 EUR = {(1/rates.CHF_EUR).toFixed(3)} CHF</span>}</div>
             </div>
             <input value={prixSearch} onChange={e => setPrixSearch(e.target.value)} placeholder="Rechercher..."
               style={{ padding: '7px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', width: '160px', outline: 'none' }} />
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={seedFrenchPrices} disabled={seedingPrices}
-                style={{ padding: '6px 10px', fontSize: '11px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>
-                {seedingPrices ? 'Chargement...' : 'Init. prix FR'}
-              </button>
-              <button onClick={seedSwissPrices} disabled={seedingPrices}
-                style={{ padding: '6px 10px', fontSize: '11px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>
-                Init. prix CH
-              </button>
-            </div>
+            <button onClick={seedFrenchPrices} disabled={seedingPrices}
+              style={{ padding: '7px 12px', fontSize: '12px', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', background: 'white', color: '#555', whiteSpace: 'nowrap' }}>
+              {seedingPrices ? '...' : 'Init. prix FR'}
+            </button>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -270,7 +346,7 @@ export default function BudgetPage() {
               </thead>
               <tbody>
                 {filteredPrix.sort((a,b) => a.name.localeCompare(b.name, 'fr')).map(p => {
-                  const dispUnit = p.unit === 'g' ? 'CHF/kg' : p.unit === 'ml' ? 'CHF/L' : 'CHF/unité'
+                  const dispUnit = p.unit === 'g' ? sym + '/kg' : p.unit === 'ml' ? sym + '/L' : sym + '/unite'
                   const dispVal  = p.unit === 'g' || p.unit === 'ml' ? p.displayed * 1000 : p.displayed
                   const isModified = overrides[p.name] !== undefined
                   return (
@@ -291,7 +367,7 @@ export default function BudgetPage() {
                       </td>
                       <td style={{ padding: '8px 10px', color: '#888', fontSize: '12px' }}>{dispUnit}</td>
                       <td style={{ padding: '8px 10px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source || (currency === 'EUR' ? 'Base FR' : 'Base CH')}</span>
+                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source || 'Base CH'}</span>
                       </td>
                     </tr>
                   )
@@ -321,7 +397,7 @@ export default function BudgetPage() {
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888', marginBottom: '4px' }}>
-              <span>0 {sym}</span><span>{toDisplay(budgetMax).toFixed(0)} {sym}</span>
+              <span>0 {sym}</span><span>{budgetMax} {sym}</span>
             </div>
             <div style={{ height: '10px', background: '#f0f0ec', borderRadius: '5px', overflow: 'hidden', marginBottom: '6px' }}>
               <div style={{ height: '100%', width: pct + '%', background: fillColor, borderRadius: '5px', transition: 'width 0.4s' }} />
@@ -363,7 +439,7 @@ export default function BudgetPage() {
                   <tbody>
                     {(r.ingredients || []).map((ing, i) => {
                       const cost      = calculerCout(ing, factor, priceMap, overrides)
-                      const { value: dispVal, label: dispUnit } = displayPrice(ing, priceMap, overrides, currency)
+                      const { value: dispVal, label: dispUnit } = displayPrice(ing, priceMap, overrides)
                       const fromDB    = !!priceMap[ing.name?.toLowerCase()]
                       const isOverrid = overrides[ing.name] !== undefined
                       const unknown   = !fromDB && !isOverrid
@@ -373,7 +449,7 @@ export default function BudgetPage() {
                           <td style={{ padding: '9px 1.25rem', fontSize: '13px' }}>
                             {ing.name}
                             {fromDB && !isOverrid && (
-                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{currency === 'EUR' ? 'base FR' : 'base CH'}</span>
+                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>base CH</span>
                             )}
                             {isOverrid && (
                               <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>modifié</span>
