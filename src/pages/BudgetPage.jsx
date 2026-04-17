@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -22,15 +22,15 @@ function calculerCout(ing, factor, priceMap, overrides) {
 }
 
 // Convertit price_per_unit (CHF/g ou CHF/ml) en affichage (CHF/kg ou CHF/L)
-function displayPrice(ing, priceMap, overrides) {
+function displayPrice(ing, priceMap, overrides, currency) {
   const key = ing.name?.toLowerCase()
   const raw = overrides[ing.name] !== undefined
     ? overrides[ing.name]
     : priceMap[key]?.price_per_unit ?? 1
-
-  if (ing.unit === 'g')  return { value: raw * 1000, label: 'CHF/kg' }
-  if (ing.unit === 'ml') return { value: raw * 1000, label: 'CHF/L' }
-  return { value: raw, label: 'CHF/unité' }
+  const sym = currency === 'EUR' ? 'EUR' : 'CHF'
+  if (ing.unit === 'g')  return { value: raw * 1000, label: sym + '/kg' }
+  if (ing.unit === 'ml') return { value: raw * 1000, label: sym + '/L' }
+  return { value: raw, label: sym + '/unite' }
 }
 
 function parseDisplayPrice(displayVal, unit) {
@@ -50,12 +50,18 @@ export default function BudgetPage() {
   const [loading, setLoading]         = useState(true)
   const [showPrixDB, setShowPrixDB]   = useState(false)
   const [prixSearch, setPrixSearch]   = useState('')
-  const [savingPrice, setSavingPrice] = useState(null) // nom de l'ingrédient en cours de sauvegarde
+  const [savingPrice, setSavingPrice] = useState(null) // nom de l'ingredient en cours de sauvegarde
+  const [currency, setCurrency]       = useState('CHF') // 'CHF' ou 'EUR'
+  const [rates, setRates]             = useState({ CHF_EUR: 0.95, EUR_CHF: 1.053 })
+  const [loadingRates, setLoadingRates] = useState(false)
+  const [seedingPrices, setSeedingPrices] = useState(false)
 
   // ── Chargement ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     loadAll()
+    loadCurrency()
+    loadRates()
   }, [user])
 
   async function loadAll() {
@@ -85,7 +91,9 @@ export default function BudgetPage() {
   // 3. Recalcule le cost de toutes les recettes concernées
 
   async function handlePriceChange(ing, displayVal) {
-    const newPricePerUnit = parseDisplayPrice(displayVal, ing.unit)
+    // displayVal est dans la devise affichee, on stocke toujours en devise native
+    const displayRaw = parseDisplayPrice(displayVal, ing.unit)
+    const newPricePerUnit = currency === 'EUR' ? displayRaw : displayRaw
     const ingKey = ing.name.toLowerCase()
 
     // 1. Override local immédiat → le total se recalcule via le render
@@ -167,9 +175,27 @@ export default function BudgetPage() {
 
       {/* ── Sélection des recettes ── */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
-        <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>Simuler le coût d'un repas</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '500' }}>Simuler le cout d'un repas</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {loadingRates && <span style={{ fontSize: '10px', color: '#aaa' }}>Taux...</span>}
+            <button
+              onClick={() => saveCurrency('CHF')}
+              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: currency === 'CHF' ? '600' : '400', border: '0.5px solid ' + (currency === 'CHF' ? '#1D9E75' : '#ddd'), background: currency === 'CHF' ? '#E1F5EE' : 'white', color: currency === 'CHF' ? '#0F6E56' : '#888' }}>
+              CHF
+            </button>
+            <button
+              onClick={() => saveCurrency('EUR')}
+              style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: currency === 'EUR' ? '600' : '400', border: '0.5px solid ' + (currency === 'EUR' ? '#1D9E75' : '#ddd'), background: currency === 'EUR' ? '#E1F5EE' : 'white', color: currency === 'EUR' ? '#0F6E56' : '#888' }}>
+              EUR
+            </button>
+          </div>
+        </div>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-          Prix chargés depuis ta base Supabase (Migros/Coop/Rapport Agricole CH). Modifiables ligne par ligne — chaque modification est sauvegardée et répercutée sur toutes tes recettes.
+          Prix en {sym} charges depuis ta base. Modifiables ligne par ligne.
+          {currency === 'EUR' && rates.updated !== 'fallback' && (
+            <span style={{ marginLeft: '6px', color: '#aaa' }}>Taux: 1 EUR = {(1/rates.CHF_EUR).toFixed(4)} CHF</span>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
@@ -201,7 +227,7 @@ export default function BudgetPage() {
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#666' }}>Budget max (CHF) :</label>
+            <label style={{ fontSize: '12px', color: '#666' }}>Budget max ({sym}) :</label>
             <input type="number" value={budgetMax} onChange={e => setBudgetMax(parseFloat(e.target.value) || 30)}
               style={{ width: '75px', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px' }} />
           </div>
@@ -217,11 +243,21 @@ export default function BudgetPage() {
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix Suisse</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Sources : Migros, Coop, Rapport Agricole Suisse — modifications sauvegardées automatiquement</div>
+              <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix — {currency}</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Modifications sauvegardees automatiquement</div>
             </div>
             <input value={prixSearch} onChange={e => setPrixSearch(e.target.value)} placeholder="Rechercher..."
               style={{ padding: '7px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', width: '160px', outline: 'none' }} />
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={seedFrenchPrices} disabled={seedingPrices}
+                style={{ padding: '6px 10px', fontSize: '11px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>
+                {seedingPrices ? 'Chargement...' : 'Init. prix FR'}
+              </button>
+              <button onClick={seedSwissPrices} disabled={seedingPrices}
+                style={{ padding: '6px 10px', fontSize: '11px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>
+                Init. prix CH
+              </button>
+            </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -255,7 +291,7 @@ export default function BudgetPage() {
                       </td>
                       <td style={{ padding: '8px 10px', color: '#888', fontSize: '12px' }}>{dispUnit}</td>
                       <td style={{ padding: '8px 10px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source || 'Base CH'}</span>
+                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{p.source || (currency === 'EUR' ? 'Base FR' : 'Base CH')}</span>
                       </td>
                     </tr>
                   )
@@ -273,9 +309,9 @@ export default function BudgetPage() {
             <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px' }}>Récapitulatif</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
               {[
-                { label: 'Coût total estimé',  value: grandTotal.toFixed(2) + ' CHF' },
-                { label: 'Coût par personne',  value: perPerson.toFixed(2) + ' CHF' },
-                { label: 'Budget restant',      value: (reste >= 0 ? '+' : '') + reste.toFixed(2) + ' CHF', color: reste >= 0 ? '#0F6E56' : '#A32D2D' },
+                { label: 'Coût total estimé',  value: toDisplay(grandTotal).toFixed(2) + ' ' + sym },
+                { label: 'Coût par personne',  value: toDisplay(perPerson).toFixed(2) + ' ' + sym },
+                { label: 'Budget restant',      value: (reste >= 0 ? '+' : '') + toDisplay(reste).toFixed(2) + ' ' + sym, color: reste >= 0 ? '#0F6E56' : '#A32D2D' },
                 { label: 'Recettes',            value: selected.size + ' recette' + (selected.size > 1 ? 's' : '') },
               ].map(item => (
                 <div key={item.label} style={{ background: '#fafaf8', borderRadius: '8px', padding: '12px' }}>
@@ -285,15 +321,15 @@ export default function BudgetPage() {
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888', marginBottom: '4px' }}>
-              <span>0 CHF</span><span>{budgetMax} CHF</span>
+              <span>0 {sym}</span><span>{toDisplay(budgetMax).toFixed(0)} {sym}</span>
             </div>
             <div style={{ height: '10px', background: '#f0f0ec', borderRadius: '5px', overflow: 'hidden', marginBottom: '6px' }}>
               <div style={{ height: '100%', width: pct + '%', background: fillColor, borderRadius: '5px', transition: 'width 0.4s' }} />
             </div>
             <div style={{ fontSize: '12px', color: fillColor }}>
-              {pct < 80  ? `Dans le budget — il reste ${reste.toFixed(2)} CHF`
+              {pct < 80  ? `Dans le budget — il reste ${toDisplay(reste).toFixed(2)} ${sym}`
                : pct < 100 ? 'Attention, tu approches de ton budget !'
-               : `Budget dépassé de ${Math.abs(reste).toFixed(2)} CHF`}
+               : `Budget depasse de ${toDisplay(Math.abs(reste)).toFixed(2)} ${sym}`}
             </div>
           </div>
 
@@ -311,8 +347,8 @@ export default function BudgetPage() {
                     <div style={{ fontSize: '12px', color: '#888' }}>{persons} personne{persons > 1 ? 's' : ''} · {r.time} min</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{recipeTotal.toFixed(2)} CHF</div>
-                    <div style={{ fontSize: '11px', color: '#888' }}>{(recipeTotal / persons).toFixed(2)} CHF/pers.</div>
+                    <div style={{ fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>{toDisplay(recipeTotal / persons).toFixed(2)} {sym}/pers.</div>
                   </div>
                 </div>
 
@@ -327,7 +363,7 @@ export default function BudgetPage() {
                   <tbody>
                     {(r.ingredients || []).map((ing, i) => {
                       const cost      = calculerCout(ing, factor, priceMap, overrides)
-                      const { value: dispVal, label: dispUnit } = displayPrice(ing, priceMap, overrides)
+                      const { value: dispVal, label: dispUnit } = displayPrice(ing, priceMap, overrides, currency)
                       const fromDB    = !!priceMap[ing.name?.toLowerCase()]
                       const isOverrid = overrides[ing.name] !== undefined
                       const unknown   = !fromDB && !isOverrid
@@ -337,7 +373,7 @@ export default function BudgetPage() {
                           <td style={{ padding: '9px 1.25rem', fontSize: '13px' }}>
                             {ing.name}
                             {fromDB && !isOverrid && (
-                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>base CH</span>
+                              <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#E6F1FB', color: '#185FA5' }}>{currency === 'EUR' ? 'base FR' : 'base CH'}</span>
                             )}
                             {isOverrid && (
                               <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>modifié</span>
@@ -363,7 +399,7 @@ export default function BudgetPage() {
                             </div>
                           </td>
                           <td style={{ padding: '9px 1.25rem', textAlign: 'right', fontWeight: '500', fontSize: '13px', color: unknown ? '#aaa' : 'inherit' }}>
-                            {cost.toFixed(2)} CHF
+                            {toDisplay(cost).toFixed(2)} {sym}
                           </td>
                         </tr>
                       )
@@ -372,7 +408,7 @@ export default function BudgetPage() {
                   <tfoot>
                     <tr style={{ background: '#fafaf8' }}>
                       <td colSpan="3" style={{ padding: '10px 1.25rem', fontWeight: '500', fontSize: '13px' }}>Total recette</td>
-                      <td style={{ padding: '10px 1.25rem', textAlign: 'right', fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{recipeTotal.toFixed(2)} CHF</td>
+                      <td style={{ padding: '10px 1.25rem', textAlign: 'right', fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</td>
                     </tr>
                   </tfoot>
                 </table>
