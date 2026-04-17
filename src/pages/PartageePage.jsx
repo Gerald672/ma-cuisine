@@ -74,7 +74,7 @@ export default function PartageePage() {
 
     const { data } = await supabase
       .from('share_codes')
-      .select('*, profiles:user_id(email)')
+      .select('user_id, code, active')
       .eq('code', code)
       .eq('active', true)
       .single()
@@ -85,12 +85,12 @@ export default function PartageePage() {
       return
     }
     if (data.user_id === user.id) {
-      setCodeError('C\'est ton propre code !')
+      setCodeError("C'est ton propre code !")
       setLoadingShared(false)
       return
     }
 
-    setSharedUser({ id: data.user_id, email: data.profiles?.email || 'Utilisateur', code })
+    setSharedUser({ id: data.user_id, email: 'Utilisateur', code })
 
     const { data: recipes } = await supabase
       .from('recipes')
