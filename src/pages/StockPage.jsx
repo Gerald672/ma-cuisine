@@ -31,176 +31,203 @@ function guessCat(name, offCat) {
   return 'Epicerie'
 }
 
-// Scanner codes barres via camera
+// Scanner codes barres via camera - utilise BarcodeDetector natif ou fallback
 function BarcodeScanner({ onResult, onClose }) {
   const videoRef = useRef(null)
-  const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const animRef = useRef(null)
-  const [status, setStatus] = useState('Demarrage de la camera...')
-  const [error, setError] = useState('')
+  const [status, setStatus] = useState('Demarrage...')
+  const [errorType, setErrorType] = useState('')
+  const [supported, setSupported] = useState(true)
 
   useEffect(() => {
-    var ZXing = null
-
-    async function loadZXing() {
-      // Charger ZXing depuis CDN
-      if (!window.ZXing) {
-        await new Promise(function(resolve, reject) {
-          var script = document.createElement('script')
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.18.6/zxing.min.js'
-          script.onload = resolve
-          script.onerror = reject
-          document.head.appendChild(script)
-        })
-      }
-      ZXing = window.ZXing
+    // Verifier support BarcodeDetector
+    if (!('BarcodeDetector' in window)) {
+      // Fallback : on propose la saisie manuelle du code
+      setSupported(false)
+      setErrorType('NO_DETECTOR')
+      return
     }
+    startCamera()
+    return stopCamera
+  }, [])
 
-    async function startCamera() {
-      setError('')
-      try {
-        await loadZXing()
-        var stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-        })
-        streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
-          setStatus('Pointez la camera sur un code barres')
-          scanLoop()
+  async function startCamera() {
+    setErrorType('')
+    try {
+      var constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
-      } catch (e) {
-        setError('Impossible d\'acceder a la camera. Verifie les permissions.')
+      }
+      var stream = await navigator.mediaDevices.getUserMedia(constraints)
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+        setStatus('Pointez la camera sur un code barres')
+        scanLoop()
+      }
+    } catch (e) {
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        setErrorType('PERMISSION_DENIED')
+      } else if (e.name === 'NotFoundError') {
+        setErrorType('NO_CAMERA')
+      } else if (!window.isSecureContext) {
+        setErrorType('NOT_HTTPS')
+      } else {
+        setErrorType('OTHER')
       }
     }
+  }
 
-    function scanLoop() {
-      if (!videoRef.current || !canvasRef.current) return
-      var video = videoRef.current
-      var canvas = canvasRef.current
-      var ctx = canvas.getContext('2d')
+  function stopCamera() {
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(function(t) { t.stop() })
+    }
+  }
 
-      function tick() {
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  async function scanLoop() {
+    if (!videoRef.current) return
+    try {
+      var detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'code_128', 'code_39'] })
+      var tick = async function() {
+        if (videoRef.current && videoRef.current.readyState >= 2) {
           try {
-            if (ZXing && ZXing.MultiFormatReader) {
-              var reader = new ZXing.MultiFormatReader()
-              var luminanceSource = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height)
-              var binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource))
-              var result = reader.decode(binaryBitmap)
-              if (result) {
-                stopCamera()
-                onResult(result.getText())
-                return
-              }
+            var barcodes = await detector.detect(videoRef.current)
+            if (barcodes && barcodes.length > 0) {
+              stopCamera()
+              onResult(barcodes[0].rawValue)
+              return
             }
           } catch (e) {}
         }
         animRef.current = requestAnimationFrame(tick)
       }
       animRef.current = requestAnimationFrame(tick)
+    } catch (e) {
+      setErrorType('NO_DETECTOR')
     }
+  }
 
-    function stopCamera() {
-      if (animRef.current) cancelAnimationFrame(animRef.current)
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(function(t) { t.stop() })
-      }
-    }
+  // Saisie manuelle du code barres comme fallback
+  var [manualCode, setManualCode] = useState('')
 
-    startCamera()
-    return function() { stopCamera() }
-  }, [])
+  if (!supported || errorType === 'NO_DETECTOR') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>📷</div>
+          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>Scanner non supporte</div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
+            Ton navigateur ne supporte pas le scanner automatique.<br/>
+            Tu peux saisir le code barres manuellement ci-dessous.
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              value={manualCode}
+              onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) { onResult(manualCode) } }}
+              placeholder="Ex: 3017620422003"
+              maxLength={14}
+              style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <button
+              onClick={() => { if (manualCode.length >= 8) onResult(manualCode) }}
+              disabled={manualCode.length < 8}
+              style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
+              Rechercher
+            </button>
+            <button onClick={onClose}
+              style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+              Annuler
+            </button>
+          </div>
+          <div style={{ fontSize: '11px', color: '#bbb', marginTop: '12px' }}>
+            Le code barres se trouve sous les barres verticales du produit.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (errorType) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>
+            {errorType === 'PERMISSION_DENIED' ? '🔒' : errorType === 'NO_CAMERA' ? '📵' : '⚠️'}
+          </div>
+          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
+            {errorType === 'PERMISSION_DENIED' ? 'Permission camera refusee' : errorType === 'NO_CAMERA' ? 'Camera introuvable' : 'Camera indisponible'}
+          </div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
+            {errorType === 'PERMISSION_DENIED'
+              ? 'Autorise la camera dans les reglages de ton navigateur, puis reessaie. Sur Chrome : icone cadenas dans la barre d'adresse → Camera → Autoriser.'
+              : errorType === 'NO_CAMERA'
+              ? 'Aucune camera detectee sur cet appareil.'
+              : 'Impossible d'acceder a la camera. Essaie avec Chrome.'}
+          </div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+            Tu peux aussi saisir le code manuellement :
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              value={manualCode}
+              onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) { onResult(manualCode) } }}
+              placeholder="Ex: 3017620422003"
+              maxLength={14}
+              style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            {errorType === 'PERMISSION_DENIED' && (
+              <button onClick={startCamera}
+                style={{ padding: '10px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                Reessayer
+              </button>
+            )}
+            <button
+              onClick={() => { if (manualCode.length >= 8) onResult(manualCode) }}
+              disabled={manualCode.length < 8}
+              style={{ padding: '10px 16px', background: manualCode.length >= 8 ? '#1D9E75' : '#f0f0ec', color: manualCode.length >= 8 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+              Rechercher
+            </button>
+            <button onClick={onClose}
+              style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div style={{ width: '100%', maxWidth: '480px', padding: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ color: 'white', fontSize: '16px', fontWeight: '500' }}>Scanner un code barres</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', padding: 0 }}>x</button>
+          <button onClick={() => { stopCamera(); onClose() }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', padding: 0 }}>x</button>
         </div>
-
-        {error ? (
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', textAlign: 'center' }}>
-            {error === 'PERMISSION_DENIED' && (
-              <div>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>📷</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Acces a la camera refuse</div>
-                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
-                  Le navigateur a bloque l'acces a la camera.<br/>
-                  Pour autoriser :
-                </div>
-                <div style={{ background: '#f5f5f0', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#555', textAlign: 'left', marginBottom: '16px', lineHeight: 1.8 }}>
-                  <strong>Sur Chrome Android :</strong><br/>
-                  Icone cadenas dans la barre d'adresse<br/>
-                  → Permissions → Camera → Autoriser<br/><br/>
-                  <strong>Sur Samsung Internet :</strong><br/>
-                  Utilise Chrome a la place — il gere<br/>
-                  mieux les permissions camera.<br/><br/>
-                  <strong>Raccourci depuis Chrome :</strong><br/>
-                  Menu ... → Ajouter a l'ecran d'accueil
-                </div>
-              </div>
-            )}
-            {error === 'NO_CAMERA' && (
-              <div>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Aucune camera trouvee</div>
-                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>Cet appareil ne semble pas avoir de camera accessible.</div>
-              </div>
-            )}
-            {error === 'NOT_HTTPS' && (
-              <div>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Connexion non securisee</div>
-                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-                  La camera necessite une connexion HTTPS.<br/>
-                  Ouvre l'app via <strong>ma-cuisine-ten.vercel.app</strong>
-                </div>
-              </div>
-            )}
-            {error === 'OTHER' && (
-              <div>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>⚠️</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Camera indisponible</div>
-                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>Impossible d'acceder a la camera. Essaie avec Chrome.</div>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {error === 'PERMISSION_DENIED' && (
-                <button onClick={() => { setError(''); startCamera() }}
-                  style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                  Reessayer
-                </button>
-              )}
-              <button onClick={onClose}
-                style={{ padding: '10px 18px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
-                Fermer
-              </button>
+        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+          <video ref={videoRef} style={{ width: '100%', display: 'block' }} playsInline muted />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ width: '240px', height: '100px', position: 'relative' }}>
+              <div style={{ position: 'absolute', inset: 0, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)', borderRadius: '4px' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '24px', height: '24px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '24px', height: '24px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '24px', height: '24px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '24px', height: '24px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
             </div>
           </div>
-        ) : (
-          <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
-            <video ref={videoRef} style={{ width: '100%', display: 'block' }} playsInline muted />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            {/* Cadre de visee */}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <div style={{ width: '240px', height: '120px', border: '2px solid #1D9E75', borderRadius: '8px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '20px', height: '20px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75', borderRadius: '4px 0 0 0' }} />
-                <div style={{ position: 'absolute', top: 0, right: 0, width: '20px', height: '20px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75', borderRadius: '0 4px 0 0' }} />
-                <div style={{ position: 'absolute', bottom: 0, left: 0, width: '20px', height: '20px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75', borderRadius: '0 0 0 4px' }} />
-                <div style={{ position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75', borderRadius: '0 0 4px 0' }} />
-              </div>
-            </div>
-          </div>
-        )}
-
+        </div>
         <div style={{ color: '#aaa', fontSize: '13px', textAlign: 'center', marginTop: '12px' }}>{status}</div>
       </div>
     </div>
