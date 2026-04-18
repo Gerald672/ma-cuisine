@@ -803,6 +803,21 @@ export default function BibliothequePage() {
                 )}
               </div>
 
+              {/* Notation et compteur */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#fafaf8', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Stars value={showDetail.rating || 0} onChange={rating => rateRecipe(showDetail.id, rating)} size="20px" />
+                  {showDetail.rating > 0 && <span style={{ fontSize: '11px', color: '#aaa' }}>{['','Pas top','Bof','Bien','Tres bien','Excellent !'][showDetail.rating]}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {showDetail.cook_count > 0 && <span style={{ fontSize: '12px', color: '#888' }}>Cuisine {showDetail.cook_count} fois</span>}
+                  <button onClick={() => cookRecipe(showDetail.id)}
+                    style={{ padding: '5px 10px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                    + J'ai cuisine
+                  </button>
+                </div>
+              </div>
+
               {/* Sélecteur convives */}
               {(showDetail.servings || 0) > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', padding: '8px 12px', background: '#FAFAF8', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
