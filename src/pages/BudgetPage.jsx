@@ -321,6 +321,7 @@ export default function BudgetPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <input type="number" step="0.01" defaultValue={dispVal.toFixed(2)}
                             onBlur={e => handlePriceChange({ name: p.name, unit: p.unit }, e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { handlePriceChange({ name: p.name, unit: p.unit }, e.target.value); e.target.blur() } }}
                             style={{ width: '75px', padding: '3px 6px', border: '0.5px solid #ddd', borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isModified ? '#FFFBF0' : '#fafaf8' }}
                           />
                           {savingPrice === p.name && <span style={{ fontSize: '10px', color: '#1D9E75' }}>...</span>}
@@ -418,6 +419,7 @@ export default function BudgetPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
                               <input type="number" step="0.01" defaultValue={dispVal.toFixed(2)}
                                 onBlur={e => handlePriceChange(ing, e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') { handlePriceChange(ing, e.target.value); e.target.blur() } }}
                                 style={{ width: '65px', padding: '3px 6px', border: '0.5px solid ' + (unknown ? '#FCA5A5' : '#ddd'), borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isOverrid ? '#FFFBF0' : '#fafaf8' }}
                               />
                               <span style={{ fontSize: '10px', color: '#888' }}>{dispUnit}</span>
