@@ -209,14 +209,8 @@ export default function CoursesPage() {
                     {isChecked ? '✓' : ''}
                   </div>
                   <div style={{ flex: 1, fontSize: '13px', fontWeight: '500' }}>{item.name}</div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#888' }}>Stock : {item.qty} {item.unit}</span>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                     <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: etat.bg, color: etat.color }}>{etat.label}</span>
-                    {manqueNeutral > 0 && (
-                      <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>
-                        +{manqueNeutral} {item.unit}
-                      </span>
-                    )}
                     <span style={{ padding: '2px 6px', borderRadius: '6px', fontSize: '10px', background: catStyle.bg, color: catStyle.color }}>{item.cat}</span>
                   </div>
                 </div>
