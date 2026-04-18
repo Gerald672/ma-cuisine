@@ -102,6 +102,10 @@ export default function CoursesPage() {
   const [checked, setChecked]   = useState(new Set())
   const [loading, setLoading]   = useState(true)
   const [checkedNeutral, setCheckedNeutral] = useState(new Set())
+  const [recipeSearch, setRecipeSearch]   = useState('')
+  const [generalItems, setGeneralItems]   = useState([]) // liste hors cuisine
+  const [generalInput, setGeneralInput]   = useState('')
+  const [checkedGeneral, setCheckedGeneral] = useState(new Set())
 
   useEffect(() => {
     Promise.all([
@@ -220,10 +224,19 @@ export default function CoursesPage() {
 
       {/* Sélection des recettes */}
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
-        <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>Choisir les recettes</div>
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>La liste sera calculée selon ton stock actuel.</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '500' }}>Choisir les recettes</div>
+          <span style={{ fontSize: '12px', color: '#aaa' }}>{recipes.length} recettes</span>
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>La liste sera calculée selon ton stock actuel.</div>
+        <input
+          value={recipeSearch}
+          onChange={e => setRecipeSearch(e.target.value)}
+          placeholder="Rechercher une recette..."
+          style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box', marginBottom: '10px' }}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-          {recipes.map(r => (
+          {[...recipes].filter(r => !recipeSearch || r.title.toLowerCase().includes(recipeSearch.toLowerCase())).sort((a, b) => a.title.localeCompare(b.title, 'fr')).map(r => (
             <div key={r.id} onClick={() => toggleRecipe(r.id)} style={{
               border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#e0e0e0'),
               borderRadius: '10px', padding: '10px', cursor: 'pointer',
@@ -328,6 +341,88 @@ export default function CoursesPage() {
           )}
         </>
       )}
+
+      {/* Liste generale hors cuisine */}
+      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '500' }}>Liste generale</div>
+          {checkedGeneral.size > 0 && (
+            <button onClick={() => {
+              setGeneralItems(items => items.filter(i => !checkedGeneral.has(i)))
+              setCheckedGeneral(new Set())
+            }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Supprimer cochés
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
+          Pour tout ce qui ne dépend pas d'une recette (colle, chaussettes, ampoules...).
+        </div>
+
+        {/* Saisie */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            value={generalInput}
+            onChange={e => setGeneralInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && generalInput.trim()) {
+                setGeneralItems(items => [...items, generalInput.trim()])
+                setGeneralInput('')
+              }
+            }}
+            placeholder="Ajouter un article... (Entrée pour valider)"
+            style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+          />
+          <button
+            onClick={() => {
+              if (generalInput.trim()) {
+                setGeneralItems(items => [...items, generalInput.trim()])
+                setGeneralInput('')
+              }
+            }}
+            style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+            +
+          </button>
+        </div>
+
+        {/* Liste articles */}
+        {generalItems.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: '#ccc', fontSize: '13px' }}>
+            Aucun article — saisis quelque chose ci-dessus
+          </div>
+        ) : (
+          <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+            {generalItems.map((item, idx) => {
+              const isChecked = checkedGeneral.has(item + idx)
+              return (
+                <div key={idx} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                  borderBottom: idx < generalItems.length - 1 ? '0.5px solid #f0f0ec' : 'none',
+                  cursor: 'pointer', opacity: isChecked ? 0.45 : 1,
+                  textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
+                }}
+                  onClick={() => setCheckedGeneral(c => {
+                    const n = new Set(c)
+                    n.has(item + idx) ? n.delete(item + idx) : n.add(item + idx)
+                    return n
+                  })}
+                >
+                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#ddd'), background: isChecked ? '#1D9E75' : '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+                    {isChecked ? '✓' : ''}
+                  </div>
+                  <div style={{ flex: 1, fontSize: '13px' }}>{item}</div>
+                  <button
+                    onClick={e => { e.stopPropagation(); setGeneralItems(items => items.filter((_, i) => i !== idx)) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '16px', padding: 0, lineHeight: 1 }}>
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
