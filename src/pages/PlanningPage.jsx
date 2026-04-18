@@ -6,7 +6,7 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
 const REPAS = ['Petit-dejeuner', 'Diner', 'Souper']
 const REPAS_LABEL = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
 const REPAS_ICON  = { 'Petit-dejeuner': 'cafe', 'Diner': 'assiette', 'Souper': 'lune' }
-const REPAS_EMOJI = { 'Petit-dejeuner': 'Cafe', 'Diner': 'Assiette', 'Souper': 'Lune' }
+const REPAS_EMOJI = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
 
 const CAT_STYLE = {
   'Epicerie':          { bg: '#E6F1FB', color: '#185FA5' },
@@ -92,6 +92,10 @@ export default function PlanningPage() {
   const [showPlatLibre, setShowPlatLibre] = useState(null) // { jourIndex, repas }
   const [platLibreInput, setPlatLibreInput] = useState('')
 
+  // Drag & drop copie
+  const [dragSrc, setDragSrc] = useState(null) // { jourIndex, repas }
+  const [dragOver, setDragOver] = useState(null)
+
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
 
@@ -148,7 +152,8 @@ export default function PlanningPage() {
           date: slot.week_start,
           jour: JOURS[slot.jour_index],
           repas: slot.repas,
-          recipe_ids: (slot.meal_plan_recipes || []).map(function(r) { return r.recipe_id })
+          recipe_ids: (slot.meal_plan_recipes || []).map(function(r) { return r.recipe_id }),
+          notes: (slot.meal_plan_recipes || []).filter(function(r) { return r.note }).map(function(r) { return '* ' + r.note })
         })
       }
     }
@@ -218,6 +223,27 @@ export default function PlanningPage() {
     setSaving(false)
     setShowPlatLibre(null)
     setPlatLibreInput('')
+  }
+
+  async function copySlot(srcJourIndex, srcRepas, dstJourIndex, dstRepas) {
+    if (srcJourIndex === dstJourIndex && srcRepas === dstRepas) return
+    var srcSlot = plan[srcJourIndex]?.[srcRepas]
+    if (!srcSlot || srcSlot.recipes.length === 0) return
+    setSaving(true)
+    var dstSlotId = await ensureSlot(dstJourIndex, dstRepas)
+    var dstSlot = plan[dstJourIndex]?.[dstRepas]
+    var startPos = dstSlot ? dstSlot.recipes.length : 0
+    for (var i = 0; i < srcSlot.recipes.length; i++) {
+      var sr = srcSlot.recipes[i]
+      await supabase.from('meal_plan_recipes').insert({
+        meal_plan_id: dstSlotId,
+        recipe_id: sr.recipe_id || null,
+        note: sr.note || null,
+        position: startPos + i
+      })
+    }
+    await loadPlan()
+    setSaving(false)
   }
 
   async function updateConvives(jourIndex, repas, val) {
@@ -367,8 +393,20 @@ export default function PlanningPage() {
                 var convives = slot ? slot.convives : 2
                 var invites = slot ? (slot.invites || []) : []
 
+                var isDragOver = dragOver && dragOver.jourIndex === ji && dragOver.repas === repas
+                var isDragSrc  = dragSrc  && dragSrc.jourIndex  === ji && dragSrc.repas  === repas
                 return (
-                  <div key={repas} style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div key={repas}
+                    draggable={slotRecipes.length > 0}
+                    onDragStart={function() { setDragSrc({ jourIndex: ji, repas: repas }) }}
+                    onDragEnd={function() { setDragSrc(null); setDragOver(null) }}
+                    onDragOver={function(e) { e.preventDefault(); setDragOver({ jourIndex: ji, repas: repas }) }}
+                    onDrop={function(e) {
+                      e.preventDefault()
+                      if (dragSrc) copySlot(dragSrc.jourIndex, dragSrc.repas, ji, repas)
+                      setDragSrc(null); setDragOver(null)
+                    }}
+                    style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px', opacity: isDragSrc ? 0.5 : 1, background: isDragOver ? '#E1F5EE' : 'white', transition: 'background 0.15s' }}>
 
                     {/* Recettes et plats libres dans le slot */}
                     {slotRecipes.map(function(sr) {
@@ -507,7 +545,7 @@ export default function PlanningPage() {
               <div>
                 <div style={{ fontSize: '14px', fontWeight: '500' }}>Ajouter une recette</div>
                 <div style={{ fontSize: '12px', color: '#888' }}>
-                  {JOURS[picker.jourIndex]} - {REPAS_EMOJI[picker.repas]} {picker.repas}
+                  {JOURS[picker.jourIndex]} - {picker.repas}
                 </div>
               </div>
               <button onClick={function() { setPicker(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
@@ -558,7 +596,7 @@ export default function PlanningPage() {
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: '500' }}>Invites</div>
                   <div style={{ fontSize: '12px', color: '#888' }}>
-                    {JOURS[showInvites.jourIndex]} - {REPAS_EMOJI[showInvites.repas]} {showInvites.repas}
+                    {JOURS[showInvites.jourIndex]} - {showInvites.repas}
                   </div>
                 </div>
                 <button onClick={function() { setShowInvites(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
@@ -676,15 +714,20 @@ export default function PlanningPage() {
                       <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {person.repas.map(function(r, idx) {
                           var recipeNames = r.recipe_ids.map(function(rid) {
+                            if (!rid) return null
                             return recipeMap[rid] ? recipeMap[rid].emoji + ' ' + recipeMap[rid].title : null
                           }).filter(Boolean)
+                          var menu = r.notes ? [...recipeNames, ...r.notes] : recipeNames
                           return (
                             <div key={idx} style={{ fontSize: '12px', color: '#555' }}>
-                              <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {REPAS_EMOJI[r.repas]} {r.repas}</span>
-                              {recipeNames.length > 0 && (
+                              <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {r.repas}</span>
+                              {menu.length > 0 && (
                                 <div style={{ marginTop: '2px', color: '#888', fontSize: '11px' }}>
-                                  {recipeNames.join(', ')}
+                                  {menu.join(', ')}
                                 </div>
+                              )}
+                              {menu.length === 0 && (
+                                <div style={{ marginTop: '2px', color: '#ccc', fontSize: '11px', fontStyle: 'italic' }}>Menu non renseigne</div>
                               )}
                             </div>
                           )
