@@ -578,10 +578,10 @@ export default function BibliothequePage() {
     setRecipes(rs => rs.map(r => r.id === id ? { ...r, rating } : r))
   }
 
-  async function cookRecipe(id) {
+  async function cookRecipe(id, delta) {
     const recipe = recipes.find(r => r.id === id)
     if (!recipe) return
-    const newCount = (recipe.cook_count || 0) + 1
+    const newCount = Math.max(0, (recipe.cook_count || 0) + delta)
     await supabase.from('recipes').update({ cook_count: newCount }).eq('id', id)
     setShowDetail(d => d ? { ...d, cook_count: newCount } : d)
     setRecipes(rs => rs.map(r => r.id === id ? { ...r, cook_count: newCount } : r))
@@ -810,11 +810,19 @@ export default function BibliothequePage() {
                   {showDetail.rating > 0 && <span style={{ fontSize: '11px', color: '#aaa' }}>{['','Pas top','Bof','Bien','Tres bien','Excellent !'][showDetail.rating]}</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {showDetail.cook_count > 0 && <span style={{ fontSize: '12px', color: '#888' }}>Cuisine {showDetail.cook_count} fois</span>}
-                  <button onClick={() => cookRecipe(showDetail.id)}
-                    style={{ padding: '5px 10px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
-                    + J'ai cuisine
-                  </button>
+                  <span style={{ fontSize: '12px', color: '#888' }}>
+                    Cuisine {showDetail.cook_count || 0} fois
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {(showDetail.cook_count || 0) > 0 && (
+                      <button onClick={() => cookRecipe(showDetail.id, -1)}
+                        style={{ width: '24px', height: '24px', background: 'none', color: '#aaa', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                    )}
+                    <button onClick={() => cookRecipe(showDetail.id, +1)}
+                      style={{ padding: '5px 10px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                      + J'ai cuisine
+                    </button>
+                  </div>
                 </div>
               </div>
 
