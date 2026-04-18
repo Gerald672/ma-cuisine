@@ -242,7 +242,7 @@ export default function StockPage() {
   const [catFilter, setCatFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem]   = useState(null)
-  const [form, setForm]           = useState({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '' })
+  const [form, setForm]           = useState({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '', peremption: '' })
   const [showScanner, setShowScanner] = useState(false)
   const [scanStatus, setScanStatus]   = useState('') // message apres scan
   const [scanLoading, setScanLoading] = useState(false)
@@ -263,6 +263,7 @@ export default function StockPage() {
       user_id: user.id, name: form.name,
       qty: parseFloat(form.qty) || 0, unit: form.unit,
       cat: form.cat, seuil: parseFloat(form.seuil) || 0,
+      peremption: form.peremption || null,
     }
     if (editItem) {
       await supabase.from('stock').update(payload).eq('id', editItem.id)
@@ -285,19 +286,30 @@ export default function StockPage() {
 
   function openAdd() {
     setEditItem(null)
-    setForm({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '' })
+    setForm({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '', peremption: '' })
     setShowModal(true)
   }
 
   function openEdit(item) {
     setEditItem(item)
-    setForm({ name: item.name, qty: item.qty, unit: item.unit, cat: item.cat, seuil: item.seuil })
+    setForm({ name: item.name, qty: item.qty, unit: item.unit, cat: item.cat, seuil: item.seuil, peremption: item.peremption || '' })
     setShowModal(true)
   }
 
   function closeModal() { setShowModal(false); setEditItem(null) }
 
-  function getEtat(item) {
+  function getPeremption(dateStr) {
+  if (!dateStr) return null
+  var today = new Date(); today.setHours(0,0,0,0)
+  var date = new Date(dateStr)
+  var diffDays = Math.round((date - today) / 86400000)
+  if (diffDays < 0)  return { label: 'Perime !', bg: '#FCEBEB', color: '#791F1F', days: diffDays, urgent: true }
+  if (diffDays <= 3) return { label: 'Expire dans ' + diffDays + 'j', bg: '#FCEBEB', color: '#791F1F', days: diffDays, urgent: true }
+  if (diffDays <= 7) return { label: 'Expire dans ' + diffDays + 'j', bg: '#FAEEDA', color: '#854F0B', days: diffDays, urgent: false }
+  return { label: diffDays + 'j restants', bg: '#EAF3DE', color: '#3B6D11', days: diffDays, urgent: false }
+}
+
+function getEtat(item) {
     if (item.qty === 0) return { label: 'Epuise', bg: '#FCEBEB', color: '#791F1F' }
     if (item.seuil > 0 && item.qty <= item.seuil) return { label: 'Faible', bg: '#FAEEDA', color: '#854F0B' }
     return { label: 'OK', bg: '#EAF3DE', color: '#3B6D11' }
@@ -343,7 +355,7 @@ export default function StockPage() {
       var cat = guessCat(name, product.categories || '')
       setScanStatus('Produit trouve : ' + name)
       setScanLoading(false)
-      setForm({ name, qty: qty || '', unit, cat, seuil: '' })
+      setForm({ name, qty: qty || '', unit, cat, seuil: '', peremption: '' })
       setEditItem(null)
       setShowModal(true)
     } catch (e) {
@@ -359,6 +371,11 @@ export default function StockPage() {
   })
 
   const alerts = stock.filter(i => i.qty === 0 || (i.seuil > 0 && i.qty <= i.seuil))
+  const peremptionAlerts = stock.filter(i => {
+    if (!i.peremption) return false
+    var p = getPeremption(i.peremption)
+    return p && p.days <= 7
+  }).sort((a, b) => new Date(a.peremption) - new Date(b.peremption))
 
   return (
     <div>
@@ -369,6 +386,23 @@ export default function StockPage() {
       {alerts.length > 0 && (
         <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#633806', marginBottom: '1rem' }}>
           Stock faible : {alerts.map(a => <strong key={a.id}>{a.name}</strong>).reduce((a, b) => [a, ', ', b])}
+        </div>
+      )}
+
+      {/* Alerte peremption */}
+      {peremptionAlerts.length > 0 && (
+        <div style={{ background: '#FCEBEB', border: '0.5px solid #E24B4A', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#791F1F', marginBottom: '1rem' }}>
+          <strong>Date de peremption proche :</strong>{' '}
+          {peremptionAlerts.map((a, i) => {
+            var p = getPeremption(a.peremption)
+            return (
+              <span key={a.id}>
+                {i > 0 && ', '}
+                <strong>{a.name}</strong>
+                <span style={{ fontWeight: '400' }}> ({p.label})</span>
+              </span>
+            )
+          })}
         </div>
       )}
 
@@ -408,7 +442,7 @@ export default function StockPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Ingredient', 'Categorie', 'Quantite', 'Unite', 'Seuil', 'Etat', ''].map(h => (
+                  {['Ingredient', 'Categorie', 'Quantite', 'Unite', 'Seuil', 'Peremption', 'Etat', ''].map(h => (
                     <th key={h} style={{ padding: '9px 12px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #e0e0e0' }}>{h}</th>
                   ))}
                 </tr>
@@ -431,6 +465,12 @@ export default function StockPage() {
                       </td>
                       <td style={{ padding: '10px 12px', fontSize: '12px', color: '#888' }}>{item.unit}</td>
                       <td style={{ padding: '10px 12px', fontSize: '12px', color: '#888' }}>{item.seuil} {item.unit}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {item.peremption ? (function() {
+                          var p = getPeremption(item.peremption)
+                          return <span style={{ padding: '3px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: p.bg, color: p.color, whiteSpace: 'nowrap' }}>{new Date(item.peremption).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                        })() : <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>}
+                      </td>
                       <td style={{ padding: '10px 12px' }}>
                         <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: etat.bg, color: etat.color }}>{etat.label}</span>
                       </td>
@@ -492,6 +532,23 @@ export default function StockPage() {
                 <input type="number" value={form.seuil} onChange={e => setForm(f => ({ ...f, seuil: e.target.value }))} placeholder="100"
                   style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Date de peremption (optionnel)</label>
+              <input type="date" value={form.peremption || ''} onChange={e => setForm(f => ({ ...f, peremption: e.target.value }))}
+                style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+              {form.peremption && (
+                <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {(function() {
+                    var p = getPeremption(form.peremption)
+                    return p ? <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: p.bg, color: p.color }}>{p.label}</span> : null
+                  })()}
+                  <button type="button" onClick={() => setForm(f => ({ ...f, peremption: '' }))}
+                    style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    Effacer
+                  </button>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button onClick={closeModal} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
