@@ -58,6 +58,7 @@ function BarcodeScanner({ onResult, onClose }) {
     }
 
     async function startCamera() {
+      setError('')
       try {
         await loadZXing()
         var stream = await navigator.mediaDevices.getUserMedia({
@@ -126,10 +127,62 @@ function BarcodeScanner({ onResult, onClose }) {
         </div>
 
         {error ? (
-          <div style={{ background: '#FCEBEB', color: '#791F1F', padding: '16px', borderRadius: '12px', fontSize: '14px', textAlign: 'center' }}>
-            {error}
-            <div style={{ marginTop: '12px' }}>
-              <button onClick={onClose} style={{ padding: '8px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Fermer</button>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', textAlign: 'center' }}>
+            {error === 'PERMISSION_DENIED' && (
+              <div>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>📷</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Acces a la camera refuse</div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
+                  Le navigateur a bloque l'acces a la camera.<br/>
+                  Pour autoriser :
+                </div>
+                <div style={{ background: '#f5f5f0', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#555', textAlign: 'left', marginBottom: '16px', lineHeight: 1.8 }}>
+                  <strong>Sur Chrome Android :</strong><br/>
+                  Icone cadenas dans la barre d'adresse<br/>
+                  → Permissions → Camera → Autoriser<br/><br/>
+                  <strong>Sur Samsung Internet :</strong><br/>
+                  Utilise Chrome a la place — il gere<br/>
+                  mieux les permissions camera.<br/><br/>
+                  <strong>Raccourci depuis Chrome :</strong><br/>
+                  Menu ... → Ajouter a l'ecran d'accueil
+                </div>
+              </div>
+            )}
+            {error === 'NO_CAMERA' && (
+              <div>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Aucune camera trouvee</div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>Cet appareil ne semble pas avoir de camera accessible.</div>
+              </div>
+            )}
+            {error === 'NOT_HTTPS' && (
+              <div>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Connexion non securisee</div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+                  La camera necessite une connexion HTTPS.<br/>
+                  Ouvre l'app via <strong>ma-cuisine-ten.vercel.app</strong>
+                </div>
+              </div>
+            )}
+            {error === 'OTHER' && (
+              <div>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>⚠️</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px', color: '#333' }}>Camera indisponible</div>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>Impossible d'acceder a la camera. Essaie avec Chrome.</div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {error === 'PERMISSION_DENIED' && (
+                <button onClick={() => { setError(''); startCamera() }}
+                  style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                  Reessayer
+                </button>
+              )}
+              <button onClick={onClose}
+                style={{ padding: '10px 18px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+                Fermer
+              </button>
             </div>
           </div>
         ) : (
