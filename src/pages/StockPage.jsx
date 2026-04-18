@@ -168,10 +168,10 @@ function BarcodeScanner({ onResult, onClose }) {
           </div>
           <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
             {errorType === 'PERMISSION_DENIED'
-              ? 'Autorise la camera dans les reglages de ton navigateur, puis reessaie. Sur Chrome : icone cadenas dans la barre d'adresse → Camera → Autoriser.'
+              ? "Autorise la camera dans les reglages de ton navigateur, puis reessaie. Sur Chrome : icone cadenas dans la barre d'adresse puis Camera puis Autoriser."
               : errorType === 'NO_CAMERA'
               ? 'Aucune camera detectee sur cet appareil.'
-              : 'Impossible d'acceder a la camera. Essaie avec Chrome.'}
+              : "Impossible d'acceder a la camera. Essaie avec Chrome."}
           </div>
           <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
             Tu peux aussi saisir le code manuellement :
