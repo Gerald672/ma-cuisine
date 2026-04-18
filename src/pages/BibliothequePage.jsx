@@ -72,6 +72,15 @@ function Stars({ value, onChange, size }) {
   )
 }
 
+
+function formatTime(minutes) {
+  if (!minutes || minutes <= 0) return ''
+  if (minutes < 60) return minutes + ' min'
+  var h = Math.floor(minutes / 60)
+  var m = minutes % 60
+  return m > 0 ? h + 'h' + (m < 10 ? '0' : '') + m : h + 'h'
+}
+
 // --- Utilitaires --------------------------------------------------------------
 
 function scaleIngredients(ingredients, baseServings, currentServings) {
@@ -553,7 +562,7 @@ export default function BibliothequePage() {
     const payload = {
       user_id: user.id, title: form.title, source: form.source, url: form.url, emoji: form.emoji,
       time_prep: parseInt(form.time_prep) || null, time_cook: parseInt(form.time_cook) || null,
-      time: parseInt(form.time) || (parseInt(form.time_prep) || 0) + (parseInt(form.time_cook) || 0) || 30,
+      time: (parseInt(form.time_prep) || 0) + (parseInt(form.time_cook) || 0) || parseInt(form.time) || 30,
       cost: autoCost !== null ? autoCost : (parseFloat(form.cost) || 0),
       cats: form.cats, tags: form.tags, servings: parseInt(form.servings) || 4,
       ingredients: form.ingredients, steps: form.steps, notes: form.notes, nutrition: form.nutrition || null,
@@ -723,7 +732,7 @@ export default function BibliothequePage() {
                   {(r.cats || []).slice(0, 2).map(cat => TAG[cat] && (
                     <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
                   ))}
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>{r.time} min</span>
+                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>{formatTime(r.time)}</span>
                   {r.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>~{r.cost} CHF</span>}
                   {r.servings > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>👥 {r.servings}</span>}
                 </div>
@@ -788,9 +797,9 @@ export default function BibliothequePage() {
                   {(showDetail.cats || []).map(cat => TAG[cat] && (
                     <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
                   ))}
-                  {showDetail.time_prep > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Prep. {showDetail.time_prep} min</span>}
-                  {showDetail.time_cook > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Cuisson {showDetail.time_cook} min</span>}
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Total {showDetail.time} min</span>
+                  {showDetail.time_prep > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Prep. {formatTime(showDetail.time_prep)}</span>}
+                  {showDetail.time_cook > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Cuisson {formatTime(showDetail.time_cook)}</span>}
+                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Total {formatTime(showDetail.time)}</span>
                   {autoCostDetail !== null
                     ? <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>~{autoCostDetail} CHF <span style={{ fontWeight: '400', opacity: 0.7 }}>calculé</span></span>
                     : showDetail.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>~{showDetail.cost} CHF</span>
