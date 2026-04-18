@@ -38,11 +38,38 @@ const TAG = {
 }
 
 const EMPTY_FORM = {
-  title: '', source: '', url: '', emoji: '🍳', time: '', cost: '',
-  cats: [], tags: [], servings: 4,
+  title: '', source: '', url: '', emoji: '🍳',
+  time_prep: '', time_cook: '', time: '',
+  cost: '', cats: [], tags: [], servings: 4,
   ingredients: [], steps: [], notes: '',
-  photo_url: '',
-  nutrition: null
+  photo_url: '', nutrition: null,
+  rating: 0, cook_count: 0
+}
+
+
+// --- Composant etoiles --------------------------------------------------------
+
+function Stars({ value, onChange, size }) {
+  const [hover, setHover] = useState(0)
+  return (
+    <div style={{ display: 'flex', gap: '2px' }}>
+      {[1,2,3,4,5].map(n => (
+        <span
+          key={n}
+          onClick={onChange ? () => onChange(n === value ? 0 : n) : undefined}
+          onMouseEnter={onChange ? () => setHover(n) : undefined}
+          onMouseLeave={onChange ? () => setHover(0) : undefined}
+          style={{
+            fontSize: size || '16px',
+            cursor: onChange ? 'pointer' : 'default',
+            color: n <= (hover || value) ? '#F59E0B' : '#E5E7EB',
+            transition: 'color 0.1s',
+            userSelect: 'none'
+          }}
+        >&#9733;</span>
+      ))}
+    </div>
+  )
 }
 
 // --- Utilitaires --------------------------------------------------------------
@@ -525,11 +552,12 @@ export default function BibliothequePage() {
     const autoCost = computeCost(form.ingredients, priceMap)
     const payload = {
       user_id: user.id, title: form.title, source: form.source, url: form.url, emoji: form.emoji,
-      time: parseInt(form.time) || 30,
+      time_prep: parseInt(form.time_prep) || null, time_cook: parseInt(form.time_cook) || null,
+      time: parseInt(form.time) || (parseInt(form.time_prep) || 0) + (parseInt(form.time_cook) || 0) || 30,
       cost: autoCost !== null ? autoCost : (parseFloat(form.cost) || 0),
       cats: form.cats, tags: form.tags, servings: parseInt(form.servings) || 4,
       ingredients: form.ingredients, steps: form.steps, notes: form.notes, nutrition: form.nutrition || null,
-      photo_url: form.photo_url || ''
+      photo_url: form.photo_url || '', rating: form.rating || 0, cook_count: form.cook_count || 0
     }
     if (editingId) await supabase.from('recipes').update(payload).eq('id', editingId)
     else await supabase.from('recipes').insert(payload)
@@ -544,11 +572,26 @@ export default function BibliothequePage() {
     setConfirmDelete(null); setShowDetail(null); loadRecipes()
   }
 
+  async function rateRecipe(id, rating) {
+    await supabase.from('recipes').update({ rating }).eq('id', id)
+    setShowDetail(d => d ? { ...d, rating } : d)
+    setRecipes(rs => rs.map(r => r.id === id ? { ...r, rating } : r))
+  }
+
+  async function cookRecipe(id) {
+    const recipe = recipes.find(r => r.id === id)
+    if (!recipe) return
+    const newCount = (recipe.cook_count || 0) + 1
+    await supabase.from('recipes').update({ cook_count: newCount }).eq('id', id)
+    setShowDetail(d => d ? { ...d, cook_count: newCount } : d)
+    setRecipes(rs => rs.map(r => r.id === id ? { ...r, cook_count: newCount } : r))
+  }
+
   // -- Helpers formulaire -----------------------------------------------------
 
   function openEdit(recipe) {
     setEditingId(recipe.id)
-    setForm({ title: recipe.title || '', source: recipe.source || '', url: recipe.url || '', emoji: recipe.emoji || '🍳', time: recipe.time || 30, cost: recipe.cost || 0, cats: recipe.cats || [], tags: recipe.tags || [], servings: recipe.servings || 4, ingredients: recipe.ingredients || [], steps: recipe.steps || [], notes: recipe.notes || '', photo_url: recipe.photo_url || '', nutrition: recipe.nutrition || null })
+    setForm({ title: recipe.title || '', source: recipe.source || '', url: recipe.url || '', emoji: recipe.emoji || '🍳', time_prep: recipe.time_prep || '', time_cook: recipe.time_cook || '', time: recipe.time || 30, cost: recipe.cost || 0, cats: recipe.cats || [], tags: recipe.tags || [], servings: recipe.servings || 4, ingredients: recipe.ingredients || [], steps: recipe.steps || [], notes: recipe.notes || '', photo_url: recipe.photo_url || '', nutrition: recipe.nutrition || null, rating: recipe.rating || 0, cook_count: recipe.cook_count || 0 })
     setShowDetail(null); setShowEdit(true)
   }
   function openNew() { setEditingId(null); setForm(EMPTY_FORM); setShowImport(false); setShowEdit(true) }
@@ -606,8 +649,13 @@ export default function BibliothequePage() {
 
       {/* -- Barre actions -- */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
-          style={{ flex: 1, minWidth: '160px', padding: '10px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8' }} />
+        <div style={{ flex: 1, minWidth: '160px', position: 'relative' }}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
+            style={{ width: '100%', padding: '10px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }} />
+          <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: '#aaa' }}>
+            {filteredAndSorted.length}/{recipes.length}
+          </span>
+        </div>
         <button onClick={() => setShowPriceBase(true)}
           style={{ background: 'white', color: '#854F0B', border: '0.5px solid #D4A259', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>💰 Prix</button>
         <button onClick={() => { setShowImport(true); setImportError(''); setImportUrl('') }}
@@ -684,6 +732,10 @@ export default function BibliothequePage() {
                     {r.tags.map(t => <span key={t} style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', background: '#F0F0EC', color: '#666', border: '0.5px solid #e0e0e0' }}>#{t}</span>)}
                   </div>
                 )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                  {r.rating > 0 && <Stars value={r.rating} size="13px" />}
+                  {r.cook_count > 0 && <span style={{ fontSize: '10px', color: '#aaa' }}>cuisine {r.cook_count}x</span>}
+                </div>
               </div>
             </div>
           ))}
@@ -736,7 +788,9 @@ export default function BibliothequePage() {
                   {(showDetail.cats || []).map(cat => TAG[cat] && (
                     <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
                   ))}
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>{showDetail.time} min</span>
+                  {showDetail.time_prep > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Prep. {showDetail.time_prep} min</span>}
+                  {showDetail.time_cook > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Cuisson {showDetail.time_cook} min</span>}
+                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Total {showDetail.time} min</span>
                   {autoCostDetail !== null
                     ? <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>~{autoCostDetail} CHF <span style={{ fontWeight: '400', opacity: 0.7 }}>calculé</span></span>
                     : showDetail.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>~{showDetail.cost} CHF</span>
@@ -833,6 +887,22 @@ export default function BibliothequePage() {
                 <a href={showDetail.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#1D9E75', display: 'block', marginBottom: '1rem', wordBreak: 'break-all' }}>🔗 Voir la recette originale</a>
               )}
 
+              {/* Notation et compteur */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#fafaf8', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '12px', color: '#666' }}>Note :</span>
+                  <Stars value={showDetail.rating || 0} onChange={rating => rateRecipe(showDetail.id, rating)} size="22px" />
+                  {showDetail.rating > 0 && <span style={{ fontSize: '11px', color: '#aaa' }}>{['','Pas top','Bof','Bien','Tres bien','Excellent !'][showDetail.rating]}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {showDetail.cook_count > 0 && <span style={{ fontSize: '12px', color: '#888' }}>Cuisine {showDetail.cook_count} fois</span>}
+                  <button onClick={() => cookRecipe(showDetail.id)}
+                    style={{ padding: '6px 12px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                    + J'ai cuisine cette recette
+                  </button>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec', flexWrap: 'wrap' }}>
                 <button onClick={() => setConfirmDelete(showDetail)} style={{ background: 'none', border: '0.5px solid #E24B4A', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#E24B4A' }}>Supprimer</button>
                 <button onClick={() => shareRecipeByEmail(showDetail, scaledIngredients, detailServings, nutritionDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>✉️ Partager</button>
@@ -883,11 +953,15 @@ export default function BibliothequePage() {
               </div>
             </div>
 
-            {/* Temps · Coût · Personnes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+            {/* Temps prep + cuisson + Coût + Personnes */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Temps (min)</label>
-                <input type="number" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="45" style={S.input} />
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Prep. (min)</label>
+                <input type="number" value={form.time_prep} onChange={e => setForm(f => ({ ...f, time_prep: e.target.value }))} placeholder="15" style={S.input} />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>Cuisson (min)</label>
+                <input type="number" value={form.time_cook} onChange={e => setForm(f => ({ ...f, time_cook: e.target.value }))} placeholder="30" style={S.input} />
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>
