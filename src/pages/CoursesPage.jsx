@@ -108,6 +108,9 @@ export default function CoursesPage() {
   const [checked, setChecked]   = useState(new Set())
   const [loading, setLoading]   = useState(true)
   const [checkedNeutral, setCheckedNeutral] = useState(new Set())
+  const [planningSlots, setPlanningSlots]     = useState([]) // slots ajoutes depuis le planning
+  const [checkedPlanning, setCheckedPlanning] = useState(new Set()) // items coches dans la liste planning
+  const [loadingPlanning, setLoadingPlanning] = useState(true)
   const [recipeSearch, setRecipeSearch]   = useState('')
   const [generalItems, setGeneralItems]   = useState([]) // liste hors cuisine
   const [generalInput, setGeneralInput]   = useState('')
@@ -122,7 +125,51 @@ export default function CoursesPage() {
       setStock(s || [])
       setLoading(false)
     })
+    loadPlanningList()
   }, [user])
+
+  async function loadPlanningList() {
+    setLoadingPlanning(true)
+    // Charger les slots ajoutes + leurs recettes + convives
+    const { data: shData } = await supabase
+      .from('shopping_list')
+      .select('meal_plan_id, meal_plan(*, meal_plan_recipes(*))')
+      .eq('user_id', user.id)
+
+    const { data: recipeData } = await supabase
+      .from('recipes').select('*').eq('user_id', user.id)
+
+    const rMap = {}
+    for (const r of (recipeData || [])) rMap[r.id] = r
+
+    const slots = (shData || []).map(function(sh) {
+      const mp = sh.meal_plan
+      if (!mp) return null
+      return {
+        id: sh.meal_plan_id,
+        jour_index: mp.jour_index,
+        repas: mp.repas,
+        convives: mp.convives || 2,
+        recipes: (mp.meal_plan_recipes || []).map(function(mpr) {
+          return rMap[mpr.recipe_id] || null
+        }).filter(Boolean)
+      }
+    }).filter(Boolean)
+
+    setPlanningSlots(slots)
+    setLoadingPlanning(false)
+  }
+
+  async function removeFromPlanningList(slotId) {
+    await supabase.from('shopping_list').delete().eq('user_id', user.id).eq('meal_plan_id', slotId)
+    setPlanningSlots(function(s) { return s.filter(function(sl) { return sl.id !== slotId }) })
+  }
+
+  async function clearPlanningList() {
+    await supabase.from('shopping_list').delete().eq('user_id', user.id)
+    setPlanningSlots([])
+    setCheckedPlanning(new Set())
+  }
 
   function toggleRecipe(id) {
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -165,6 +212,41 @@ export default function CoursesPage() {
   const recipeNames = selectedRecipes.map(r => r.title)
 
   // Ingredients sous le seuil (stock faible ou epuise), non deja dans la liste recettes
+
+  // Calcul des ingredients depuis les slots du planning
+  const { data: stockData } = { data: stock } // deja charge
+  const planningNeeded = {}
+  for (const slot of planningSlots) {
+    const convives = slot.convives || 2
+    for (const recipe of slot.recipes) {
+      const base = recipe.servings || 2
+      const ratio = convives / base
+      for (const ing of (recipe.ingredients || [])) {
+        const key = ing.name
+        if (!planningNeeded[key]) planningNeeded[key] = { name: ing.name, qty: 0, unit: ing.unit }
+        planningNeeded[key].qty += (ing.qty || 0) * ratio
+      }
+    }
+  }
+
+  const planningList = Object.values(planningNeeded).map(function(item) {
+    const inStock = stock.find(function(s) { return s.name.toLowerCase() === item.name.toLowerCase() })
+    const stockQty = inStock ? inStock.qty : 0
+    const manque = Math.max(0, item.qty - stockQty)
+    return { ...item, inStock: stockQty, manque: Math.ceil(manque * 10) / 10, enStock: manque <= 0, cat: getCat(item.name) }
+  }).sort(function(a, b) { return a.name.localeCompare(b.name, 'fr') })
+
+  const planningAacheter = planningList.filter(function(i) { return !i.enStock && !checkedPlanning.has(i.name) })
+  const planningDispo = planningList.filter(function(i) { return i.enStock })
+  const planningGroups = {}
+  planningAacheter.forEach(function(item) {
+    if (!planningGroups[item.cat]) planningGroups[item.cat] = []
+    planningGroups[item.cat].push(item)
+  })
+
+  const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+  const REPAS_LABELS = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
+
   const stockFaible = stock.filter(s => {
     if (s.seuil > 0 && s.qty <= s.seuil) return true
     if (s.peremption) {
@@ -182,6 +264,83 @@ export default function CoursesPage() {
 
   return (
     <div>
+      {/* Liste depuis le planning */}
+      {!loadingPlanning && planningSlots.length > 0 && (
+        <div style={{ background: 'white', border: '0.5px solid #1D9E75', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#0F6E56' }}>
+                Courses du planning
+              </div>
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                {planningSlots.length} repas · {planningAacheter.length} article(s) a acheter
+              </div>
+            </div>
+            <button onClick={clearPlanningList}
+              style={{ padding: '5px 12px', fontSize: '12px', border: '0.5px solid #E24B4A', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#E24B4A' }}>
+              Tout vider
+            </button>
+          </div>
+
+          {/* Repas inclus */}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            {planningSlots.map(function(slot) {
+              return (
+                <div key={slot.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#E1F5EE', border: '0.5px solid #5DCAA5', fontSize: '11px', color: '#0F6E56' }}>
+                  <span>{JOURS[slot.jour_index]} {slot.repas} ({slot.convives} pers.)</span>
+                  <button onClick={function() { removeFromPlanningList(slot.id) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5DCAA5', fontSize: '12px', padding: 0, lineHeight: 1 }}>x</button>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Liste ingredients */}
+          {planningAacheter.length === 0 && planningDispo.length > 0 && (
+            <div style={{ fontSize: '13px', color: '#1D9E75', textAlign: 'center', padding: '8px' }}>
+              Tout est deja en stock !
+            </div>
+          )}
+
+          {Object.entries(planningGroups).map(function(entry) {
+            var cat = entry[0], items = entry[1]
+            var cs = CAT_STYLE[cat] || CAT_STYLE['Autres']
+            return (
+              <div key={cat} style={{ marginBottom: '10px' }}>
+                <span style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
+                <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
+                  {items.map(function(item) {
+                    return (
+                      <div key={item.name}
+                        onClick={function() { setCheckedPlanning(function(c) { var n = new Set(c); n.has(item.name) ? n.delete(item.name) : n.add(item.name); return n }) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer', background: 'white' }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}></div>
+                        <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
+                        <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>
+                          {item.manque} {item.unit}
+                        </span>
+                        {item.inStock > 0 && <span style={{ fontSize: '11px', color: '#888' }}>({item.inStock} en stock)</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+
+          {planningDispo.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '500', color: '#3B6D11', marginBottom: '5px' }}>Deja en stock</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {planningDispo.map(function(item) {
+                  return <span key={item.name} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#EAF3DE', color: '#3B6D11' }}>{item.name}</span>
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Grille 2 colonnes : stock faible + liste generale */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
 
