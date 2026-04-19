@@ -83,10 +83,24 @@ export default function PlanningPage() {
   const [showInvites, setShowInvites] = useState(null) // { jourIndex, repas }
   const [inviteInput, setInviteInput] = useState('')
 
-  // Carnet d'invites
-  const [showCarnet, setShowCarnet]   = useState(false)
-  const [carnet, setCarnet]           = useState([])
-  const [carnetSearch, setCarnetSearch] = useState('')
+  // Carnet d'invites - 3 onglets
+  const [showCarnet, setShowCarnet]         = useState(false)
+  const [carnetOnglet, setCarnetOnglet]     = useState('invites') // 'invites' | 'invitations' | 'restaurants'
+  const [carnet, setCarnet]                 = useState([])
+  const [carnetSearch, setCarnetSearch]     = useState('')
+
+  // Invitations recues
+  const [invitations, setInvitations]       = useState([])
+  const [showFormInvit, setShowFormInvit]   = useState(false)
+  const [editInvit, setEditInvit]           = useState(null)
+  const [formInvit, setFormInvit]           = useState({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' })
+
+  // Restaurants
+  const [restaurants, setRestaurants]       = useState([])
+  const [showFormResto, setShowFormResto]   = useState(false)
+  const [editResto, setEditResto]           = useState(null)
+  const [formResto, setFormResto]           = useState({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' })
+  const [restoSearch, setRestoSearch]       = useState('')
 
   // Plat libre (sans recette)
   const [showPlatLibre, setShowPlatLibre] = useState(null) // { jourIndex, repas }
@@ -104,7 +118,8 @@ export default function PlanningPage() {
 
   useEffect(() => { loadAll() }, [user])
   useEffect(() => { loadPlan() }, [wKey, user])
-  useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
+  useEffect(() => { if (showCarnet) { loadCarnet(); loadInvitations(); loadRestaurants() } }, [showCarnet, user])
+  useEffect(() => { loadInvitations(); loadRestaurants() }, [wKey, user])
   useEffect(() => { loadShoppingList() }, [user])
 
   async function loadAll() {
@@ -196,6 +211,54 @@ export default function PlanningPage() {
     var rows = toAdd.map(function(id) { return { user_id: user.id, meal_plan_id: id } })
     await supabase.from('shopping_list').upsert(rows, { onConflict: 'user_id,meal_plan_id' })
     setShoppingIds(function(s) { var n = new Set(s); toAdd.forEach(function(id) { n.add(id) }); return n })
+  }
+
+  async function loadInvitations() {
+    var { data } = await supabase.from('invitations_recues').select('*').eq('user_id', user.id).order('date', { ascending: false })
+    setInvitations(data || [])
+  }
+
+  // Invitations/restaurants de la semaine courante pour le planning
+  var invitSemaine = invitations.filter(function(inv) { return inv.semaine === wKey && inv.jour_index !== null && inv.repas })
+  var restoSemaine = restaurants.filter(function(r) { return r.semaine === wKey && r.jour_index !== null && r.repas })
+
+  async function saveInvitation() {
+    if (!formInvit.hote.trim() || !formInvit.date) return
+    var payload = { user_id: user.id, hote: formInvit.hote, date: formInvit.date, menu: formInvit.menu, notes: formInvit.notes, jour_index: formInvit.jour_index !== '' ? parseInt(formInvit.jour_index) : null, repas: formInvit.repas || null, semaine: wKey }
+    if (editInvit) {
+      await supabase.from('invitations_recues').update(payload).eq('id', editInvit.id)
+    } else {
+      await supabase.from('invitations_recues').insert(payload)
+    }
+    setShowFormInvit(false); setEditInvit(null); setFormInvit({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' })
+    loadInvitations()
+  }
+
+  async function deleteInvitation(id) {
+    await supabase.from('invitations_recues').delete().eq('id', id)
+    loadInvitations()
+  }
+
+  async function loadRestaurants() {
+    var { data } = await supabase.from('restaurants').select('*').eq('user_id', user.id).order('date', { ascending: false })
+    setRestaurants(data || [])
+  }
+
+  async function saveRestaurant() {
+    if (!formResto.nom.trim()) return
+    var payload = { user_id: user.id, nom: formResto.nom, adresse: formResto.adresse, date: formResto.date || null, menu: formResto.menu, prix: parseFloat(formResto.prix) || null, note: formResto.note || 0, avis: formResto.avis, jour_index: formResto.jour_index !== '' ? parseInt(formResto.jour_index) : null, repas: formResto.repas || null, semaine: wKey }
+    if (editResto) {
+      await supabase.from('restaurants').update(payload).eq('id', editResto.id)
+    } else {
+      await supabase.from('restaurants').insert(payload)
+    }
+    setShowFormResto(false); setEditResto(null); setFormResto({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' })
+    loadRestaurants()
+  }
+
+  async function deleteRestaurant(id) {
+    await supabase.from('restaurants').delete().eq('id', id)
+    loadRestaurants()
   }
 
   var recipeMap = {}
@@ -475,6 +538,34 @@ export default function PlanningPage() {
                       )
                     })}
 
+                    {/* Entrees invitations */}
+                    {invitSemaine.filter(function(inv) { return inv.jour_index === ji && inv.repas === repas }).map(function(inv) {
+                      return (
+                        <div key={inv.id}
+                          onClick={function() { setCarnetOnglet('invitations'); setShowCarnet(true) }}
+                          style={{ background: '#EFF6FF', border: '0.5px solid #93C5FD', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                          <span style={{ fontSize: '12px', flexShrink: 0 }}>🏠</span>
+                          <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500', color: '#1D4ED8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Invite chez {inv.hote}
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {/* Entrees restaurants */}
+                    {restoSemaine.filter(function(r) { return r.jour_index === ji && r.repas === repas }).map(function(r) {
+                      return (
+                        <div key={r.id}
+                          onClick={function() { setCarnetOnglet('restaurants'); setShowCarnet(true) }}
+                          style={{ background: '#F5F3FF', border: '0.5px solid #C4B5FD', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                          <span style={{ fontSize: '12px', flexShrink: 0 }}>🍽️</span>
+                          <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500', color: '#6D28D9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.nom}
+                          </div>
+                        </div>
+                      )
+                    })}
+
                     {/* Bouton ajouter recette */}
                     <button
                       onClick={function() { setPicker({ jourIndex: ji, repas: repas }); setPickerSearch('') }}
@@ -721,71 +812,295 @@ export default function PlanningPage() {
         </div>
       )}
 
-      {/* Carnet d'invites */}
+      {/* Carnet - 3 onglets */}
       {showCarnet && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '500' }}>Carnet d'invites</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>Historique de tous vos repas partages</div>
-              </div>
-              <button onClick={function() { setShowCarnet(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
-            </div>
-            <input
-              value={carnetSearch}
-              onChange={function(e) { setCarnetSearch(e.target.value) }}
-              placeholder="Rechercher un invite..."
-              style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box' }}
-            />
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '600px', marginTop: '1rem', marginBottom: '1rem' }}>
 
-            {carnet.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{'Invites'}</div>
-                <div style={{ fontSize: '13px' }}>Aucun invite enregistre encore.</div>
-                <div style={{ fontSize: '12px', marginTop: '4px' }}>Ajoutez des invites sur les repas du planning pour les voir apparaitre ici.</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {carnet.filter(function(p) { return !carnetSearch || p.name.toLowerCase().includes(carnetSearch.toLowerCase()) }).sort(function(a, b) { return a.name.localeCompare(b.name) }).map(function(person) {
-                  return (
-                    <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
-                          {person.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: '500' }}>{person.name}</div>
-                          <div style={{ fontSize: '11px', color: '#888' }}>{person.repas.length} repas partage{person.repas.length > 1 ? 's' : ''}</div>
-                        </div>
-                      </div>
-                      <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {person.repas.map(function(r, idx) {
-                          var recipeNames = r.recipe_ids.map(function(rid) {
-                            if (!rid) return null
-                            return recipeMap[rid] ? recipeMap[rid].emoji + ' ' + recipeMap[rid].title : null
-                          }).filter(Boolean)
-                          var menu = r.notes ? [...recipeNames, ...r.notes] : recipeNames
-                          return (
-                            <div key={idx} style={{ fontSize: '12px', color: '#555' }}>
-                              <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {r.repas}</span>
-                              {menu.length > 0 && (
-                                <div style={{ marginTop: '2px', color: '#888', fontSize: '11px' }}>
-                                  {menu.join(', ')}
-                                </div>
-                              )}
-                              {menu.length === 0 && (
-                                <div style={{ marginTop: '2px', color: '#ccc', fontSize: '11px', fontStyle: 'italic' }}>Menu non renseigne</div>
-                              )}
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '16px', fontWeight: '500' }}>Mon carnet culinaire</div>
+              <button onClick={function() { setShowCarnet(false); setShowFormInvit(false); setShowFormResto(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+            </div>
+
+            {/* Onglets */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: '#f5f5f0', borderRadius: '10px', padding: '4px' }}>
+              {[
+                { id: 'invites', label: 'Mes invites', emoji: 'Invites' },
+                { id: 'invitations', label: 'Invitations recues', emoji: 'Invitations' },
+                { id: 'restaurants', label: 'Restaurants', emoji: 'Restaurants' },
+              ].map(function(tab) {
+                return (
+                  <button key={tab.id} onClick={function() { setCarnetOnglet(tab.id); setShowFormInvit(false); setShowFormResto(false) }}
+                    style={{ flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '11px', fontWeight: carnetOnglet === tab.id ? '600' : '400', background: carnetOnglet === tab.id ? 'white' : 'transparent', color: carnetOnglet === tab.id ? '#0F6E56' : '#888', boxShadow: carnetOnglet === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Onglet 1 : Mes invites */}
+            {carnetOnglet === 'invites' && (
+              <div>
+                <input value={carnetSearch} onChange={function(e) { setCarnetSearch(e.target.value) }}
+                  placeholder="Rechercher un invite..."
+                  style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box' }} />
+                {carnet.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>
+                    Ajoutez des invites sur les repas du planning pour les voir ici.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {carnet.filter(function(p) { return !carnetSearch || p.name.toLowerCase().includes(carnetSearch.toLowerCase()) })
+                      .sort(function(a, b) { return a.name.localeCompare(b.name) })
+                      .map(function(person) {
+                        return (
+                          <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
+                                {person.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: '500' }}>{person.name}</div>
+                                <div style={{ fontSize: '11px', color: '#888' }}>{person.repas.length} repas partage{person.repas.length > 1 ? 's' : ''}</div>
+                              </div>
                             </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+                            <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {person.repas.map(function(r, idx) {
+                                var recipeNames = r.recipe_ids.map(function(rid) {
+                                  if (!rid) return null
+                                  return recipeMap[rid] ? recipeMap[rid].emoji + ' ' + recipeMap[rid].title : null
+                                }).filter(Boolean)
+                                var menu = r.notes ? [...recipeNames, ...r.notes] : recipeNames
+                                return (
+                                  <div key={idx} style={{ fontSize: '12px', color: '#555' }}>
+                                    <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {r.repas}</span>
+                                    <div style={{ marginTop: '2px', color: '#888', fontSize: '11px' }}>
+                                      {menu.length > 0 ? menu.join(', ') : <span style={{ fontStyle: 'italic', color: '#ccc' }}>Menu non renseigne</span>}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Onglet 2 : Invitations recues */}
+            {carnetOnglet === 'invitations' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                  <button onClick={function() { setShowFormInvit(true); setEditInvit(null); setFormInvit({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' }) }}
+                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                    + Ajouter
+                  </button>
+                </div>
+
+                {showFormInvit && (
+                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editInvit ? 'Modifier' : 'Nouvelle invitation'}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Chez qui</label>
+                        <input value={formInvit.hote} onChange={function(e) { setFormInvit(function(f) { return { ...f, hote: e.target.value } }) }}
+                          placeholder="Prenom ou nom" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
+                        <input type="date" value={formInvit.date} onChange={function(e) { setFormInvit(function(f) { return { ...f, date: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Jour (planning)</label>
+                        <select value={formInvit.jour_index} onChange={function(e) { setFormInvit(function(f) { return { ...f, jour_index: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
+                          <option value="">-- Choisir --</option>
+                          {JOURS.map(function(j, i) { return <option key={i} value={i}>{j}</option> })}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Repas</label>
+                        <select value={formInvit.repas} onChange={function(e) { setFormInvit(function(f) { return { ...f, repas: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
+                          <option value="">-- Choisir --</option>
+                          {REPAS.map(function(r) { return <option key={r} value={r}>{r}</option> })}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Menu servi</label>
+                      <input value={formInvit.menu} onChange={function(e) { setFormInvit(function(f) { return { ...f, menu: e.target.value } }) }}
+                        placeholder="Ex: Fondue savoyarde, tarte aux pommes..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Notes</label>
+                      <input value={formInvit.notes} onChange={function(e) { setFormInvit(function(f) { return { ...f, notes: e.target.value } }) }}
+                        placeholder="Impressions, idees a retenir..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button onClick={function() { setShowFormInvit(false); setEditInvit(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
+                      <button onClick={saveInvitation} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
+                    </div>
+                  </div>
+                )}
+
+                {invitations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune invitation enregistree.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {invitations.map(function(inv) {
+                      return (
+                        <div key={inv.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500' }}>Chez {inv.hote}</div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button onClick={function() { setEditInvit(inv); setFormInvit({ hote: inv.hote, date: inv.date, menu: inv.menu || '', notes: inv.notes || '' }); setShowFormInvit(true) }}
+                                style={{ fontSize: '11px', padding: '3px 8px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>Editer</button>
+                              <button onClick={function() { deleteInvitation(inv.id) }}
+                                style={{ fontSize: '11px', padding: '3px 8px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#FCEBEB', color: '#791F1F' }}>x</button>
+                            </div>
+                          </div>
+                          {inv.date && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{new Date(inv.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                          {inv.menu && <div style={{ fontSize: '12px', color: '#555', marginBottom: '2px' }}>Menu : {inv.menu}</div>}
+                          {inv.notes && <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>{inv.notes}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Onglet 3 : Restaurants */}
+            {carnetOnglet === 'restaurants' && (
+              <div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <input value={restoSearch} onChange={function(e) { setRestoSearch(e.target.value) }}
+                    placeholder="Rechercher un restaurant..."
+                    style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
+                  <button onClick={function() { setShowFormResto(true); setEditResto(null); setFormResto({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' }) }}
+                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                    + Ajouter
+                  </button>
+                </div>
+
+                {showFormResto && (
+                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editResto ? 'Modifier' : 'Nouveau restaurant'}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Nom du restaurant</label>
+                        <input value={formResto.nom} onChange={function(e) { setFormResto(function(f) { return { ...f, nom: e.target.value } }) }}
+                          placeholder="Ex: Le Petit Bistrot" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
+                        <input type="date" value={formResto.date} onChange={function(e) { setFormResto(function(f) { return { ...f, date: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Adresse</label>
+                      <input value={formResto.adresse} onChange={function(e) { setFormResto(function(f) { return { ...f, adresse: e.target.value } }) }}
+                        placeholder="Rue, ville..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Jour (planning)</label>
+                        <select value={formResto.jour_index} onChange={function(e) { setFormResto(function(f) { return { ...f, jour_index: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
+                          <option value="">-- Choisir --</option>
+                          {JOURS.map(function(j, i) { return <option key={i} value={i}>{j}</option> })}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Repas</label>
+                        <select value={formResto.repas} onChange={function(e) { setFormResto(function(f) { return { ...f, repas: e.target.value } }) }}
+                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
+                          <option value="">-- Choisir --</option>
+                          {REPAS.map(function(r) { return <option key={r} value={r}>{r}</option> })}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Ce que j'ai mange</label>
+                      <input value={formResto.menu} onChange={function(e) { setFormResto(function(f) { return { ...f, menu: e.target.value } }) }}
+                        placeholder="Ex: Entrecote, tiramisu..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Prix du repas</label>
+                        <input type="number" step="0.5" value={formResto.prix} onChange={function(e) { setFormResto(function(f) { return { ...f, prix: e.target.value } }) }}
+                          placeholder="45.00" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Note (1-5)</label>
+                        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                          {[1,2,3,4,5].map(function(n) {
+                            return (
+                              <span key={n} onClick={function() { setFormResto(function(f) { return { ...f, note: n } }) }}
+                                style={{ fontSize: '20px', cursor: 'pointer', color: n <= formResto.note ? '#F59E0B' : '#E5E7EB' }}>
+                                &#9733;
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Avis / Notes</label>
+                      <input value={formResto.avis} onChange={function(e) { setFormResto(function(f) { return { ...f, avis: e.target.value } }) }}
+                        placeholder="Ambiance, service, a retenir..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button onClick={function() { setShowFormResto(false); setEditResto(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
+                      <button onClick={saveRestaurant} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
+                    </div>
+                  </div>
+                )}
+
+                {restaurants.filter(function(r) { return !restoSearch || r.nom.toLowerCase().includes(restoSearch.toLowerCase()) || (r.adresse || '').toLowerCase().includes(restoSearch.toLowerCase()) }).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucun restaurant enregistre.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {restaurants.filter(function(r) { return !restoSearch || r.nom.toLowerCase().includes(restoSearch.toLowerCase()) || (r.adresse || '').toLowerCase().includes(restoSearch.toLowerCase()) }).map(function(r) {
+                      return (
+                        <div key={r.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.nom}</div>
+                              {r.note > 0 && (
+                                <div style={{ fontSize: '13px', color: '#F59E0B' }}>
+                                  {'★'.repeat(r.note)}{'☆'.repeat(5 - r.note)}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {r.prix && <span style={{ fontSize: '12px', fontWeight: '500', color: '#0F6E56' }}>{r.prix} CHF</span>}
+                              <button onClick={function() { setEditResto(r); setFormResto({ nom: r.nom, adresse: r.adresse || '', date: r.date || '', menu: r.menu || '', prix: r.prix || '', note: r.note || 0, avis: r.avis || '' }); setShowFormResto(true) }}
+                                style={{ fontSize: '11px', padding: '3px 8px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>Editer</button>
+                              <button onClick={function() { deleteRestaurant(r.id) }}
+                                style={{ fontSize: '11px', padding: '3px 8px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#FCEBEB', color: '#791F1F' }}>x</button>
+                            </div>
+                          </div>
+                          {r.adresse && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{r.adresse}</div>}
+                          {r.date && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{new Date(r.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                          {r.menu && <div style={{ fontSize: '12px', color: '#555', marginBottom: '2px' }}>Menu : {r.menu}</div>}
+                          {r.avis && <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>{r.avis}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       )}
