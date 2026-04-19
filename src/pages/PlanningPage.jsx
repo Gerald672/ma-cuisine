@@ -40,11 +40,15 @@ function getCat(name) {
 
 function getSemaineFromDate(dateStr) {
   if (!dateStr) return null
-  var d = new Date(dateStr)
-  var day = d.getDay() || 7
+  // Parser la date sans conversion timezone (YYYY-MM-DD)
+  var parts = dateStr.split('-')
+  if (parts.length !== 3) return null
+  var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+  var day = d.getDay() || 7 // 1=lundi, 7=dimanche
   d.setDate(d.getDate() - day + 1)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10)
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0')
 }
 
 function getLundi(offset) {
@@ -829,7 +833,7 @@ export default function PlanningPage() {
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '16px', fontWeight: '500' }}>Mon carnet culinaire</div>
+              <div style={{ fontSize: '16px', fontWeight: '500' }}>Carnet invitations culinaire</div>
               <button onClick={function() { setShowCarnet(false); setShowFormInvit(false); setShowFormResto(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
             </div>
 
