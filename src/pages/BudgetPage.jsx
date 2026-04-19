@@ -87,6 +87,8 @@ export default function BudgetPage() {
   const [rates, setRates]             = useState({ CHF_EUR: 0.95, EUR_CHF: 1.053 })
   const [loadingRates, setLoadingRates] = useState(false)
   const [seedingPrices, setSeedingPrices] = useState(false)
+  const [planningSlots, setPlanningSlots]   = useState([])
+  const [loadingPlanning, setLoadingPlanning] = useState(true)
 
   useEffect(() => { loadAll() }, [user])
 
@@ -103,6 +105,7 @@ export default function BudgetPage() {
     setPriceMap(map)
     if (prefData && prefData.currency) setCurrency(prefData.currency)
     fetchRates()
+    loadPlanningBudget()
     setLoading(false)
   }
 
@@ -113,6 +116,38 @@ export default function BudgetPage() {
       if (resp.ok) { const d = await resp.json(); setRates(d) }
     } catch (e) {}
     setLoadingRates(false)
+  }
+
+  async function loadPlanningBudget() {
+    setLoadingPlanning(true)
+    // Charger les slots de la shopping_list avec leurs recettes et convives
+    const { data: shData } = await supabase
+      .from('shopping_list')
+      .select('meal_plan_id, meal_plan(*,  meal_plan_recipes(*))')
+      .eq('user_id', user.id)
+
+    const { data: recipeData } = await supabase
+      .from('recipes').select('*').eq('user_id', user.id)
+
+    const rMap = {}
+    for (const r of (recipeData || [])) rMap[r.id] = r
+
+    const slots = (shData || []).map(function(sh) {
+      const mp = sh.meal_plan
+      if (!mp) return null
+      return {
+        id: sh.meal_plan_id,
+        jour_index: mp.jour_index,
+        repas: mp.repas,
+        convives: mp.convives || 2,
+        recipes: (mp.meal_plan_recipes || []).map(function(mpr) {
+          return rMap[mpr.recipe_id] || null
+        }).filter(Boolean)
+      }
+    }).filter(Boolean)
+
+    setPlanningSlots(slots)
+    setLoadingPlanning(false)
   }
 
   async function loadPriceMap() {
@@ -216,10 +251,92 @@ export default function BudgetPage() {
     !prixSearch || p.name.toLowerCase().includes(prixSearch.toLowerCase())
   )
 
+  // Budget depuis le planning
+  const planningIngredients = {}
+  for (const slot of planningSlots) {
+    const convives = slot.convives || 2
+    for (const recipe of slot.recipes) {
+      const base = recipe.servings || 2
+      const ratio = convives / base
+      for (const ing of (recipe.ingredients || [])) {
+        const key = ing.name
+        if (!planningIngredients[key]) planningIngredients[key] = { name: ing.name, qty: 0, unit: ing.unit }
+        planningIngredients[key].qty += (ing.qty || 0) * ratio
+      }
+    }
+  }
+  const planningTotal = Object.values(planningIngredients).reduce(function(sum, ing) {
+    return sum + calculerCout(ing, 1, priceMap, overrides)
+  }, 0)
+  const planningPersonnes = planningSlots.length > 0
+    ? Math.round(planningSlots.reduce(function(s, sl) { return s + sl.convives }, 0) / planningSlots.length)
+    : 0
+  const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
   return (
     <div>
+      {/* Budget depuis le planning */}
+      {!loadingPlanning && planningSlots.length > 0 && (
+        <div style={{ background: 'white', border: '0.5px solid #1D9E75', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#0F6E56' }}>Budget de la semaine</div>
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                {planningSlots.length} repas planifies · {planningPersonnes} pers. en moyenne
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '28px', fontWeight: '600', color: '#0F6E56' }}>
+                {toDisplay(planningTotal).toFixed(2)} {sym}
+              </div>
+              {planningPersonnes > 0 && (
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  soit {toDisplay(planningTotal / planningPersonnes).toFixed(2)} {sym} / pers.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Detail par repas */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {planningSlots.map(function(slot) {
+              var slotTotal = slot.recipes.reduce(function(sum, recipe) {
+                var ratio = slot.convives / (recipe.servings || 2)
+                return sum + (recipe.ingredients || []).reduce(function(s, ing) {
+                  return s + calculerCout(ing, ratio, priceMap, overrides)
+                }, 0)
+              }, 0)
+              return (
+                <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f5f5f0', borderRadius: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#333' }}>
+                      {JOURS[slot.jour_index]} - {slot.repas}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#888', marginLeft: '8px' }}>
+                      {slot.convives} pers.
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#888', marginTop: '1px' }}>
+                      {slot.recipes.map(function(r) { return (r.emoji || '') + ' ' + r.title }).join(', ')}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56', flexShrink: 0, marginLeft: '12px' }}>
+                    {toDisplay(slotTotal).toFixed(2)} {sym}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loadingPlanning && planningSlots.length === 0 && (
+        <div style={{ background: '#f5f5f0', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', textAlign: 'center', fontSize: '13px', color: '#aaa' }}>
+          Aucun repas dans ta liste de courses. Ajoute des repas depuis le planning pour voir le budget ici.
+        </div>
+      )}
+
       <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>Simuler le cout d'un repas</div>
