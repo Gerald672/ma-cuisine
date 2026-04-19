@@ -64,7 +64,9 @@ function formatDate(date) {
 }
 
 function weekKey(lundi) {
-  return lundi.toISOString().slice(0, 10)
+  return lundi.getFullYear() + '-' +
+    String(lundi.getMonth() + 1).padStart(2, '0') + '-' +
+    String(lundi.getDate()).padStart(2, '0')
 }
 
 // plan structure:
