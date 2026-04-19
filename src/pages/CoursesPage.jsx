@@ -26,6 +26,12 @@ const ING_CATS = {
   'poulet': 'Viande & poisson', 'bœuf': 'Viande & poisson', 'saumon': 'Viande & poisson', 'lardon': 'Viande & poisson',
 }
 
+function getPeremptionDays(dateStr) {
+  if (!dateStr) return null
+  var today = new Date(); today.setHours(0,0,0,0)
+  return Math.round((new Date(dateStr) - today) / 86400000)
+}
+
 function getCat(name) {
   const lower = (name || '').toLowerCase()
   for (const [key, cat] of Object.entries(ING_CATS)) {
@@ -159,7 +165,14 @@ export default function CoursesPage() {
   const recipeNames = selectedRecipes.map(r => r.title)
 
   // Ingredients sous le seuil (stock faible ou epuise), non deja dans la liste recettes
-  const stockFaible = stock.filter(s => s.seuil > 0 && s.qty <= s.seuil)
+  const stockFaible = stock.filter(s => {
+    if (s.seuil > 0 && s.qty <= s.seuil) return true
+    if (s.peremption) {
+      var days = getPeremptionDays(s.peremption)
+      if (days !== null && days <= 7) return true
+    }
+    return false
+  })
 
   function toggleNeutral(name) {
     setCheckedNeutral(c => { const n = new Set(c); n.has(name) ? n.delete(name) : n.add(name); return n })
@@ -209,8 +222,16 @@ export default function CoursesPage() {
                     {isChecked ? '✓' : ''}
                   </div>
                   <div style={{ flex: 1, fontSize: '13px', fontWeight: '500' }}>{item.name}</div>
-                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: etat.bg, color: etat.color }}>{etat.label}</span>
+                    {item.peremption && (function() {
+                      var days = getPeremptionDays(item.peremption)
+                      if (days === null) return null
+                      var bg = days < 0 ? '#FCEBEB' : days <= 3 ? '#FCEBEB' : '#FAEEDA'
+                      var color = days < 0 ? '#791F1F' : days <= 3 ? '#791F1F' : '#854F0B'
+                      var label = days < 0 ? 'Perime' : 'Exp. ' + days + 'j'
+                      return <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: bg, color: color }}>{label}</span>
+                    })()}
                     <span style={{ padding: '2px 6px', borderRadius: '6px', fontSize: '10px', background: catStyle.bg, color: catStyle.color }}>{item.cat}</span>
                   </div>
                 </div>
