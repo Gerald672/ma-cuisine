@@ -1,0 +1,78 @@
+name: Sauvegarde automatique Ma Cuisine
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Tous les dimanches a 3h du matin
+  workflow_dispatch:       # Permet aussi de lancer manuellement
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sauvegarde des donnees Supabase
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          
+          # Recuperer toutes les tables via l'API Supabase
+          echo "Debut de la sauvegarde $DATE"
+          
+          fetch_table() {
+            TABLE=$1
+            curl -s \
+              -H "apikey: ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+              -H "Accept: application/json" \
+              "${{ secrets.SUPABASE_URL }}/rest/v1/$TABLE?select=*&limit=10000"
+          }
+          
+          # Creer le fichier JSON de backup
+          cat > backup-$DATE.json << EOF
+          {
+            "date": "$DATE",
+            "source": "github-actions-auto",
+            "data": {
+              "recipes": $(fetch_table recipes),
+              "stock": $(fetch_table stock),
+              "ingredient_prices": $(fetch_table ingredient_prices),
+              "meal_plan": $(fetch_table meal_plan),
+              "meal_plan_recipes": $(fetch_table meal_plan_recipes),
+              "ingredient_nutrition": $(fetch_table ingredient_nutrition),
+              "user_preferences": $(fetch_table user_preferences),
+              "share_codes": $(fetch_table share_codes)
+            }
+          }
+          EOF
+          
+          echo "Fichier backup-$DATE.json cree"
+          ls -lh backup-$DATE.json
+
+      - name: Pousser la sauvegarde dans le repo prive
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          
+          # Configurer git
+          git config --global user.email "backup@ma-cuisine.app"
+          git config --global user.name "Ma Cuisine Backup Bot"
+          
+          # Cloner le repo de backup
+          git clone https://x-access-token:${{ secrets.BACKUP_REPO_TOKEN }}@github.com/Gerald672/ma-cuisine-backups.git backup-repo
+          
+          # Copier le fichier de backup
+          cp backup-$DATE.json backup-repo/
+          
+          # Garder seulement les 12 derniers backups (3 mois)
+          cd backup-repo
+          ls -t backup-*.json | tail -n +13 | xargs -r rm
+          
+          # Committer et pousser
+          git add .
+          git commit -m "Backup automatique $DATE" || echo "Rien a sauvegarder"
+          git push
+          
+          echo "Sauvegarde poussee dans ma-cuisine-backups"
+
+      - name: Confirmation
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          echo "Sauvegarde du $DATE terminee avec succes !"
