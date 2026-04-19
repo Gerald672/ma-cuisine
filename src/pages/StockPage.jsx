@@ -158,7 +158,7 @@ function BarcodeScanner({ onResult, onClose }) {
           </div>
           <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>Ou saisis le code manuellement :</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input autoFocus value={manualCode} onChange={e => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
+            <input autoFocus value={manualCode} onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
               onKeyDown={e => e.key === 'Enter' && submitManual()} placeholder="3017620422003" maxLength={14}
               style={{ flex: 1, padding: '10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '15px', outline: 'none', fontFamily: 'monospace', textAlign: 'center' }} />
           </div>
@@ -222,7 +222,7 @@ function BarcodeScanner({ onResult, onClose }) {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
-          <input value={manualCode} onChange={e => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
+          <input value={manualCode} onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
             onKeyDown={e => e.key === 'Enter' && submitManual()}
             placeholder="Ou saisir le code..." maxLength={14}
             style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }} />
