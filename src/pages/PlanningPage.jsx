@@ -518,6 +518,10 @@ export default function PlanningPage() {
 
                 var isDragOver = dragOver && dragOver.jourIndex === ji && dragOver.repas === repas
                 var isDragSrc  = dragSrc  && dragSrc.jourIndex  === ji && dragSrc.repas  === repas
+                var hasInvit = invitSemaine.some(function(inv) { return parseInt(inv.jour_index) === ji && inv.repas === repas })
+                var hasResto = restoSemaine.some(function(r) { return parseInt(r.jour_index) === ji && r.repas === repas })
+                var hasExternal = hasInvit || hasResto
+
                 return (
                   <div key={repas}
                     draggable={slotRecipes.length > 0}
@@ -588,24 +592,24 @@ export default function PlanningPage() {
                     })}
 
                     {/* Bouton ajouter recette */}
-                    <button
+                    {!hasExternal && <button
                       onClick={function() { setPicker({ jourIndex: ji, repas: repas }); setPickerSearch('') }}
                       style={{ width: '100%', border: '1px dashed #ddd', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
                       onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
                       onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#ccc' }}
                     >
                       + {slotRecipes.length === 0 ? 'Ajouter' : 'Ajouter plat'}
-                    </button>
+                    </button>}
 
                     {/* Bouton plat libre */}
-                    <button
+                    {!hasExternal && <button
                       onClick={function() { setShowPlatLibre({ jourIndex: ji, repas: repas }); setPlatLibreInput('') }}
                       style={{ width: '100%', border: '1px dashed #bbf7d0', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#86efac', fontSize: '11px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
                       onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
                       onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#bbf7d0'; e.currentTarget.style.color = '#86efac' }}
                     >
                       + Plat libre
-                    </button>
+                    </button>}
 
                     {/* Convives + invites (visible si slot existe) */}
                     {slot && (
