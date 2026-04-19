@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-const CATEGORIES = ['Épicerie', 'Frais', 'Fruits & légumes', 'Produits laitiers', 'Viande & poisson', 'Congélateur', 'Herbes & épices']
+const CATEGORIES = ['Épicerie', 'Frais', 'Fruits & légumes', 'Produits laitiers', 'Viande & poisson', 'Surgelés', 'Congélateur', 'Herbes & épices']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unite(s)', 'sachet(s)', 'boite(s)']
 
 const CAT_STYLE = {
@@ -359,8 +359,32 @@ function getEtat(item) {
       var cat = guessCat(name, product.categories || '')
       setScanStatus('Produit trouve : ' + name)
       setScanLoading(false)
-      setForm({ name, qty: qty || '', unit, cat, seuil: '', peremption: '' })
-      setEditItem(null)
+
+      // Verifier si l'article existe deja dans le stock
+      var nameLower = name.toLowerCase()
+      var existing = stock.find(function(s) {
+        return s.name.toLowerCase() === nameLower ||
+               s.name.toLowerCase().includes(nameLower) ||
+               nameLower.includes(s.name.toLowerCase())
+      })
+
+      if (existing) {
+        // Article trouve -> ouvrir en mode edition avec quantite additionnelle
+        setScanStatus('Produit trouve : ' + name + ' — deja dans le stock, tu peux ajuster la quantite')
+        setEditItem(existing)
+        setForm({
+          name: existing.name,
+          qty: qty ? (parseFloat(existing.qty) || 0) + parseFloat(qty) : existing.qty,
+          unit: existing.unit,
+          cat: existing.cat,
+          seuil: existing.seuil || '',
+          peremption: existing.peremption || ''
+        })
+      } else {
+        // Nouvel article
+        setEditItem(null)
+        setForm({ name, qty: qty || '', unit, cat, seuil: '', peremption: '' })
+      }
       setShowModal(true)
     } catch (e) {
       setScanStatus('Erreur de connexion. Verifie ta connexion internet.')
