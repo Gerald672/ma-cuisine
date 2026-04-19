@@ -31,144 +31,136 @@ function guessCat(name, offCat) {
   return 'Épicerie'
 }
 
-// Scanner codes barres
+// Scanner codes barres - capture photo puis analyse
 function BarcodeScanner({ onResult, onClose }) {
-  const videoRef    = useRef(null)
-  const canvasRef   = useRef(null)
-  const streamRef   = useRef(null)
-  const rafRef      = useRef(null)
+  const videoRef  = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
   const [ready, setReady]           = useState(false)
+  const [scanning, setScanning]     = useState(false)
   const [errorType, setErrorType]   = useState('')
   const [manualCode, setManualCode] = useState('')
+  const [hint, setHint]             = useState('')
 
   useEffect(() => {
     startCamera()
-    return stopAll
+    return function() {
+      if (streamRef.current) streamRef.current.getTracks().forEach(function(t) { t.stop() })
+    }
   }, [])
 
   async function startCamera() {
     try {
       var stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       })
       streamRef.current = stream
       var video = videoRef.current
       if (!video) return
       video.srcObject = stream
-      video.onloadedmetadata = function() {
-        video.play()
-        setReady(true)
-        startScan()
-      }
+      video.play()
+      video.oncanplay = function() { setReady(true) }
     } catch(e) {
       if (e.name === 'NotAllowedError') setErrorType('PERMISSION_DENIED')
-      else if (e.name === 'NotFoundError') setErrorType('NO_CAMERA')
       else setErrorType('OTHER')
     }
   }
 
-  function stopAll() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    if (streamRef.current) streamRef.current.getTracks().forEach(function(t) { t.stop() })
-  }
+  // L'utilisateur appuie sur le bouton -> on capture une image et on analyse
+  async function captureAndScan() {
+    var video = videoRef.current
+    var canvas = canvasRef.current
+    if (!video || !canvas) return
+    setScanning(true)
+    setHint('')
 
-  function startScan() {
-    // Priorite 1 : BarcodeDetector natif (Chrome Android)
+    // Capturer le frame actuel en haute resolution
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    var ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0)
+
+    // Essai 1 : BarcodeDetector natif
     if ('BarcodeDetector' in window) {
-      var detector = new window.BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code']
-      })
-      var tick = async function() {
-        var video = videoRef.current
-        if (!video || video.readyState < 2) { rafRef.current = requestAnimationFrame(tick); return }
-        try {
-          var results = await detector.detect(video)
-          if (results && results.length > 0) {
-            stopAll()
-            onResult(results[0].rawValue)
-            return
-          }
-        } catch(e) {}
-        rafRef.current = requestAnimationFrame(tick)
-      }
-      rafRef.current = requestAnimationFrame(tick)
-      return
+      try {
+        var detector = new window.BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code']
+        })
+        var results = await detector.detect(canvas)
+        if (results && results.length > 0) {
+          stopAndReturn(results[0].rawValue)
+          return
+        }
+      } catch(e) {}
     }
 
-    // Priorite 2 : lecture canvas + ZXing WASM
-    // Si aucun des deux ne marche -> afficher saisie manuelle en hint
-    scanWithCanvas()
-  }
+    // Essai 2 : envoyer l'image a Open Food Facts via leur API scan
+    // (pas possible directement, mais on peut essayer via un service tiers)
 
-  async function scanWithCanvas() {
-    // Charger ZXing si pas dispo
-    if (!window.ZXingWasm) {
-      try {
+    // Essai 3 : lire les pixels et chercher manuellement via API externe
+    // On convertit le canvas en blob et on appelle quagga via worker
+    try {
+      var blob = await new Promise(function(res) { canvas.toBlob(res, 'image/jpeg', 0.95) })
+      var url = URL.createObjectURL(blob)
+
+      // Charger Quagga si pas dispo
+      if (!window.Quagga) {
         await new Promise(function(res, rej) {
           var s = document.createElement('script')
-          s.src = 'https://cdn.jsdelivr.net/npm/zxing-wasm@1.2.5/dist/full/zxing-wasm.js'
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js'
           s.onload = res; s.onerror = rej
           document.head.appendChild(s)
         })
-      } catch(e) {
-        // ZXing pas disponible non plus, juste la saisie manuelle
-        return
       }
-    }
 
-    var tick = async function() {
-      var video = videoRef.current
-      var canvas = canvasRef.current
-      if (!video || !canvas || video.readyState < 2) {
-        rafRef.current = requestAnimationFrame(tick); return
-      }
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      var ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0)
-      try {
-        if (window.ZXingWasm && window.ZXingWasm.readBarcodesFromImageData) {
-          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          var results = await window.ZXingWasm.readBarcodesFromImageData(imageData, {
-            formats: ['EAN-13', 'EAN-8', 'UPC-A', 'Code128'],
-            tryHarder: true
-          })
-          if (results && results.length > 0 && results[0].text) {
-            stopAll()
-            onResult(results[0].text)
-            return
+      await new Promise(function(resolve) {
+        window.Quagga.decodeSingle({
+          decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader'] },
+          locate: true,
+          src: url
+        }, function(result) {
+          URL.revokeObjectURL(url)
+          if (result && result.codeResult && result.codeResult.code) {
+            stopAndReturn(result.codeResult.code)
+          } else {
+            setHint('Code non detecte. Rapproche-toi et reessaie.')
+            setScanning(false)
           }
-        }
-      } catch(e) {}
-      rafRef.current = requestAnimationFrame(tick)
+          resolve()
+        })
+      })
+    } catch(e) {
+      setHint('Erreur. Essaie la saisie manuelle.')
+      setScanning(false)
     }
-    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function stopAndReturn(code) {
+    if (streamRef.current) streamRef.current.getTracks().forEach(function(t) { t.stop() })
+    onResult(code)
   }
 
   function submitManual() {
-    if (manualCode.length >= 8) { stopAll(); onResult(manualCode) }
+    if (manualCode.length >= 8) {
+      if (streamRef.current) streamRef.current.getTracks().forEach(function(t) { t.stop() })
+      onResult(manualCode)
+    }
   }
 
-  // Ecran erreur
   if (errorType) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
         <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>{errorType === 'PERMISSION_DENIED' ? '🔒' : '📵'}</div>
-          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
-            {errorType === 'PERMISSION_DENIED' ? 'Permission camera refusee' : 'Camera indisponible'}
-          </div>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔒</div>
+          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>Permission camera refusee</div>
           <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
-            {errorType === 'PERMISSION_DENIED'
-              ? 'Dans Chrome : icone cadenas dans la barre adresse → Camera → Autoriser, puis recharge la page.'
-              : 'Impossible d'acceder a la camera sur cet appareil.'}
+            Dans Chrome : icone cadenas dans la barre adresse → Camera → Autoriser.
           </div>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: '#555', marginBottom: '8px' }}>Tu peux aussi saisir le code manuellement :</div>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>Ou saisis le code manuellement :</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <input autoFocus value={manualCode} onChange={e => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
-              onKeyDown={e => e.key === 'Enter' && submitManual()}
-              placeholder="3017620422003" maxLength={14}
-              style={{ flex: 1, padding: '10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '15px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }} />
+              onKeyDown={e => e.key === 'Enter' && submitManual()} placeholder="3017620422003" maxLength={14}
+              style={{ flex: 1, padding: '10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '15px', outline: 'none', fontFamily: 'monospace', textAlign: 'center' }} />
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
             <button onClick={submitManual} disabled={manualCode.length < 8}
@@ -184,16 +176,16 @@ function BarcodeScanner({ onResult, onClose }) {
     )
   }
 
-  // Ecran scanner
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(0,0,0,0.6)' }}>
         <div style={{ color: 'white', fontSize: '15px', fontWeight: '500' }}>Scanner un code barres</div>
-        <button onClick={() => { stopAll(); onClose() }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>x</button>
+        <button onClick={() => { if (streamRef.current) streamRef.current.getTracks().forEach(function(t) { t.stop() }); onClose() }}
+          style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>x</button>
       </div>
 
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
-        <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Cadre de visee */}
@@ -205,28 +197,40 @@ function BarcodeScanner({ onResult, onClose }) {
               <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
               <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
               <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', top: '50%', left: '8%', right: '8%', height: '2px', background: 'rgba(29,158,117,0.7)', transform: 'translateY(-50%)' }} />
+              <div style={{ position: 'absolute', top: '50%', left: '5%', right: '5%', height: '2px', background: 'rgba(29,158,117,0.8)', transform: 'translateY(-50%)' }} />
             </div>
           </div>
         )}
 
-        {!ready && !errorType && (
+        {!ready && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ color: 'white', fontSize: '14px' }}>Demarrage...</div>
           </div>
         )}
       </div>
 
-      <div style={{ background: 'rgba(0,0,0,0.8)', padding: '10px 14px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <input value={manualCode} onChange={e => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
-          onKeyDown={e => e.key === 'Enter' && submitManual()}
-          placeholder="Ou saisir le code manuellement..."
-          maxLength={14}
-          style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }} />
-        <button onClick={submitManual} disabled={manualCode.length < 8}
-          style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
-          OK
+      {/* Bouton capture + hint */}
+      <div style={{ background: 'rgba(0,0,0,0.85)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+        {hint && <div style={{ color: '#EF9F27', fontSize: '12px', textAlign: 'center' }}>{hint}</div>}
+
+        <button onClick={captureAndScan} disabled={!ready || scanning}
+          style={{ width: '64px', height: '64px', borderRadius: '50%', background: scanning ? '#888' : '#1D9E75', border: '4px solid white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+          {scanning ? '⏳' : '📷'}
         </button>
+        <div style={{ color: '#aaa', fontSize: '12px' }}>
+          {scanning ? 'Analyse en cours...' : 'Appuie pour scanner'}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+          <input value={manualCode} onChange={e => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
+            onKeyDown={e => e.key === 'Enter' && submitManual()}
+            placeholder="Ou saisir le code..." maxLength={14}
+            style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }} />
+          <button onClick={submitManual} disabled={manualCode.length < 8}
+            style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
+            OK
+          </button>
+        </div>
       </div>
     </div>
   )
