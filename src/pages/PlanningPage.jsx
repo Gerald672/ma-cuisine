@@ -127,7 +127,10 @@ export default function PlanningPage() {
   const [dragOver, setDragOver] = useState(null)
 
   // Shopping list
-  const [shoppingIds, setShoppingIds] = useState(new Set())
+  const [shoppingIds, setShoppingIds]   = useState(new Set())
+  // Notation apres cuisine
+  const [showRating, setShowRating]     = useState(null)
+  const [pendingRating, setPendingRating] = useState(0)
  // meal_plan ids ajoutes aux courses
 
   const lundi = getLundi(weekOffset)
