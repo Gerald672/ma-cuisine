@@ -127,7 +127,8 @@ export default function PlanningPage() {
   const [dragOver, setDragOver] = useState(null)
 
   // Shopping list
-  const [shoppingIds, setShoppingIds] = useState(new Set()) // meal_plan ids ajoutes aux courses
+  const [shoppingIds, setShoppingIds] = useState(new Set())
+ // meal_plan ids ajoutes aux courses
 
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
@@ -194,6 +195,47 @@ export default function PlanningPage() {
       }
     }
     setCarnet(Object.entries(personMap).map(function(e) { return { name: e[0], repas: e[1] } }))
+  }
+
+  async function markAsCoooked(slot, convives) {
+    if (slot.cooked) return
+    // Deduire les ingredients du stock
+    var stockData = (await supabase.from('stock').select('*').eq('user_id', user.id)).data || []
+    for (var sr of slot.recipes) {
+      var recipe = recipeMap[sr.recipe_id]
+      if (!recipe) continue
+      var ratio = convives / (recipe.servings || 2)
+      for (var ing of (recipe.ingredients || [])) {
+        var stockItem = stockData.find(function(s) {
+          return s.name.toLowerCase() === ing.name.toLowerCase()
+        })
+        if (stockItem) {
+          var newQty = Math.max(0, (stockItem.qty || 0) - (ing.qty || 0) * ratio)
+          await supabase.from('stock').update({ qty: Math.round(newQty * 100) / 100 }).eq('id', stockItem.id)
+        }
+      }
+      // Incrementer cook_count sur la recette
+      var newCount = (recipe.cook_count || 0) + 1
+      await supabase.from('recipes').update({ cook_count: newCount }).eq('id', recipe.id)
+    }
+    // Marquer le slot comme cuisine dans meal_plan
+    await supabase.from('meal_plan').update({ cooked: true }).eq('id', slot.id)
+
+    // Proposer la notation si une recette n'a pas encore de note
+    var unrated = slot.recipes.map(function(sr) { return recipeMap[sr.recipe_id] }).filter(function(r) { return r && (!r.rating || r.rating === 0) })
+    if (unrated.length > 0) {
+      setShowRating({ recipe: unrated[0], slotId: slot.id })
+      setPendingRating(0)
+    } else {
+      loadPlan()
+    }
+  }
+
+  async function saveRating(recipe, rating) {
+    if (rating === 0) { setShowRating(null); loadPlan(); return }
+    await supabase.from('recipes').update({ rating }).eq('id', recipe.id)
+    setShowRating(null)
+    loadPlan()
   }
 
   async function loadShoppingList() {
@@ -636,6 +678,17 @@ export default function PlanningPage() {
                             style={{ background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', border: '0.5px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontWeight: shoppingIds.has(slot.id) ? '600' : '400' }}
                           >
                             {shoppingIds.has(slot.id) ? '✓ Courses' : '+ Courses'}
+                          </button>
+                        )}
+                        {/* Bouton J'ai cuisine */}
+                        {slot.recipes && slot.recipes.length > 0 && (
+                          <button
+                            onClick={function() { markAsCoooked(slot, convives) }}
+                            style={{ background: slot.cooked ? '#EFF6FF' : 'none', border: '0.5px solid ' + (slot.cooked ? '#93C5FD' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: slot.cooked ? 'default' : 'pointer', color: slot.cooked ? '#1D4ED8' : '#aaa', fontWeight: slot.cooked ? '600' : '400' }}
+                            disabled={slot.cooked}
+                            title="Deduit les ingredients du stock et incremente le compteur de la recette"
+                          >
+                            {slot.cooked ? '✓ Cuisine !' : '+ Cuisine'}
                           </button>
                         )}
                       </div>
@@ -1144,6 +1197,40 @@ export default function PlanningPage() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+
+      {/* Popup notation apres cuisine */}
+      {showRating && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '340px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>{showRating.recipe.emoji}</div>
+            <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '4px' }}>{showRating.recipe.title}</div>
+            <div style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>Comment etait ce plat ?</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+              {[1,2,3,4,5].map(function(n) {
+                return (
+                  <span key={n}
+                    onClick={function() { setPendingRating(n) }}
+                    style={{ fontSize: '32px', cursor: 'pointer', color: n <= pendingRating ? '#F59E0B' : '#E5E7EB', transition: 'color 0.1s' }}>
+                    &#9733;
+                  </span>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button onClick={function() { setShowRating(null); loadPlan() }}
+                style={{ padding: '8px 16px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', color: '#888' }}>
+                Passer
+              </button>
+              <button onClick={function() { saveRating(showRating.recipe, pendingRating) }}
+                disabled={pendingRating === 0}
+                style={{ padding: '8px 20px', background: pendingRating > 0 ? '#1D9E75' : '#f0f0ec', color: pendingRating > 0 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: pendingRating > 0 ? 'pointer' : 'default', fontWeight: '500' }}>
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       )}
