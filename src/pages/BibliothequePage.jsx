@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 // --- Constantes ---------------------------------------------------------------
 
 const FILTRES = ['Toutes', 'Végan', 'Végétarien', 'Rapide', 'Économique', 'Dessert', 'Plat principal', 'Accompagnement', 'Air Fryer', 'Apéritif', 'Entrée', 'Healthy', 'Viennoiserie', 'Thermomix', 'Sauce', 'Sans gluten']
-const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entrée', 'soupe', 'accompagnement', 'airfryer', 'aperitif', 'healthy', 'viennoiserie', 'thermomix', 'sauce', 'sans gluten']
+const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entree', 'soupe', 'accompagnement', 'airfryer', 'aperitif', 'healthy', 'viennoiserie', 'thermomix', 'sauce', 'sansgluten']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unité(s)', 'sachet(s)', 'boîte(s)', 'c. à soupe', 'c. à café', 'pincée']
 const EMOJIS = ['🍳','🍰','🥗','🍝','🥘','🍲','🥧','🧁','🍜','🥞','🫕','🥩','🐟','🍵']
 
@@ -823,8 +823,6 @@ export default function BibliothequePage() {
             </span>
           </div>
         </div>
-        <button onClick={() => setShowPriceBase(true)}
-          style={{ background: 'white', color: '#854F0B', border: '0.5px solid #D4A259', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>💰 Prix</button>
         <button onClick={() => { setShowImport(true); setImportError(''); setImportUrl('') }}
           style={{ background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>🔗 Importer URL</button>
         <button onClick={openNew}
