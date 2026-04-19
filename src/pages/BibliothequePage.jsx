@@ -481,7 +481,7 @@ export default function BibliothequePage() {
   const [loading, setLoading]             = useState(true)
   const [search, setSearch]               = useState('')
   const [filtre, setFiltre]               = useState('Toutes')
-  const [sortKey, setSortKey]             = useState('date_desc')
+  const [sortKey, setSortKey]             = useState('alpha_asc')
   const [activeTagFilter, setActiveTagFilter] = useState(null)
   const [showImport, setShowImport]       = useState(false)
   const [showEdit, setShowEdit]           = useState(false)
@@ -497,8 +497,9 @@ export default function BibliothequePage() {
   const [detailServings, setDetailServings] = useState(4)
   const [priceMap, setPriceMap]           = useState({})
   const [nutMap, setNutMap]               = useState({})
+  const [stockPerimes, setStockPerimes]   = useState([])
 
-  useEffect(() => { loadRecipes(); loadPriceMap(); loadNutMap() }, [user])
+  useEffect(() => { loadRecipes(); loadPriceMap(); loadNutMap(); loadStockPerimes() }, [user])
 
   // -- Chargement -------------------------------------------------------------
 
@@ -524,6 +525,22 @@ export default function BibliothequePage() {
     const map = {}
     for (const row of (data || [])) map[row.name.toLowerCase()] = row
     setNutMap(map)
+  }
+
+  async function loadStockPerimes() {
+    var today = new Date(); today.setHours(0,0,0,0)
+    var in7 = new Date(today.getTime() + 7 * 86400000)
+    var dateStr = in7.toISOString().slice(0, 10)
+    var { data } = await supabase
+      .from('stock')
+      .select('name, peremption')
+      .eq('user_id', user.id)
+      .not('peremption', 'is', null)
+      .lte('peremption', dateStr)
+    setStockPerimes((data || []).map(function(s) {
+      var days = Math.round((new Date(s.peremption) - today) / 86400000)
+      return { name: s.name, days }
+    }))
   }
 
   async function onPricesUpdated() {
@@ -655,6 +672,35 @@ export default function BibliothequePage() {
 
   return (
     <div>
+
+      {/* -- Alerte ingredients perimés -- */}
+      {stockPerimes.length > 0 && (
+        <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#854F0B', marginBottom: '2px' }}>
+              Ingredients a utiliser en priorite
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+              {stockPerimes.map(function(s) {
+                var urgent = s.days < 0 || s.days <= 3
+                return (
+                  <span key={s.name}
+                    onClick={function() { setSearch(s.name) }}
+                    style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: urgent ? '#FCEBEB' : '#FAEEDA', color: urgent ? '#791F1F' : '#854F0B', border: '0.5px solid ' + (urgent ? '#E24B4A' : '#EF9F27') }}
+                    title="Cliquer pour filtrer les recettes"
+                  >
+                    {s.name} {s.days < 0 ? '(perime)' : '(' + s.days + 'j)'}
+                  </span>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '4px', opacity: 0.7 }}>
+              Clique sur un ingredient pour voir les recettes qui l'utilisent
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* -- Barre actions -- */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
