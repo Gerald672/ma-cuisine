@@ -244,6 +244,7 @@ export default function StockPage() {
   const [editItem, setEditItem]   = useState(null)
   const [form, setForm]           = useState({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '', peremption: '' })
   const [showScanner, setShowScanner] = useState(false)
+  const [sortStock, setSortStock]       = useState('cat') // 'cat' ou 'alpha'
   const [scanStatus, setScanStatus]   = useState('') // message apres scan
   const [scanLoading, setScanLoading] = useState(false)
 
@@ -252,7 +253,7 @@ export default function StockPage() {
   async function loadStock() {
     setLoading(true)
     const { data } = await supabase
-      .from('stock').select('*').eq('user_id', user.id).order('cat', { ascending: true }).order('name', { ascending: true })
+      .from('stock').select('*').eq('user_id', user.id)
     setStock(data || [])
     setLoading(false)
   }
@@ -368,6 +369,11 @@ function getEtat(item) {
     const matchSearch = i.name.toLowerCase().includes(search.toLowerCase())
     const matchCat = catFilter === 'all' || i.cat === catFilter
     return matchSearch && matchCat
+  }).sort((a, b) => {
+    if (sortStock === 'alpha') return a.name.localeCompare(b.name, 'fr')
+    // Par categorie puis nom
+    var catCmp = (a.cat || '').localeCompare(b.cat || '', 'fr')
+    return catCmp !== 0 ? catCmp : a.name.localeCompare(b.name, 'fr')
   })
 
   const alerts = stock.filter(i => i.qty === 0 || (i.seuil > 0 && i.qty <= i.seuil))
@@ -423,6 +429,16 @@ function getEtat(item) {
           <option value="all">Toutes categories</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
+        <div style={{ display: 'flex', border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+          <button onClick={() => setSortStock('cat')}
+            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', background: sortStock === 'cat' ? '#1D9E75' : 'white', color: sortStock === 'cat' ? 'white' : '#666', fontWeight: sortStock === 'cat' ? '500' : '400' }}>
+            Categorie
+          </button>
+          <button onClick={() => setSortStock('alpha')}
+            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', borderLeft: '0.5px solid #e0e0e0', background: sortStock === 'alpha' ? '#1D9E75' : 'white', color: sortStock === 'alpha' ? 'white' : '#666', fontWeight: sortStock === 'alpha' ? '500' : '400' }}>
+            A - Z
+          </button>
+        </div>
         <button onClick={() => { setScanStatus(''); setShowScanner(true) }}
           style={{ background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
           Scanner
