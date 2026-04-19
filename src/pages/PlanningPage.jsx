@@ -233,8 +233,8 @@ export default function PlanningPage() {
   }
 
   // Invitations/restaurants de la semaine courante pour le planning
-  var invitSemaine = invitations.filter(function(inv) { return inv.semaine === wKey && inv.jour_index !== null && inv.repas })
-  var restoSemaine = restaurants.filter(function(r) { return r.semaine === wKey && r.jour_index !== null && r.repas })
+  var invitSemaine = invitations.filter(function(inv) { return inv.semaine === wKey && inv.jour_index !== null && inv.jour_index !== undefined && inv.repas })
+  var restoSemaine = restaurants.filter(function(r) { return r.semaine === wKey && r.jour_index !== null && r.jour_index !== undefined && r.repas })
 
   async function saveInvitation() {
     if (!formInvit.hote.trim() || !formInvit.date) return
@@ -466,7 +466,7 @@ export default function PlanningPage() {
 
           <button onClick={function() { setShowCarnet(true) }}
             style={{ ...S.btn }}>
-            Carnet
+            Carnet invitations
           </button>
           <button onClick={addWeekToShopping}
             style={{ ...S.btn, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', fontWeight: '500' }}>
@@ -553,7 +553,7 @@ export default function PlanningPage() {
                     })}
 
                     {/* Entrees invitations */}
-                    {invitSemaine.filter(function(inv) { return inv.jour_index === ji && inv.repas === repas }).map(function(inv) {
+                    {invitSemaine.filter(function(inv) { return parseInt(inv.jour_index) === ji && inv.repas === repas }).map(function(inv) {
                       return (
                         <div key={inv.id}
                           onClick={function() { setCarnetOnglet('invitations'); setShowCarnet(true) }}
@@ -567,7 +567,7 @@ export default function PlanningPage() {
                     })}
 
                     {/* Entrees restaurants */}
-                    {restoSemaine.filter(function(r) { return r.jour_index === ji && r.repas === repas }).map(function(r) {
+                    {restoSemaine.filter(function(r) { return parseInt(r.jour_index) === ji && r.repas === repas }).map(function(r) {
                       return (
                         <div key={r.id}
                           onClick={function() { setCarnetOnglet('restaurants'); setShowCarnet(true) }}
@@ -925,7 +925,16 @@ export default function PlanningPage() {
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
-                        <input type="date" value={formInvit.date} onChange={function(e) { setFormInvit(function(f) { return { ...f, date: e.target.value } }) }}
+                        <input type="date" value={formInvit.date} onChange={function(e) {
+                          var dateStr = e.target.value
+                          var jourAuto = ''
+                          if (dateStr) {
+                            var parts = dateStr.split('-')
+                            var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
+                            jourAuto = String((d.getDay() + 6) % 7) // 0=lundi, 6=dimanche
+                          }
+                          setFormInvit(function(f) { return { ...f, date: dateStr, jour_index: jourAuto } })
+                        }}
                           style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
                       </div>
                     </div>
