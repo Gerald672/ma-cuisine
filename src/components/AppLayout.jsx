@@ -1,11 +1,11 @@
 import { useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import BibliothequePage from '../pages/BibliothequePage'
 import StockPage from '../pages/StockPage'
 import CoursesPage from '../pages/CoursesPage'
 import BudgetPage from '../pages/BudgetPage'
 import PlanningPage from '../pages/PlanningPage'
-import PartageePage from '../pages/PartageePage'
 
 const NAV = [
   { id: 'bibliotheque', label: 'Bibliothèque', icon: '📚' },
@@ -13,13 +13,43 @@ const NAV = [
   { id: 'stock',        label: 'Mon stock',     icon: '🥕' },
   { id: 'courses',      label: 'Courses',       icon: '🛒' },
   { id: 'budget',       label: 'Budget',        icon: '💰' },
-  { id: 'partage',      label: 'Partage',       icon: '🤝' },
 ]
 
 export default function AppLayout() {
   const { user, signOut } = useAuth()
-  const [page, setPage] = useState('bibliotheque')
+  const [page, setPage]       = useState('bibliotheque')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [backing, setBacking]   = useState(false)
+
+  const ADMIN_EMAIL = 'gerald.thevoz@pm.me'
+
+  async function doBackup() {
+    setBacking(true)
+    try {
+      var tables = ['recipes', 'stock', 'ingredient_prices', 'meal_plan', 'meal_plan_recipes', 'ingredient_nutrition', 'user_preferences', 'share_codes']
+      var backup = { date: new Date().toISOString(), user: user.email, data: {} }
+      for (var table of tables) {
+        var { data } = await supabase.from(table).select('*').eq('user_id', user.id)
+        backup.data[table] = data || []
+      }
+      // Tables sans user_id
+      var { data: nutrition } = await supabase.from('ingredient_nutrition').select('*')
+      backup.data['ingredient_nutrition'] = nutrition || []
+
+      var json = JSON.stringify(backup, null, 2)
+      var blob = new Blob([json], { type: 'application/json' })
+      var url = URL.createObjectURL(blob)
+      var a = document.createElement('a')
+      a.href = url
+      a.download = 'ma-cuisine-backup-' + new Date().toISOString().slice(0, 10) + '.json'
+      a.click()
+      URL.revokeObjectURL(url)
+      setMenuOpen(false)
+    } catch(e) {
+      alert('Erreur lors de la sauvegarde : ' + e.message)
+    }
+    setBacking(false)
+  }
 
   const PAGES = {
     bibliotheque: <BibliothequePage />,
@@ -27,7 +57,6 @@ export default function AppLayout() {
     stock:        <StockPage />,
     courses:      <CoursesPage />,
     budget:       <BudgetPage />,
-    partage:      <PartageePage />,
   }
 
   const PAGE_TITLES = {
@@ -36,7 +65,6 @@ export default function AppLayout() {
     stock:        'Mon stock',
     courses:      'Liste de courses',
     budget:       'Budget & coût',
-    partage:      'Partage de recettes',
   }
 
   return (
@@ -55,7 +83,13 @@ export default function AppLayout() {
             {menuOpen && (
               <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '6px', minWidth: '160px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 20 }}>
                 <div style={{ padding: '6px 10px', fontSize: '12px', color: '#888', borderBottom: '0.5px solid #f0f0ec', marginBottom: '4px' }}>{user.email}</div>
-                <button onClick={() => { signOut(); setMenuOpen(false) }} style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', padding: '7px 10px', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', color: '#E24B4A' }}>Se déconnecter</button>
+                {user.email === ADMIN_EMAIL && (
+                  <button onClick={doBackup} disabled={backing}
+                    style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', padding: '7px 10px', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', color: '#1D9E75', marginBottom: '2px' }}>
+                    {backing ? 'Sauvegarde...' : 'Sauvegarder les donnees'}
+                  </button>
+                )}
+                <button onClick={() => { signOut(); setMenuOpen(false) }} style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', padding: '7px 10px', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', color: '#E24B4A' }}>Se deconnecter</button>
               </div>
             )}
           </div>
