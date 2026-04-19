@@ -498,6 +498,8 @@ export default function BibliothequePage() {
   const [priceMap, setPriceMap]           = useState({})
   const [nutMap, setNutMap]               = useState({})
   const [stockPerimes, setStockPerimes]   = useState([])
+  const [dismissedPerimes, setDismissedPerimes] = useState(new Set())
+  const [showPerimesModal, setShowPerimesModal] = useState(false)
 
   useEffect(() => { loadRecipes(); loadPriceMap(); loadNutMap(); loadStockPerimes() }, [user])
 
@@ -674,31 +676,66 @@ export default function BibliothequePage() {
     <div>
 
       {/* -- Alerte ingredients perimés -- */}
-      {stockPerimes.length > 0 && (
-        <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠️</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '13px', fontWeight: '500', color: '#854F0B', marginBottom: '2px' }}>
-              Ingredients a utiliser en priorite
+      {stockPerimes.filter(s => !dismissedPerimes.has(s.name)).length > 0 && (
+        <div style={{ marginBottom: '12px' }}>
+          {/* Perimés (urgents) */}
+          {stockPerimes.filter(s => s.days < 0 && !dismissedPerimes.has(s.name)).length > 0 && (
+            <div style={{ background: '#FCEBEB', border: '0.5px solid #E24B4A', borderRadius: '10px', padding: '10px 14px', marginBottom: '8px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>🔴</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: '500', color: '#791F1F', marginBottom: '6px' }}>
+                  Ingrediants perimes — a consommer ou jeter
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {stockPerimes.filter(s => s.days < 0 && !dismissedPerimes.has(s.name)).map(function(s) {
+                    return (
+                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FCEBEB', border: '0.5px solid #E24B4A' }}>
+                        <span onClick={function() { setSearch(s.name) }}
+                          style={{ fontSize: '12px', fontWeight: '500', color: '#791F1F', cursor: 'pointer' }}>
+                          {s.name} (perime)
+                        </span>
+                        <button onClick={function() { setDismissedPerimes(function(d) { var n = new Set(d); n.add(s.name); return n }) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E24B4A', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}>
+                          x
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-              {stockPerimes.map(function(s) {
-                var urgent = s.days < 0 || s.days <= 3
-                return (
-                  <span key={s.name}
-                    onClick={function() { setSearch(s.name) }}
-                    style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: urgent ? '#FCEBEB' : '#FAEEDA', color: urgent ? '#791F1F' : '#854F0B', border: '0.5px solid ' + (urgent ? '#E24B4A' : '#EF9F27') }}
-                    title="Cliquer pour filtrer les recettes"
-                  >
-                    {s.name} {s.days < 0 ? '(perime)' : '(' + s.days + 'j)'}
-                  </span>
-                )
-              })}
+          )}
+
+          {/* Bientot perimés */}
+          {stockPerimes.filter(s => s.days >= 0 && !dismissedPerimes.has(s.name)).length > 0 && (
+            <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>🟡</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: '500', color: '#854F0B', marginBottom: '6px' }}>
+                  A utiliser en priorite cette semaine
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {stockPerimes.filter(s => s.days >= 0 && !dismissedPerimes.has(s.name)).map(function(s) {
+                    return (
+                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FAEEDA', border: '0.5px solid #EF9F27' }}>
+                        <span onClick={function() { setSearch(s.name) }}
+                          style={{ fontSize: '12px', fontWeight: '500', color: '#854F0B', cursor: 'pointer' }}>
+                          {s.name} ({s.days}j)
+                        </span>
+                        <button onClick={function() { setDismissedPerimes(function(d) { var n = new Set(d); n.add(s.name); return n }) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF9F27', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}>
+                          x
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '4px', opacity: 0.7 }}>
+                  Clique sur un ingredient pour filtrer les recettes
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '4px', opacity: 0.7 }}>
-              Clique sur un ingredient pour voir les recettes qui l'utilisent
-            </div>
-          </div>
+          )}
         </div>
       )}
 
