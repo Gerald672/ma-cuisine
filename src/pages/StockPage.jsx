@@ -252,7 +252,7 @@ export default function StockPage() {
   async function loadStock() {
     setLoading(true)
     const { data } = await supabase
-      .from('stock').select('*').eq('user_id', user.id).order('name', { ascending: true })
+      .from('stock').select('*').eq('user_id', user.id).order('cat', { ascending: true }).order('name', { ascending: true })
     setStock(data || [])
     setLoading(false)
   }
