@@ -37,6 +37,16 @@ function getCat(name) {
   return 'Autres'
 }
 
+
+function getSemaineFromDate(dateStr) {
+  if (!dateStr) return null
+  var d = new Date(dateStr)
+  var day = d.getDay() || 7
+  d.setDate(d.getDate() - day + 1)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10)
+}
+
 function getLundi(offset) {
   var d = new Date()
   var day = d.getDay() || 7
@@ -224,7 +234,7 @@ export default function PlanningPage() {
 
   async function saveInvitation() {
     if (!formInvit.hote.trim() || !formInvit.date) return
-    var payload = { user_id: user.id, hote: formInvit.hote, date: formInvit.date, menu: formInvit.menu, notes: formInvit.notes, jour_index: formInvit.jour_index !== '' ? parseInt(formInvit.jour_index) : null, repas: formInvit.repas || null, semaine: wKey }
+    var payload = { user_id: user.id, hote: formInvit.hote, date: formInvit.date, menu: formInvit.menu, notes: formInvit.notes, jour_index: formInvit.jour_index !== '' ? parseInt(formInvit.jour_index) : null, repas: formInvit.repas || null, semaine: getSemaineFromDate(formInvit.date) || wKey }
     if (editInvit) {
       await supabase.from('invitations_recues').update(payload).eq('id', editInvit.id)
     } else {
@@ -246,7 +256,7 @@ export default function PlanningPage() {
 
   async function saveRestaurant() {
     if (!formResto.nom.trim()) return
-    var payload = { user_id: user.id, nom: formResto.nom, adresse: formResto.adresse, date: formResto.date || null, menu: formResto.menu, prix: parseFloat(formResto.prix) || null, note: formResto.note || 0, avis: formResto.avis, jour_index: formResto.jour_index !== '' ? parseInt(formResto.jour_index) : null, repas: formResto.repas || null, semaine: wKey }
+    var payload = { user_id: user.id, nom: formResto.nom, adresse: formResto.adresse, date: formResto.date || null, menu: formResto.menu, prix: parseFloat(formResto.prix) || null, note: formResto.note || 0, avis: formResto.avis, jour_index: formResto.jour_index !== '' ? parseInt(formResto.jour_index) : null, repas: formResto.repas || null, semaine: getSemaineFromDate(formResto.date) || wKey }
     if (editResto) {
       await supabase.from('restaurants').update(payload).eq('id', editResto.id)
     } else {
@@ -452,7 +462,7 @@ export default function PlanningPage() {
 
           <button onClick={function() { setShowCarnet(true) }}
             style={{ ...S.btn }}>
-            Invites
+            Carnet
           </button>
           <button onClick={addWeekToShopping}
             style={{ ...S.btn, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', fontWeight: '500' }}>
