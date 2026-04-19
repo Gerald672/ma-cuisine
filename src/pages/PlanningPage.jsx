@@ -131,6 +131,8 @@ export default function PlanningPage() {
   // Notation apres cuisine
   const [showRating, setShowRating]     = useState(null)
   const [pendingRating, setPendingRating] = useState(0)
+  // Feedback visuel immediat pour les slots cuisines
+  const [cookedNow, setCookedNow]       = useState(new Set())
  // meal_plan ids ajoutes aux courses
 
   const lundi = getLundi(weekOffset)
@@ -201,7 +203,9 @@ export default function PlanningPage() {
   }
 
   async function markAsCoooked(slot, convives) {
-    if (slot.cooked) return
+    if (slot.cooked || cookedNow.has(slot.id)) return
+    // Feedback visuel immediat
+    setCookedNow(function(s) { var n = new Set(s); n.add(slot.id); return n })
     // Deduire les ingredients du stock
     var stockData = (await supabase.from('stock').select('*').eq('user_id', user.id)).data || []
     for (var sr of slot.recipes) {
@@ -687,11 +691,11 @@ export default function PlanningPage() {
                         {slot.recipes && slot.recipes.length > 0 && (
                           <button
                             onClick={function() { markAsCoooked(slot, convives) }}
-                            style={{ background: slot.cooked ? '#EFF6FF' : 'none', border: '0.5px solid ' + (slot.cooked ? '#93C5FD' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: slot.cooked ? 'default' : 'pointer', color: slot.cooked ? '#1D4ED8' : '#aaa', fontWeight: slot.cooked ? '600' : '400' }}
-                            disabled={slot.cooked}
+                            style={{ background: (slot.cooked || cookedNow.has(slot.id)) ? '#EFF6FF' : 'none', border: '0.5px solid ' + ((slot.cooked || cookedNow.has(slot.id)) ? '#93C5FD' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: (slot.cooked || cookedNow.has(slot.id)) ? 'default' : 'pointer', color: (slot.cooked || cookedNow.has(slot.id)) ? '#1D4ED8' : '#aaa', fontWeight: (slot.cooked || cookedNow.has(slot.id)) ? '600' : '400' }}
+                            disabled={slot.cooked || cookedNow.has(slot.id)}
                             title="Deduit les ingredients du stock et incremente le compteur de la recette"
                           >
-                            {slot.cooked ? '✓ Cuisine !' : '+ Cuisine'}
+                            {(slot.cooked || cookedNow.has(slot.id)) ? '✓ Cuisine !' : '+ Cuisine'}
                           </button>
                         )}
                       </div>
