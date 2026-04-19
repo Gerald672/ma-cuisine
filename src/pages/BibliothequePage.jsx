@@ -498,10 +498,25 @@ export default function BibliothequePage() {
   const [priceMap, setPriceMap]           = useState({})
   const [nutMap, setNutMap]               = useState({})
   const [stockPerimes, setStockPerimes]   = useState([])
-  const [dismissedPerimes, setDismissedPerimes] = useState(new Set())
-  const [showPerimesModal, setShowPerimesModal] = useState(false)
+  const [dismissedPerimes, setDismissedPerimes] = useState({}) // { name: { dismissedAt, sessionCount, rappelAfter } }
+  const [rappelConfig, setRappelConfig]         = useState({})  // { name: rappelAfter }
+  const [editRappel, setEditRappel]             = useState(null) // nom en cours de config
 
-  useEffect(() => { loadRecipes(); loadPriceMap(); loadNutMap(); loadStockPerimes() }, [user])
+  useEffect(() => {
+    loadRecipes(); loadPriceMap(); loadNutMap(); loadStockPerimes()
+    // Charger les dismiss depuis localStorage + incrementer le compteur de sessions
+    try {
+      var key = 'ma_cuisine_dismissed_' + user.id
+      var saved = JSON.parse(localStorage.getItem(key) || '{}')
+      // Incrementer le compteur de sessions pour chaque article
+      var updated = {}
+      for (var name in saved) {
+        updated[name] = { ...saved[name], sessionCount: (saved[name].sessionCount || 0) + 1 }
+      }
+      localStorage.setItem(key, JSON.stringify(updated))
+      setDismissedPerimes(updated)
+    } catch(e) {}
+  }, [user])
 
   // -- Chargement -------------------------------------------------------------
 
@@ -527,6 +542,26 @@ export default function BibliothequePage() {
     const map = {}
     for (const row of (data || [])) map[row.name.toLowerCase()] = row
     setNutMap(map)
+  }
+
+
+  function dismissPerime(name, rappelAfter) {
+    var after = parseInt(rappelAfter) || 15
+    try {
+      var key = 'ma_cuisine_dismissed_' + user.id
+      var saved = JSON.parse(localStorage.getItem(key) || '{}')
+      saved[name] = { dismissedAt: new Date().toISOString(), sessionCount: 0, rappelAfter: after }
+      localStorage.setItem(key, JSON.stringify(saved))
+      setDismissedPerimes(function(d) { return { ...d, [name]: saved[name] } })
+    } catch(e) {}
+    setEditRappel(null)
+  }
+
+  function shouldShowAlert(name) {
+    var d = dismissedPerimes[name]
+    if (!d) return true
+    // Reafficher si le compteur de sessions depasse rappelAfter
+    return d.sessionCount >= d.rappelAfter
   }
 
   async function loadStockPerimes() {
@@ -676,10 +711,10 @@ export default function BibliothequePage() {
     <div>
 
       {/* -- Alerte ingredients perimés -- */}
-      {stockPerimes.filter(s => !dismissedPerimes.has(s.name)).length > 0 && (
+      {stockPerimes.filter(s => shouldShowAlert(s.name)).length > 0 && (
         <div style={{ marginBottom: '12px' }}>
           {/* Perimés (urgents) */}
-          {stockPerimes.filter(s => s.days < 0 && !dismissedPerimes.has(s.name)).length > 0 && (
+          {stockPerimes.filter(s => s.days < 0 && shouldShowAlert(s.name)).length > 0 && (
             <div style={{ background: '#FCEBEB', border: '0.5px solid #E24B4A', borderRadius: '10px', padding: '10px 14px', marginBottom: '8px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '16px', flexShrink: 0 }}>🔴</span>
               <div style={{ flex: 1 }}>
@@ -687,17 +722,33 @@ export default function BibliothequePage() {
                   Ingrediants perimes — a consommer ou jeter
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {stockPerimes.filter(s => s.days < 0 && !dismissedPerimes.has(s.name)).map(function(s) {
+                  {stockPerimes.filter(s => s.days < 0 && shouldShowAlert(s.name)).map(function(s) {
                     return (
-                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FCEBEB', border: '0.5px solid #E24B4A' }}>
+                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FCEBEB', border: '0.5px solid #E24B4A', position: 'relative' }}>
                         <span onClick={function() { setSearch(s.name) }}
                           style={{ fontSize: '12px', fontWeight: '500', color: '#791F1F', cursor: 'pointer' }}>
                           {s.name} (perime)
                         </span>
-                        <button onClick={function() { setDismissedPerimes(function(d) { var n = new Set(d); n.add(s.name); return n }) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E24B4A', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}>
+                        <button onClick={function() { setEditRappel(editRappel === s.name ? null : s.name) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E24B4A', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}
+                          title="Fermer / configurer le rappel">
                           x
                         </button>
+                        {editRappel === s.name && (
+                          <div style={{ position: 'absolute', top: '28px', right: 0, background: 'white', border: '0.5px solid #ddd', borderRadius: '10px', padding: '10px 12px', zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '200px' }}>
+                            <div style={{ fontSize: '12px', color: '#555', marginBottom: '8px', fontWeight: '500' }}>Rappeler apres combien d'ouvertures ?</div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                              {[5, 10, 15, 30].map(function(n) {
+                                return <button key={n} onClick={function() { dismissPerime(s.name, n) }}
+                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
+                              })}
+                            </div>
+                            <button onClick={function() { dismissPerime(s.name, 999999) }}
+                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
+                              Ne plus afficher
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -707,7 +758,7 @@ export default function BibliothequePage() {
           )}
 
           {/* Bientot perimés */}
-          {stockPerimes.filter(s => s.days >= 0 && !dismissedPerimes.has(s.name)).length > 0 && (
+          {stockPerimes.filter(s => s.days >= 0 && shouldShowAlert(s.name)).length > 0 && (
             <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '16px', flexShrink: 0 }}>🟡</span>
               <div style={{ flex: 1 }}>
@@ -717,15 +768,31 @@ export default function BibliothequePage() {
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {stockPerimes.filter(s => s.days >= 0 && !dismissedPerimes.has(s.name)).map(function(s) {
                     return (
-                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FAEEDA', border: '0.5px solid #EF9F27' }}>
+                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FAEEDA', border: '0.5px solid #EF9F27', position: 'relative' }}>
                         <span onClick={function() { setSearch(s.name) }}
                           style={{ fontSize: '12px', fontWeight: '500', color: '#854F0B', cursor: 'pointer' }}>
                           {s.name} ({s.days}j)
                         </span>
-                        <button onClick={function() { setDismissedPerimes(function(d) { var n = new Set(d); n.add(s.name); return n }) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF9F27', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}>
+                        <button onClick={function() { setEditRappel(editRappel === s.name ? null : s.name) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF9F27', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}
+                          title="Fermer / configurer le rappel">
                           x
                         </button>
+                        {editRappel === s.name && (
+                          <div style={{ position: 'absolute', top: '28px', right: 0, background: 'white', border: '0.5px solid #ddd', borderRadius: '10px', padding: '10px 12px', zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '200px' }}>
+                            <div style={{ fontSize: '12px', color: '#555', marginBottom: '8px', fontWeight: '500' }}>Rappeler apres combien d'ouvertures ?</div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                              {[5, 10, 15, 30].map(function(n) {
+                                return <button key={n} onClick={function() { dismissPerime(s.name, n) }}
+                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
+                              })}
+                            </div>
+                            <button onClick={function() { dismissPerime(s.name, 999999) }}
+                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
+                              Ne plus afficher
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
