@@ -132,8 +132,9 @@ export default function PlanningPage() {
 
   useEffect(() => { loadAll() }, [user])
   useEffect(() => { loadPlan() }, [wKey, user])
-  useEffect(() => { if (showCarnet) { loadCarnet(); loadInvitations(); loadRestaurants() } }, [showCarnet, user])
+  useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
   useEffect(() => { loadInvitations(); loadRestaurants() }, [wKey, user])
+  useEffect(() => { loadInvitations(); loadRestaurants() }, [user])
   useEffect(() => { loadShoppingList() }, [user])
 
   async function loadAll() {
