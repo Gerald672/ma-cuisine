@@ -495,17 +495,6 @@ export default function PlanningPage() {
                       + Plat libre
                     </button>
 
-                    {/* Bouton ajouter aux courses */}
-                    {slot && slot.recipes && slot.recipes.length > 0 && (
-                      <button
-                        onClick={function() {
-                          shoppingIds.has(slot.id) ? removeSlotFromShopping(slot.id) : addSlotToShopping(ji, repas)
-                        }}
-                        style={{ width: '100%', border: '1px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '6px', background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontSize: '10px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', fontWeight: shoppingIds.has(slot.id) ? '500' : '400' }}>
-                        {shoppingIds.has(slot.id) ? '✓ Dans courses' : '+ Courses'}
-                      </button>
-                    )}
-
                     {/* Convives + invites (visible si slot existe) */}
                     {slot && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -524,6 +513,15 @@ export default function PlanningPage() {
                         >
                           {invites.length > 0 ? invites.length + ' invite' + (invites.length > 1 ? 's' : '') : '+ Invites'}
                         </button>
+                        {/* Bouton courses */}
+                        {slot.recipes && slot.recipes.length > 0 && (
+                          <button
+                            onClick={function() { shoppingIds.has(slot.id) ? removeSlotFromShopping(slot.id) : addSlotToShopping(ji, repas) }}
+                            style={{ background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', border: '0.5px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontWeight: shoppingIds.has(slot.id) ? '600' : '400' }}
+                          >
+                            {shoppingIds.has(slot.id) ? '✓ Courses' : '+ Courses'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
