@@ -1031,7 +1031,16 @@ export default function PlanningPage() {
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
-                        <input type="date" value={formResto.date} onChange={function(e) { setFormResto(function(f) { return { ...f, date: e.target.value } }) }}
+                        <input type="date" value={formResto.date} onChange={function(e) {
+                          var dateStr = e.target.value
+                          var jourAuto = ''
+                          if (dateStr) {
+                            var parts = dateStr.split('-')
+                            var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
+                            jourAuto = String((d.getDay() + 6) % 7)
+                          }
+                          setFormResto(function(f) { return { ...f, date: dateStr, jour_index: jourAuto } })
+                        }}
                           style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
                       </div>
                     </div>
