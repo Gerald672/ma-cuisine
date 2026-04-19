@@ -706,10 +706,18 @@ export default function BibliothequePage() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '160px', position: 'relative' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
-            style={{ width: '100%', padding: '10px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }} />
-          <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: '#aaa' }}>
-            {filteredAndSorted.length}/{recipes.length}
-          </span>
+            style={{ width: '100%', padding: '10px 14px', paddingRight: search ? '70px' : '50px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }} />
+          <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {search && (
+              <button onClick={() => setSearch('')}
+                style={{ background: '#ddd', border: 'none', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '11px', padding: 0, lineHeight: 1, flexShrink: 0 }}>
+                x
+              </button>
+            )}
+            <span style={{ fontSize: '11px', color: '#aaa', flexShrink: 0 }}>
+              {filteredAndSorted.length}/{recipes.length}
+            </span>
+          </div>
         </div>
         <button onClick={() => setShowPriceBase(true)}
           style={{ background: 'white', color: '#854F0B', border: '0.5px solid #D4A259', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>💰 Prix</button>
