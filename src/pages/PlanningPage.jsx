@@ -235,10 +235,6 @@ export default function PlanningPage() {
     setInvitations(data || [])
   }
 
-  // Invitations/restaurants de la semaine courante pour le planning
-  var invitSemaine = invitations.filter(function(inv) { return inv.semaine === wKey && inv.jour_index !== null && inv.jour_index !== undefined && inv.repas })
-  var restoSemaine = restaurants.filter(function(r) { return r.semaine === wKey && r.jour_index !== null && r.jour_index !== undefined && r.repas })
-
   async function saveInvitation() {
     if (!formInvit.hote.trim() || !formInvit.date) return
     var payload = { user_id: user.id, hote: formInvit.hote, date: formInvit.date, menu: formInvit.menu, notes: formInvit.notes, jour_index: formInvit.jour_index !== '' ? parseInt(formInvit.jour_index) : null, repas: formInvit.repas || null, semaine: getSemaineFromDate(formInvit.date) || wKey }
@@ -443,6 +439,14 @@ export default function PlanningPage() {
   })
 
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
+
+  // Invitations et restaurants de la semaine affichee
+  var invitSemaine = invitations.filter(function(inv) {
+    return inv.semaine === wKey && inv.jour_index !== null && inv.jour_index !== undefined && inv.repas
+  })
+  var restoSemaine = restaurants.filter(function(r) {
+    return r.semaine === wKey && r.jour_index !== null && r.jour_index !== undefined && r.repas
+  })
 
   var S = {
     btn: { background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer' },
