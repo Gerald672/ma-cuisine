@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 // --- Constantes ---------------------------------------------------------------
 
 const FILTRES = ['Toutes', 'Végan', 'Végétarien', 'Rapide', 'Économique', 'Dessert', 'Plat principal', 'Accompagnement', 'Air Fryer', 'Apéritif', 'Entrée', 'Healthy', 'Viennoiserie', 'Thermomix', 'Sauce', 'Sans gluten']
-const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entree', 'soupe', 'accompagnement', 'airfryer', 'aperitif', 'healthy', 'viennoiserie', 'thermomix', 'sauce', 'sansgluten']
+const CATEGORIES = ['vegan', 'vegetarien', 'rapide', 'economique', 'dessert', 'plat', 'entrée', 'soupe', 'accompagnement', 'airfryer', 'aperitif', 'healthy', 'viennoiserie', 'thermomix', 'sauce', 'sans gluten']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unité(s)', 'sachet(s)', 'boîte(s)', 'c. à soupe', 'c. à café', 'pincée']
 const EMOJIS = ['🍳','🍰','🥗','🍝','🥘','🍲','🥧','🧁','🍜','🥞','🫕','🥩','🐟','🍵']
 
