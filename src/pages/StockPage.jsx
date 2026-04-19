@@ -2,17 +2,17 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-const CATEGORIES = ['Epicerie', 'Frais', 'Fruits et legumes', 'Produits laitiers', 'Viande et poisson', 'Surgeles', 'Herbes et epices']
+const CATEGORIES = ['Épicerie', 'Frais', 'Fruits & légumes', 'Produits laitiers', 'Viande & poisson', 'Surgelés', 'Herbes & épices']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unite(s)', 'sachet(s)', 'boite(s)']
 
 const CAT_STYLE = {
-  'Epicerie':           { bg: '#E6F1FB', color: '#185FA5' },
-  'Frais':              { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits et legumes':  { bg: '#E1F5EE', color: '#085041' },
-  'Produits laitiers':  { bg: '#FAEEDA', color: '#854F0B' },
-  'Viande et poisson':  { bg: '#FAECE7', color: '#712B13' },
-  'Surgeles':           { bg: '#EEEDFE', color: '#3C3489' },
-  'Herbes et epices':   { bg: '#EAF3DE', color: '#27500A' },
+  'Épicerie':          { bg: '#E6F1FB', color: '#185FA5' },
+  'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
+  'Fruits & légumes':  { bg: '#E1F5EE', color: '#085041' },
+  'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
+  'Viande & poisson':  { bg: '#FAECE7', color: '#712B13' },
+  'Surgelés':          { bg: '#EEEDFE', color: '#3C3489' },
+  'Herbes & épices':   { bg: '#EAF3DE', color: '#27500A' },
 }
 
 // Deviner la categorie depuis le nom Open Food Facts
@@ -20,138 +20,144 @@ function guessCat(name, offCat) {
   const n = (name || '').toLowerCase()
   const c = (offCat || '').toLowerCase()
   if (c.includes('lait') || c.includes('fromage') || c.includes('yaourt') || c.includes('beurre') || c.includes('creme')) return 'Produits laitiers'
-  if (c.includes('viande') || c.includes('poisson') || c.includes('poultry') || c.includes('seafood')) return 'Viande et poisson'
-  if (c.includes('surgele') || c.includes('frozen')) return 'Surgeles'
-  if (c.includes('epice') || c.includes('herbe') || c.includes('spice') || c.includes('condiment')) return 'Herbes et epices'
-  if (c.includes('fruit') || c.includes('legume') || c.includes('vegetable')) return 'Fruits et legumes'
+  if (c.includes('viande') || c.includes('poisson') || c.includes('poultry') || c.includes('seafood')) return 'Viande & poisson'
+  if (c.includes('surgele') || c.includes('frozen')) return 'Surgelés'
+  if (c.includes('epice') || c.includes('herbe') || c.includes('spice') || c.includes('condiment')) return 'Herbes & épices'
+  if (c.includes('fruit') || c.includes('legume') || c.includes('vegetable')) return 'Fruits & légumes'
   if (n.includes('lait') || n.includes('fromage') || n.includes('beurre') || n.includes('yaourt')) return 'Produits laitiers'
-  if (n.includes('poulet') || n.includes('boeuf') || n.includes('saumon') || n.includes('poisson')) return 'Viande et poisson'
-  if (n.includes('pomme') || n.includes('carotte') || n.includes('tomate') || n.includes('oignon')) return 'Fruits et legumes'
-  if (n.includes('sel') || n.includes('poivre') || n.includes('thym') || n.includes('basilic')) return 'Herbes et epices'
-  return 'Epicerie'
+  if (n.includes('poulet') || n.includes('boeuf') || n.includes('saumon') || n.includes('poisson')) return 'Viande & poisson'
+  if (n.includes('pomme') || n.includes('carotte') || n.includes('tomate') || n.includes('oignon')) return 'Fruits & légumes'
+  if (n.includes('sel') || n.includes('poivre') || n.includes('thym') || n.includes('basilic')) return 'Herbes & épices'
+  return 'Épicerie'
 }
 
-// Scanner codes barres via camera - utilise BarcodeDetector natif ou fallback
+// Scanner codes barres - QuaggaJS (tous navigateurs) + fallback saisie manuelle
 function BarcodeScanner({ onResult, onClose }) {
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
-  const animRef = useRef(null)
-  const [status, setStatus] = useState('Demarrage...')
-  const [errorType, setErrorType] = useState('')
-  const [supported, setSupported] = useState(true)
+  const containerRef = useRef(null)
+  const [errorType, setErrorType]   = useState('')
+  const [loading, setLoading]       = useState(true)
+  const [manualCode, setManualCode] = useState('')
 
   useEffect(() => {
-    // Verifier support BarcodeDetector
-    if (!('BarcodeDetector' in window)) {
-      // Fallback : on propose la saisie manuelle du code
-      setSupported(false)
-      setErrorType('NO_DETECTOR')
-      return
+    var quaggaLoaded = false
+
+    function startQuagga() {
+      if (!window.Quagga || !containerRef.current) return
+      quaggaLoaded = true
+      window.Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: containerRef.current,
+          constraints: {
+            facingMode: 'environment',
+            width: { min: 640 },
+            height: { min: 480 }
+          }
+        },
+        decoder: {
+          readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader']
+        },
+        locate: true
+      }, function(err) {
+        setLoading(false)
+        if (err) {
+          if (err.name === 'NotAllowedError' || (err.message && err.message.includes('Permission'))) {
+            setErrorType('PERMISSION_DENIED')
+          } else if (err.name === 'NotFoundError') {
+            setErrorType('NO_CAMERA')
+          } else {
+            setErrorType('OTHER')
+          }
+          return
+        }
+        window.Quagga.start()
+      })
+
+      window.Quagga.onDetected(function(result) {
+        var code = result && result.codeResult && result.codeResult.code
+        if (code) {
+          window.Quagga.stop()
+          onResult(code)
+        }
+      })
     }
-    startCamera()
-    return stopCamera
+
+    // Charger QuaggaJS depuis CDN
+    if (window.Quagga) {
+      startQuagga()
+    } else {
+      var script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js'
+      script.onload = function() { startQuagga() }
+      script.onerror = function() { setLoading(false); setErrorType('NO_DETECTOR') }
+      document.head.appendChild(script)
+    }
+
+    return function() {
+      if (window.Quagga && quaggaLoaded) {
+        try { window.Quagga.stop() } catch(e) {}
+      }
+    }
   }, [])
 
-  async function startCamera() {
-    setErrorType('')
-    try {
-      var constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      }
-      var stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        setStatus('Pointez la camera sur un code barres')
-        scanLoop()
-      }
-    } catch (e) {
-      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-        setErrorType('PERMISSION_DENIED')
-      } else if (e.name === 'NotFoundError') {
-        setErrorType('NO_CAMERA')
-      } else if (!window.isSecureContext) {
-        setErrorType('NOT_HTTPS')
-      } else {
-        setErrorType('OTHER')
-      }
-    }
+  // Ecran fallback (erreur ou saisie manuelle)
+  function FallbackScreen({ showManual }) {
+    return (
+      <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+        {!showManual && (
+          <>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>
+              {errorType === 'PERMISSION_DENIED' ? String.fromCodePoint(0x1F512) : errorType === 'NO_CAMERA' ? String.fromCodePoint(0x1F4F5) : String.fromCodePoint(0x26A0)}
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
+              {errorType === 'PERMISSION_DENIED' ? 'Permission camera refusee' : errorType === 'NO_CAMERA' ? 'Camera introuvable' : 'Scanner non disponible'}
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
+              {errorType === 'PERMISSION_DENIED'
+                ? 'Autorise la camera dans les reglages de Chrome : icone cadenas dans la barre adresse puis Camera puis Autoriser.'
+                : errorType === 'NO_CAMERA'
+                ? 'Aucune camera detectee.'
+                : 'Le scanner ne peut pas se charger. Verifie ta connexion.'}
+            </div>
+          </>
+        )}
+        <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px', fontWeight: '500' }}>
+          Saisis le code barres manuellement :
+        </div>
+        <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '10px' }}>
+          Le code se trouve sous les barres verticales du produit (13 chiffres).
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            autoFocus
+            value={manualCode}
+            onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
+            onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) onResult(manualCode) }}
+            placeholder="3017620422003"
+            maxLength={14}
+            style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '15px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+          <button onClick={() => { if (manualCode.length >= 8) onResult(manualCode) }}
+            disabled={manualCode.length < 8}
+            style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
+            Rechercher
+          </button>
+          <button onClick={onClose}
+            style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+            Annuler
+          </button>
+        </div>
+      </div>
+    )
   }
 
-  function stopCamera() {
-    if (animRef.current) cancelAnimationFrame(animRef.current)
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(function(t) { t.stop() })
-    }
-  }
-
-  async function scanLoop() {
-    if (!videoRef.current) return
-    try {
-      var detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'code_128', 'code_39'] })
-      var tick = async function() {
-        if (videoRef.current && videoRef.current.readyState >= 2) {
-          try {
-            var barcodes = await detector.detect(videoRef.current)
-            if (barcodes && barcodes.length > 0) {
-              stopCamera()
-              onResult(barcodes[0].rawValue)
-              return
-            }
-          } catch (e) {}
-        }
-        animRef.current = requestAnimationFrame(tick)
-      }
-      animRef.current = requestAnimationFrame(tick)
-    } catch (e) {
-      setErrorType('NO_DETECTOR')
-    }
-  }
-
-  // Saisie manuelle du code barres comme fallback
-  var [manualCode, setManualCode] = useState('')
-
-  if (!supported || errorType === 'NO_DETECTOR') {
+  if (errorType === 'NO_DETECTOR') {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-        <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>📷</div>
-          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>Scanner non supporte</div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
-            Ton navigateur ne supporte pas le scanner automatique.<br/>
-            Tu peux saisir le code barres manuellement ci-dessous.
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input
-              value={manualCode}
-              onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
-              onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) { onResult(manualCode) } }}
-              placeholder="Ex: 3017620422003"
-              maxLength={14}
-              style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-            <button
-              onClick={() => { if (manualCode.length >= 8) onResult(manualCode) }}
-              disabled={manualCode.length < 8}
-              style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
-              Rechercher
-            </button>
-            <button onClick={onClose}
-              style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
-              Annuler
-            </button>
-          </div>
-          <div style={{ fontSize: '11px', color: '#bbb', marginTop: '12px' }}>
-            Le code barres se trouve sous les barres verticales du produit.
-          </div>
-        </div>
+        <FallbackScreen showManual={true} />
       </div>
     )
   }
@@ -159,76 +165,60 @@ function BarcodeScanner({ onResult, onClose }) {
   if (errorType) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-        <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>
-            {errorType === 'PERMISSION_DENIED' ? '🔒' : errorType === 'NO_CAMERA' ? '📵' : '⚠️'}
-          </div>
-          <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>
-            {errorType === 'PERMISSION_DENIED' ? 'Permission camera refusee' : errorType === 'NO_CAMERA' ? 'Camera introuvable' : 'Camera indisponible'}
-          </div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: 1.6 }}>
-            {errorType === 'PERMISSION_DENIED'
-              ? "Autorise la camera dans les reglages de ton navigateur, puis reessaie. Sur Chrome : icone cadenas dans la barre d'adresse puis Camera puis Autoriser."
-              : errorType === 'NO_CAMERA'
-              ? 'Aucune camera detectee sur cet appareil.'
-              : "Impossible d'acceder a la camera. Essaie avec Chrome."}
-          </div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-            Tu peux aussi saisir le code manuellement :
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input
-              value={manualCode}
-              onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
-              onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) { onResult(manualCode) } }}
-              placeholder="Ex: 3017620422003"
-              maxLength={14}
-              style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'monospace', textAlign: 'center', letterSpacing: '0.1em' }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-            {errorType === 'PERMISSION_DENIED' && (
-              <button onClick={startCamera}
-                style={{ padding: '10px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                Reessayer
-              </button>
-            )}
-            <button
-              onClick={() => { if (manualCode.length >= 8) onResult(manualCode) }}
-              disabled={manualCode.length < 8}
-              style={{ padding: '10px 16px', background: manualCode.length >= 8 ? '#1D9E75' : '#f0f0ec', color: manualCode.length >= 8 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-              Rechercher
-            </button>
-            <button onClick={onClose}
-              style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
-              Annuler
-            </button>
-          </div>
-        </div>
+        <FallbackScreen showManual={false} />
       </div>
     )
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ width: '100%', maxWidth: '480px', padding: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ color: 'white', fontSize: '16px', fontWeight: '500' }}>Scanner un code barres</div>
-          <button onClick={() => { stopCamera(); onClose() }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', padding: 0 }}>x</button>
-        </div>
-        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
-          <video ref={videoRef} style={{ width: '100%', display: 'block' }} playsInline muted />
+    <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(0,0,0,0.7)' }}>
+        <div style={{ color: 'white', fontSize: '15px', fontWeight: '500' }}>Scanner un code barres</div>
+        <button onClick={() => { try { if (window.Quagga) window.Quagga.stop() } catch(e) {} onClose() }}
+          style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', padding: 0 }}>x</button>
+      </div>
+
+      {/* Viewfinder */}
+      <div style={{ position: 'relative', flex: 1 }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+        {/* Cadre de visee */}
+        {!loading && !errorType && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <div style={{ width: '240px', height: '100px', position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: 0, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)', borderRadius: '4px' }} />
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '24px', height: '24px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: '24px', height: '24px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '24px', height: '24px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '24px', height: '24px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+            <div style={{ width: '260px', height: '110px', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'rgba(29,158,117,0.6)', transform: 'translateY(-50%)' }} />
             </div>
           </div>
-        </div>
-        <div style={{ color: '#aaa', fontSize: '13px', textAlign: 'center', marginTop: '12px' }}>{status}</div>
+        )}
+
+        {loading && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
+            <div style={{ color: 'white', fontSize: '14px' }}>Chargement de la camera...</div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer avec saisie manuelle */}
+      <div style={{ background: 'rgba(0,0,0,0.8)', padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <input
+          value={manualCode}
+          onChange={e => setManualCode(e.target.value.replace(/\D/g, ''))}
+          onKeyDown={e => { if (e.key === 'Enter' && manualCode.length >= 8) { try { if (window.Quagga) window.Quagga.stop() } catch(e) {} onResult(manualCode) } }}
+          placeholder="Ou saisis le code a la main..."
+          maxLength={14}
+          style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }}
+        />
+        <button
+          onClick={() => { if (manualCode.length >= 8) { try { if (window.Quagga) window.Quagga.stop() } catch(e) {} onResult(manualCode) } }}
+          disabled={manualCode.length < 8}
+          style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1, whiteSpace: 'nowrap' }}>
+          OK
+        </button>
       </div>
     </div>
   )
@@ -242,7 +232,7 @@ export default function StockPage() {
   const [catFilter, setCatFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem]   = useState(null)
-  const [form, setForm]           = useState({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '', peremption: '' })
+  const [form, setForm]           = useState({ name: '', qty: '', unit: 'g', cat: 'Épicerie', seuil: '', peremption: '' })
   const [showScanner, setShowScanner] = useState(false)
   const [sortStock, setSortStock]       = useState('cat') // 'cat' ou 'alpha'
   const [scanStatus, setScanStatus]   = useState('') // message apres scan
@@ -287,7 +277,7 @@ export default function StockPage() {
 
   function openAdd() {
     setEditItem(null)
-    setForm({ name: '', qty: '', unit: 'g', cat: 'Epicerie', seuil: '', peremption: '' })
+    setForm({ name: '', qty: '', unit: 'g', cat: 'Épicerie', seuil: '', peremption: '' })
     setShowModal(true)
   }
 
