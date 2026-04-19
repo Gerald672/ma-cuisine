@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-const CATEGORIES = ['Épicerie', 'Frais', 'Fruits & légumes', 'Produits laitiers', 'Viande & poisson', 'Surgelés', 'Congélateur', 'Herbes & épices']
+const CATEGORIES = ['Épicerie', 'Frais', 'Fruits & légumes', 'Produits laitiers', 'Viande & poisson', 'Congélateur', 'Herbes & épices']
 const UNITES = ['g', 'kg', 'ml', 'L', 'unite(s)', 'sachet(s)', 'boite(s)']
 
 const CAT_STYLE = {
