@@ -93,8 +93,11 @@ export default function PlanningPage() {
   const [platLibreInput, setPlatLibreInput] = useState('')
 
   // Drag & drop copie
-  const [dragSrc, setDragSrc] = useState(null) // { jourIndex, repas }
+  const [dragSrc, setDragSrc] = useState(null)
   const [dragOver, setDragOver] = useState(null)
+
+  // Shopping list
+  const [shoppingIds, setShoppingIds] = useState(new Set()) // meal_plan ids ajoutes aux courses
 
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
@@ -102,6 +105,7 @@ export default function PlanningPage() {
   useEffect(() => { loadAll() }, [user])
   useEffect(() => { loadPlan() }, [wKey, user])
   useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
+  useEffect(() => { loadShoppingList() }, [user])
 
   async function loadAll() {
     var [r, s] = await Promise.all([
@@ -158,6 +162,40 @@ export default function PlanningPage() {
       }
     }
     setCarnet(Object.entries(personMap).map(function(e) { return { name: e[0], repas: e[1] } }))
+  }
+
+  async function loadShoppingList() {
+    var { data } = await supabase.from('shopping_list').select('meal_plan_id').eq('user_id', user.id)
+    setShoppingIds(new Set((data || []).map(function(r) { return r.meal_plan_id })))
+  }
+
+  async function addSlotToShopping(jourIndex, repas) {
+    var slot = plan[jourIndex]?.[repas]
+    if (!slot) return
+    var { error } = await supabase.from('shopping_list').upsert({
+      user_id: user.id,
+      meal_plan_id: slot.id
+    }, { onConflict: 'user_id,meal_plan_id' })
+    if (!error) setShoppingIds(function(s) { var n = new Set(s); n.add(slot.id); return n })
+  }
+
+  async function removeSlotFromShopping(slotId) {
+    await supabase.from('shopping_list').delete().eq('user_id', user.id).eq('meal_plan_id', slotId)
+    setShoppingIds(function(s) { var n = new Set(s); n.delete(slotId); return n })
+  }
+
+  async function addWeekToShopping() {
+    var toAdd = []
+    for (var ji = 0; ji < 7; ji++) {
+      for (var repas of REPAS) {
+        var slot = plan[ji]?.[repas]
+        if (slot && slot.recipes && slot.recipes.length > 0) toAdd.push(slot.id)
+      }
+    }
+    if (toAdd.length === 0) return
+    var rows = toAdd.map(function(id) { return { user_id: user.id, meal_plan_id: id } })
+    await supabase.from('shopping_list').upsert(rows, { onConflict: 'user_id,meal_plan_id' })
+    setShoppingIds(function(s) { var n = new Set(s); toAdd.forEach(function(id) { n.add(id) }); return n })
   }
 
   var recipeMap = {}
@@ -348,13 +386,14 @@ export default function PlanningPage() {
           <button onClick={function() { setWeekOffset(0) }} style={{ ...S.btn, border: '0.5px solid #1D9E75', color: '#1D9E75' }}>Auj.</button>
         )}
         <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-          <button onClick={function() { setShowCourses(function(s) { return !s }) }}
-            style={{ ...S.btn, background: showCourses ? '#E1F5EE' : 'white', color: showCourses ? '#0F6E56' : '#555', border: '0.5px solid ' + (showCourses ? '#1D9E75' : '#ddd') }}>
-            Courses
-          </button>
+
           <button onClick={function() { setShowCarnet(true) }}
             style={{ ...S.btn }}>
             Invites
+          </button>
+          <button onClick={addWeekToShopping}
+            style={{ ...S.btn, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', fontWeight: '500' }}>
+            + Courses semaine
           </button>
         </div>
         {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Sauvegarde...</span>}
@@ -455,6 +494,17 @@ export default function PlanningPage() {
                     >
                       + Plat libre
                     </button>
+
+                    {/* Bouton ajouter aux courses */}
+                    {slot && slot.recipes && slot.recipes.length > 0 && (
+                      <button
+                        onClick={function() {
+                          shoppingIds.has(slot.id) ? removeSlotFromShopping(slot.id) : addSlotToShopping(ji, repas)
+                        }}
+                        style={{ width: '100%', border: '1px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '6px', background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontSize: '10px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', fontWeight: shoppingIds.has(slot.id) ? '500' : '400' }}>
+                        {shoppingIds.has(slot.id) ? '✓ Dans courses' : '+ Courses'}
+                      </button>
+                    )}
 
                     {/* Convives + invites (visible si slot existe) */}
                     {slot && (
