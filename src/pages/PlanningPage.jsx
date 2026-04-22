@@ -121,7 +121,9 @@ export default function PlanningPage() {
   // Plat libre (sans recette)
   const [showPlatLibre, setShowPlatLibre] = useState(null)
   const [platLibreInput, setPlatLibreInput] = useState('')
-  const [platLibreStockSearch, setPlatLibreStockSearch] = useState([]) // resultats stock
+  const [platLibreStockSearch, setPlatLibreStockSearch] = useState([])
+  const [selectedStockItem, setSelectedStockItem]       = useState(null) // article stock selectionne
+  const [deduireQty, setDeduireQty]                     = useState('')   // quantite a deduire
 
   // Drag & drop copie
   const [dragSrc, setDragSrc] = useState(null)
@@ -370,13 +372,11 @@ export default function PlanningPage() {
     await loadPlan()
   }
 
-  async function deduireStock(name) {
-    var stockItem = stock.find(function(s) { return s.name.toLowerCase() === name.toLowerCase() })
-    if (stockItem && stockItem.qty > 0) {
-      var newQty = Math.max(0, stockItem.qty - 1)
-      await supabase.from('stock').update({ qty: newQty }).eq('id', stockItem.id)
-      setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
-    }
+  async function deduireStock(stockItem, qty) {
+    if (!stockItem) return
+    var newQty = Math.max(0, stockItem.qty - (parseFloat(qty) || stockItem.qty))
+    await supabase.from('stock').update({ qty: Math.round(newQty * 100) / 100 }).eq('id', stockItem.id)
+    setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
   }
 
   async function addPlatLibre(jourIndex, repas, nom) {
@@ -884,29 +884,54 @@ export default function PlanningPage() {
                   {JOURS[showPlatLibre.jourIndex]} - {showPlatLibre.repas}
                 </div>
               </div>
-              <button onClick={function() { setShowPlatLibre(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+              <button onClick={function() { setShowPlatLibre(null); setSelectedStockItem(null); setDeduireQty('') }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
             </div>
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
               Plat simple sans recette. Si l'article est dans ton stock, il sera deduit automatiquement.
             </div>
             {/* Recherche dans le stock */}
-            {stock.length > 0 && platLibreInput.length >= 2 && (
+            {stock.length > 0 && platLibreInput.length >= 2 && !selectedStockItem && (
               <div style={{ marginBottom: '8px' }}>
                 {stock.filter(function(s) { return s.name.toLowerCase().includes(platLibreInput.toLowerCase()) && s.qty > 0 }).slice(0, 5).map(function(s) {
                   return (
                     <div key={s.id}
-                      onClick={function() {
-                        addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, s.name)
-                        deduireStock(s.name)
-                        setPlatLibreInput('')
-                        setShowPlatLibre(null)
-                      }}
+                      onClick={function() { setSelectedStockItem(s); setDeduireQty(String(s.qty)) }}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#f5f5f0', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #e0e0e0' }}>
                       <span style={{ fontSize: '13px', fontWeight: '500' }}>{s.name}</span>
                       <span style={{ fontSize: '11px', color: '#888' }}>{s.qty} {s.unit} en stock</span>
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Article stock selectionne - saisie quantite */}
+            {selectedStockItem && (
+              <div style={{ background: '#E1F5EE', border: '0.5px solid #1D9E75', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56' }}>{selectedStockItem.name}</span>
+                  <button onClick={function() { setSelectedStockItem(null); setDeduireQty('') }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '14px' }}>x</button>
+                </div>
+                <div style={{ fontSize: '12px', color: '#555', marginBottom: '8px' }}>
+                  Stock actuel : {selectedStockItem.qty} {selectedStockItem.unit}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '12px', color: '#555', flexShrink: 0 }}>Quantite a deduire :</label>
+                  <input type="number" value={deduireQty} onChange={function(e) { setDeduireQty(e.target.value) }}
+                    style={{ width: '80px', padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px', outline: 'none' }} />
+                  <span style={{ fontSize: '12px', color: '#888' }}>{selectedStockItem.unit}</span>
+                </div>
+                <button onClick={function() {
+                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, selectedStockItem.name)
+                  deduireStock(selectedStockItem, deduireQty)
+                  setPlatLibreInput('')
+                  setSelectedStockItem(null)
+                  setDeduireQty('')
+                  setShowPlatLibre(null)
+                }} style={{ width: '100%', padding: '8px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  Ajouter au planning et deduire du stock
+                </button>
               </div>
             )}
             <div style={{ display: 'flex', gap: '6px' }}>
