@@ -1015,7 +1015,7 @@ export default function PlanningPage() {
                         <select value={formInvit.jour_index} onChange={function(e) { setFormInvit(function(f) { return { ...f, jour_index: e.target.value } }) }}
                           style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
                           <option value="">-- Choisir --</option>
-                          {JOURS.map(function(j, i) { return <option key={i} value={i}>{j}</option> })}
+                          {JOURS.map(function(j, i) { return <option key={i} value={String(i)}>{j}</option> })}
                         </select>
                       </div>
                       <div>
@@ -1119,7 +1119,7 @@ export default function PlanningPage() {
                         <select value={formResto.jour_index} onChange={function(e) { setFormResto(function(f) { return { ...f, jour_index: e.target.value } }) }}
                           style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
                           <option value="">-- Choisir --</option>
-                          {JOURS.map(function(j, i) { return <option key={i} value={i}>{j}</option> })}
+                          {JOURS.map(function(j, i) { return <option key={i} value={String(i)}>{j}</option> })}
                         </select>
                       </div>
                       <div>
