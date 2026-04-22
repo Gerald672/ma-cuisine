@@ -433,7 +433,7 @@ export default function CoursesPage() {
               onChange={e => setGeneralInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && generalInput.trim()) {
-                  setGeneralItems(items => [...items, generalInput.trim()])
+                  saveGeneralItems([...generalItems, generalInput.trim()])
                   setGeneralInput('')
                 }
               }}
@@ -442,7 +442,7 @@ export default function CoursesPage() {
             />
             <button onClick={() => {
               if (generalInput.trim()) {
-                setGeneralItems(items => [...items, generalInput.trim()])
+                saveGeneralItems([...generalItems, generalInput.trim()])
                 setGeneralInput('')
               }
             }} style={{ padding: '7px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+</button>
