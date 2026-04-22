@@ -119,8 +119,9 @@ export default function PlanningPage() {
   const [restoSearch, setRestoSearch]       = useState('')
 
   // Plat libre (sans recette)
-  const [showPlatLibre, setShowPlatLibre] = useState(null) // { jourIndex, repas }
+  const [showPlatLibre, setShowPlatLibre] = useState(null)
   const [platLibreInput, setPlatLibreInput] = useState('')
+  const [platLibreStockSearch, setPlatLibreStockSearch] = useState([]) // resultats stock
 
   // Drag & drop copie
   const [dragSrc, setDragSrc] = useState(null)
@@ -367,6 +368,15 @@ export default function PlanningPage() {
       await supabase.from('meal_plan').delete().eq('id', slot.id)
     }
     await loadPlan()
+  }
+
+  async function deduireStock(name) {
+    var stockItem = stock.find(function(s) { return s.name.toLowerCase() === name.toLowerCase() })
+    if (stockItem && stockItem.qty > 0) {
+      var newQty = Math.max(0, stockItem.qty - 1)
+      await supabase.from('stock').update({ qty: newQty }).eq('id', stockItem.id)
+      setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
+    }
   }
 
   async function addPlatLibre(jourIndex, repas, nom) {
@@ -877,18 +887,38 @@ export default function PlanningPage() {
               <button onClick={function() { setShowPlatLibre(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
             </div>
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-              Pour un accompagnement ou plat simple sans recette (frites, salade, pain...).
+              Plat simple sans recette. Si l'article est dans ton stock, il sera deduit automatiquement.
             </div>
+            {/* Recherche dans le stock */}
+            {stock.length > 0 && platLibreInput.length >= 2 && (
+              <div style={{ marginBottom: '8px' }}>
+                {stock.filter(function(s) { return s.name.toLowerCase().includes(platLibreInput.toLowerCase()) && s.qty > 0 }).slice(0, 5).map(function(s) {
+                  return (
+                    <div key={s.id}
+                      onClick={function() {
+                        addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, s.name)
+                        deduireStock(s.name)
+                        setPlatLibreInput('')
+                        setShowPlatLibre(null)
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#f5f5f0', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #e0e0e0' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '500' }}>{s.name}</span>
+                      <span style={{ fontSize: '11px', color: '#888' }}>{s.qty} {s.unit} en stock</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '6px' }}>
               <input
                 autoFocus
                 value={platLibreInput}
                 onChange={function(e) { setPlatLibreInput(e.target.value) }}
-                onKeyDown={function(e) { if (e.key === 'Enter') addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput) }}
-                placeholder="Ex: Frites, Salade verte, Pain..."
+                onKeyDown={function(e) { if (e.key === 'Enter' && platLibreInput.trim()) { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput); setPlatLibreInput(''); setShowPlatLibre(null) } }}
+                placeholder="Ex: Pizza, Frites, Salade..."
                 style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
               />
-              <button onClick={function() { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput) }}
+              <button onClick={function() { if (platLibreInput.trim()) { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput); setPlatLibreInput(''); setShowPlatLibre(null) } }}
                 style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                 Ajouter
               </button>
