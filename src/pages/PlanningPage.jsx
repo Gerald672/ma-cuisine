@@ -122,8 +122,9 @@ export default function PlanningPage() {
   const [showPlatLibre, setShowPlatLibre] = useState(null)
   const [platLibreInput, setPlatLibreInput] = useState('')
   const [platLibreStockSearch, setPlatLibreStockSearch] = useState([])
-  const [selectedStockItem, setSelectedStockItem]       = useState(null) // article stock selectionne
-  const [deduireQty, setDeduireQty]                     = useState('')   // quantite a deduire
+  const [selectedStockItem, setSelectedStockItem]       = useState(null)
+  const [deduireQty, setDeduireQty]                     = useState('')
+  const [showRestoreStock, setShowRestoreStock]         = useState(null) // { name, qty, unit, slotRecipeId }
 
   // Drag & drop copie
   const [dragSrc, setDragSrc] = useState(null)
@@ -363,9 +364,17 @@ export default function PlanningPage() {
   }
 
   async function removeRecipeFromSlot(jourIndex, repas, mprId) {
-    await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
-    // Si plus de recettes dans le slot, supprimer le slot
+    // Verifier si c'est un plat libre avec stock associe
     var slot = plan[jourIndex]?.[repas]
+    if (slot) {
+      var sr = (slot.recipes || []).find(function(r) { return r.id === mprId })
+      if (sr && sr.stock_item_name && sr.stock_qty_deducted) {
+        var unit = (stock.find(function(s) { return s.name.toLowerCase() === sr.stock_item_name.toLowerCase() }) || {}).unit || ''
+        setShowRestoreStock({ name: sr.stock_item_name, qty: sr.stock_qty_deducted, unit: unit, mprId: mprId, jourIndex: jourIndex, repas: repas })
+        return
+      }
+    }
+    await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
     if (slot && slot.recipes.length <= 1) {
       await supabase.from('meal_plan').delete().eq('id', slot.id)
     }
@@ -379,18 +388,30 @@ export default function PlanningPage() {
     setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
   }
 
-  async function addPlatLibre(jourIndex, repas, nom) {
+  async function remettreEnStock(name, qty) {
+    var stockItem = stock.find(function(s) { return s.name.toLowerCase() === name.toLowerCase() })
+    if (stockItem) {
+      var newQty = (stockItem.qty || 0) + parseFloat(qty)
+      newQty = Math.round(newQty * 100) / 100
+      await supabase.from('stock').update({ qty: newQty }).eq('id', stockItem.id)
+      setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
+    }
+    setShowRestoreStock(null)
+  }
+
+  async function addPlatLibre(jourIndex, repas, nom, stockItemName, stockQtyDeducted) {
     if (!nom.trim()) return
     setSaving(true)
     var slotId = await ensureSlot(jourIndex, repas)
     var existing = plan[jourIndex]?.[repas]
     var position = existing ? (existing.recipes || []).length : 0
-    // On stocke les plats libres comme des meal_plan_recipes sans recipe_id mais avec note
     await supabase.from('meal_plan_recipes').insert({
       meal_plan_id: slotId,
       recipe_id: null,
       position: position,
-      note: nom.trim()
+      note: nom.trim(),
+      stock_item_name: stockItemName || null,
+      stock_qty_deducted: stockQtyDeducted || null
     })
     await loadPlan()
     setSaving(false)
@@ -934,7 +955,8 @@ export default function PlanningPage() {
                   if (e.key === 'Enter') {
                     var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
                     if (!name) return
-                    addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name)
+                    var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
+                    addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
                     if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
                     setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
                   }
@@ -945,7 +967,8 @@ export default function PlanningPage() {
               <button onClick={function() {
                   var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
                   if (!name) return
-                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name)
+                  var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
+                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
                   if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
                   setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
                 }}
@@ -1268,6 +1291,48 @@ export default function PlanningPage() {
         </div>
       )}
 
+
+      {/* Popup remise en stock */}
+      {showRestoreStock && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '340px', textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', marginBottom: '8px' }}>📦</div>
+            <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>Remettre en stock ?</div>
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '20px', lineHeight: 1.5 }}>
+              Tu as supprime <strong>{showRestoreStock.name}</strong> du planning.<br/>
+              Remettre {showRestoreStock.qty} {showRestoreStock.unit} en stock ?
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button onClick={async function() {
+                var { name, qty, mprId, jourIndex, repas } = showRestoreStock
+                await remettreEnStock(name, qty)
+                var slot = plan[jourIndex]?.[repas]
+                await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
+                if (slot && slot.recipes.length <= 1) {
+                  await supabase.from('meal_plan').delete().eq('id', slot.id)
+                }
+                loadPlan()
+              }}
+                style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                Oui, remettre
+              </button>
+              <button onClick={async function() {
+                var { mprId, jourIndex, repas } = showRestoreStock
+                setShowRestoreStock(null)
+                var slot = plan[jourIndex]?.[repas]
+                await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
+                if (slot && slot.recipes.length <= 1) {
+                  await supabase.from('meal_plan').delete().eq('id', slot.id)
+                }
+                loadPlan()
+              }}
+                style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+                Non, garder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Popup notation apres cuisine */}
       {showRating && (
