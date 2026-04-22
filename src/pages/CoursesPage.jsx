@@ -457,10 +457,9 @@ export default function CoursesPage() {
                 const isChecked = checkedGeneral.has(item + idx)
                 return (
                   <div key={idx}
-                    onClick={() => setCheckedGeneral(c => { const n = new Set(c); n.has(item + idx) ? n.delete(item + idx) : n.add(item + idx); return n })}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: idx < generalItems.length - 1 ? '0.5px solid #f0f0ec' : 'none', cursor: 'pointer', opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white' }}>
-                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#ddd'), background: isChecked ? '#1D9E75' : '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '10px' }}>
-                      {isChecked ? '✓' : ''}
+                    onClick={() => { saveGeneralItems(generalItems.filter(function(_, i) { return i !== idx })) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: idx < generalItems.length - 1 ? '0.5px solid #f0f0ec' : 'none', cursor: 'pointer', background: 'white' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '10px' }}>
                     </div>
                     <div style={{ flex: 1, fontSize: '13px' }}>{item}</div>
                     <button onClick={e => { e.stopPropagation(); saveGeneralItems(generalItems.filter(function(_, i) { return i !== idx })) }}
