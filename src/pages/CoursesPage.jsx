@@ -112,19 +112,19 @@ export default function CoursesPage() {
   const [checkedPlanning, setCheckedPlanning] = useState(new Set()) // items coches dans la liste planning
   const [loadingPlanning, setLoadingPlanning] = useState(true)
   const [recipeSearch, setRecipeSearch]   = useState('')
-  const [generalItems, setGeneralItems]   = useState(function() {
-    try { return JSON.parse(localStorage.getItem('ma_cuisine_general_list') || '[]') } catch(e) { return [] }
-  })
+  const [generalItems, setGeneralItems]   = useState([])
   const [generalInput, setGeneralInput]   = useState('')
   const [checkedGeneral, setCheckedGeneral] = useState(new Set())
 
   useEffect(() => {
     Promise.all([
       supabase.from('recipes').select('*').eq('user_id', user.id),
-      supabase.from('stock').select('*').eq('user_id', user.id)
-    ]).then(([{ data: r }, { data: s }]) => {
+      supabase.from('stock').select('*').eq('user_id', user.id),
+      supabase.from('general_shopping_list').select('*').eq('user_id', user.id).order('created_at', { ascending: true })
+    ]).then(([{ data: r }, { data: s }, { data: g }]) => {
       setRecipes(r || [])
       setStock(s || [])
+      setGeneralItems((g || []).map(function(i) { return { id: i.id, name: i.name } }))
       setLoading(false)
     })
     loadPlanningList()
@@ -173,9 +173,24 @@ export default function CoursesPage() {
     setCheckedPlanning(new Set())
   }
 
-  function saveGeneralItems(items) {
-    setGeneralItems(items)
-    try { localStorage.setItem('ma_cuisine_general_list', JSON.stringify(items)) } catch(e) {}
+  async function addGeneralItem(name) {
+    const { data } = await supabase.from('general_shopping_list').insert({ user_id: user.id, name }).select().single()
+    if (data) setGeneralItems(function(items) { return [...items, { id: data.id, name: data.name }] })
+  }
+
+  async function removeGeneralItem(id) {
+    await supabase.from('general_shopping_list').delete().eq('id', id)
+    setGeneralItems(function(items) { return items.filter(function(i) { return i.id !== id }) })
+  }
+
+  async function clearCheckedGeneral() {
+    // Supprimer tous les articles coches
+    var toDelete = generalItems.filter(function(item) { return checkedGeneral.has(item.id) })
+    for (var item of toDelete) {
+      await supabase.from('general_shopping_list').delete().eq('id', item.id)
+    }
+    setGeneralItems(function(items) { return items.filter(function(i) { return !checkedGeneral.has(i.id) }) })
+    setCheckedGeneral(new Set())
   }
 
   function toggleRecipe(id) {
@@ -415,7 +430,7 @@ export default function CoursesPage() {
         <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
             <div style={{ fontSize: '14px', fontWeight: '500' }}>Liste generale</div>
-            {checkedGeneral.size > 0 && (
+{checkedGeneral.size > 0 && (
               <button onClick={() => {
                 saveGeneralItems(generalItems.filter(function(item, idx) { return !checkedGeneral.has(item + idx) }))
                 setCheckedGeneral(new Set())
@@ -433,7 +448,7 @@ export default function CoursesPage() {
               onChange={e => setGeneralInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && generalInput.trim()) {
-                  saveGeneralItems([...generalItems, generalInput.trim()])
+                  addGeneralItem(generalInput.trim())
                   setGeneralInput('')
                 }
               }}
@@ -442,7 +457,7 @@ export default function CoursesPage() {
             />
             <button onClick={() => {
               if (generalInput.trim()) {
-                saveGeneralItems([...generalItems, generalInput.trim()])
+                addGeneralItem(generalInput.trim())
                 setGeneralInput('')
               }
             }} style={{ padding: '7px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+</button>
@@ -453,16 +468,17 @@ export default function CoursesPage() {
             </div>
           ) : (
             <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
-              {generalItems.map((item, idx) => {
-                const isChecked = checkedGeneral.has(item + idx)
+              {generalItems.map(function(item) {
+                const isChecked = checkedGeneral.has(item.id)
                 return (
-                  <div key={idx}
-                    onClick={() => { saveGeneralItems(generalItems.filter(function(_, i) { return i !== idx })) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: idx < generalItems.length - 1 ? '0.5px solid #f0f0ec' : 'none', cursor: 'pointer', background: 'white' }}>
-                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '10px' }}>
+                  <div key={item.id}
+                    onClick={() => setCheckedGeneral(c => { const n = new Set(c); n.has(item.id) ? n.delete(item.id) : n.add(item.id); return n })}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer', opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#ddd'), background: isChecked ? '#1D9E75' : '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '10px' }}>
+                      {isChecked ? '✓' : ''}
                     </div>
-                    <div style={{ flex: 1, fontSize: '13px' }}>{item}</div>
-                    <button onClick={e => { e.stopPropagation(); saveGeneralItems(generalItems.filter(function(_, i) { return i !== idx })) }}
+                    <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
+                    <button onClick={e => { e.stopPropagation(); removeGeneralItem(item.id) }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '15px', padding: 0 }}>×</button>
                   </div>
                 )
