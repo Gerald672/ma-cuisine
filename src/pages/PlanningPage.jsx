@@ -922,16 +922,7 @@ export default function PlanningPage() {
                     style={{ width: '80px', padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px', outline: 'none' }} />
                   <span style={{ fontSize: '12px', color: '#888' }}>{selectedStockItem.unit}</span>
                 </div>
-                <button onClick={function() {
-                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, selectedStockItem.name)
-                  deduireStock(selectedStockItem, deduireQty)
-                  setPlatLibreInput('')
-                  setSelectedStockItem(null)
-                  setDeduireQty('')
-                  setShowPlatLibre(null)
-                }} style={{ width: '100%', padding: '8px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                  Ajouter au planning et deduire du stock
-                </button>
+
               </div>
             )}
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -939,11 +930,25 @@ export default function PlanningPage() {
                 autoFocus
                 value={platLibreInput}
                 onChange={function(e) { setPlatLibreInput(e.target.value) }}
-                onKeyDown={function(e) { if (e.key === 'Enter' && platLibreInput.trim()) { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput); setPlatLibreInput(''); setShowPlatLibre(null) } }}
+                onKeyDown={function(e) {
+                  if (e.key === 'Enter') {
+                    var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
+                    if (!name) return
+                    addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name)
+                    if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
+                    setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
+                  }
+                }}
                 placeholder="Ex: Pizza, Frites, Salade..."
                 style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
               />
-              <button onClick={function() { if (platLibreInput.trim()) { addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, platLibreInput); setPlatLibreInput(''); setShowPlatLibre(null) } }}
+              <button onClick={function() {
+                  var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
+                  if (!name) return
+                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name)
+                  if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
+                  setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
+                }}
                 style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                 Ajouter
               </button>
