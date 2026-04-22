@@ -112,7 +112,9 @@ export default function CoursesPage() {
   const [checkedPlanning, setCheckedPlanning] = useState(new Set()) // items coches dans la liste planning
   const [loadingPlanning, setLoadingPlanning] = useState(true)
   const [recipeSearch, setRecipeSearch]   = useState('')
-  const [generalItems, setGeneralItems]   = useState([]) // liste hors cuisine
+  const [generalItems, setGeneralItems]   = useState(function() {
+    try { return JSON.parse(localStorage.getItem('ma_cuisine_general_list') || '[]') } catch(e) { return [] }
+  })
   const [generalInput, setGeneralInput]   = useState('')
   const [checkedGeneral, setCheckedGeneral] = useState(new Set())
 
@@ -169,6 +171,11 @@ export default function CoursesPage() {
     await supabase.from('shopping_list').delete().eq('user_id', user.id)
     setPlanningSlots([])
     setCheckedPlanning(new Set())
+  }
+
+  function saveGeneralItems(items) {
+    setGeneralItems(items)
+    try { localStorage.setItem('ma_cuisine_general_list', JSON.stringify(items)) } catch(e) {}
   }
 
   function toggleRecipe(id) {
@@ -410,7 +417,7 @@ export default function CoursesPage() {
             <div style={{ fontSize: '14px', fontWeight: '500' }}>Liste generale</div>
             {checkedGeneral.size > 0 && (
               <button onClick={() => {
-                setGeneralItems(items => items.filter((item, idx) => !checkedGeneral.has(item + idx)))
+                saveGeneralItems(generalItems.filter(function(item, idx) { return !checkedGeneral.has(item + idx) }))
                 setCheckedGeneral(new Set())
               }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer' }}>
                 Supprimer coches
@@ -456,7 +463,7 @@ export default function CoursesPage() {
                       {isChecked ? '✓' : ''}
                     </div>
                     <div style={{ flex: 1, fontSize: '13px' }}>{item}</div>
-                    <button onClick={e => { e.stopPropagation(); setGeneralItems(items => items.filter((_, i) => i !== idx)) }}
+                    <button onClick={e => { e.stopPropagation(); saveGeneralItems(generalItems.filter(function(_, i) { return i !== idx })) }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '15px', padding: 0 }}>×</button>
                   </div>
                 )
