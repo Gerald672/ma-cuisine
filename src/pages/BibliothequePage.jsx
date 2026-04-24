@@ -122,24 +122,46 @@ function computeCost(ingredients, priceMap) {
 
 function computeNutrition(ingredients, nutMap, baseServings, currentServings) {
   if (!ingredients || !ingredients.length || !nutMap) return null
-  var ratio = (baseServings && currentServings) ? currentServings / baseServings : 1
+  var servings = currentServings || baseServings || 1
   var cal = 0, prot = 0, gluc = 0, lip = 0, fib = 0, sel = 0, matched = 0
   for (var k = 0; k < ingredients.length; k++) {
     var ing = ingredients[k]
     var key = (ing.name || '').trim().toLowerCase()
     var entry = nutMap[key]
     if (!entry) continue
-    var qty = parseFloat(ing.qty || 0) * ratio
+    var qty = parseFloat(ing.qty || 0)
     var factor = 0
-    if (entry.unit_ref === 'unite') {
-      factor = qty
-    } else if (ing.unit === 'kg') {
+    var unit = (ing.unit || '').toLowerCase()
+
+    if (unit === 'unite(s)' || unit === 'unité(s)') {
+      if (entry.weight_per_unit) {
+        // Unité avec poids connu → convertir en grammes
+        factor = (qty * entry.weight_per_unit) / 100
+      } else if (entry.unit_ref === 'unite') {
+        // Table exprimée par unité (ex: oeuf entier)
+        factor = qty
+      } else {
+        // Unité sans poids connu (sel, poivre, bouquet garni...) → impact négligeable
+        factor = qty / 100
+      }
+    } else if (unit === 'kg') {
       factor = qty * 1000 / 100
-    } else if (ing.unit === 'L') {
+    } else if (unit === 'l') {
       factor = qty * 1000 / 100
+    } else if (unit === 'sachet(s)') {
+      // Un sachet ~ 5g pour épices, levure etc.
+      factor = (qty * 5) / 100
+    } else if (unit === 'c. à soupe') {
+      factor = (qty * 15) / 100
+    } else if (unit === 'c. à café') {
+      factor = (qty * 5) / 100
+    } else if (unit === 'pincée') {
+      factor = (qty * 1) / 100
     } else {
+      // g ou ml → valeur directe
       factor = qty / 100
     }
+
     cal  += (entry.calories  || 0) * factor
     prot += (entry.proteines || 0) * factor
     gluc += (entry.glucides  || 0) * factor
@@ -149,13 +171,14 @@ function computeNutrition(ingredients, nutMap, baseServings, currentServings) {
     matched++
   }
   if (matched === 0) return null
+  // Diviser par le nombre de portions demandé
   return {
-    calories:  Math.round(cal),
-    proteines: parseFloat(prot.toFixed(1)),
-    glucides:  parseFloat(gluc.toFixed(1)),
-    lipides:   parseFloat(lip.toFixed(1)),
-    fibres:    parseFloat(fib.toFixed(1)),
-    sel:       parseFloat(sel.toFixed(2)),
+    calories:  Math.round(cal / servings),
+    proteines: parseFloat((prot / servings).toFixed(1)),
+    glucides:  parseFloat((gluc / servings).toFixed(1)),
+    lipides:   parseFloat((lip  / servings).toFixed(1)),
+    fibres:    parseFloat((fib  / servings).toFixed(1)),
+    sel:       parseFloat((sel  / servings).toFixed(2)),
   }
 }
 
@@ -611,7 +634,7 @@ export default function BibliothequePage() {
   // -- Recalcul de toutes les recettes après changement de prix ---------------
 
   async function loadNutMap() {
-    const { data } = await supabase.from('ingredient_nutrition').select('*')
+    const { data } = await supabase.from('ingredient_nutrition').select('name, calories, proteines, glucides, lipides, fibres, sel, unit_ref, weight_per_unit')
     const map = {}
     for (const row of (data || [])) map[row.name.toLowerCase()] = row
     setNutMap(map)
