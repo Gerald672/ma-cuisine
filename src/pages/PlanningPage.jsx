@@ -1,66 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
+// --- Constantes ---------------------------------------------------------------
+
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const REPAS = ['Petit-dejeuner', 'Diner', 'Souper']
-const REPAS_LABEL = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
-const REPAS_ICON  = { 'Petit-dejeuner': 'cafe', 'Diner': 'assiette', 'Souper': 'lune' }
-const REPAS_EMOJI = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Souper': 'Souper' }
+const REPAS_LABEL = { 'Petit-dejeuner': '☕ Petit-déj.', 'Diner': '🍽 Dîner', 'Souper': '🌙 Souper' }
 
-const CAT_STYLE = {
-  'Epicerie':          { bg: '#E6F1FB', color: '#185FA5' },
-  'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits legumes':    { bg: '#E1F5EE', color: '#085041' },
-  'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
-  'Viande poisson':    { bg: '#FAECE7', color: '#712B13' },
-  'Autres':            { bg: '#f0f0ec', color: '#666' },
+const SPORTS = [
+  'Sédentaire (peu ou pas d\'exercice)',
+  'Légèrement actif (1-3j/semaine)',
+  'Modérément actif (3-5j/semaine)',
+  'Très actif (6-7j/semaine)',
+  'Extrêmement actif (sport intensif)'
+]
+
+const SPORT_FACTOR = [1.2, 1.375, 1.55, 1.725, 1.9]
+
+// Calcul TDEE (Total Daily Energy Expenditure)
+// Formule Mifflin-St Jeor pour homme (on peut affiner plus tard)
+function calcTDEE(poids, sport) {
+  if (!poids || !sport) return null
+  const bmr = 10 * poids + 500 // Simplification : on n'a pas la taille/âge
+  const factor = SPORT_FACTOR[SPORTS.indexOf(sport)] || 1.55
+  return Math.round(bmr * factor)
 }
 
-const ING_CATS = {
-  'farine': 'Epicerie', 'sucre': 'Epicerie', 'riz': 'Epicerie', 'pates': 'Epicerie',
-  'huile': 'Epicerie', 'bouillon': 'Epicerie',
-  'lait': 'Produits laitiers', 'beurre': 'Produits laitiers', 'creme': 'Produits laitiers',
-  'fromage': 'Produits laitiers', 'parmesan': 'Produits laitiers', 'gruyere': 'Produits laitiers',
-  'oeuf': 'Frais', 'menthe': 'Frais', 'basilic': 'Frais', 'thym': 'Frais', 'persil': 'Frais',
-  'champignon': 'Fruits legumes', 'oignon': 'Fruits legumes', 'ail': 'Fruits legumes',
-  'tomate': 'Fruits legumes', 'carotte': 'Fruits legumes', 'pomme': 'Fruits legumes',
-  'poulet': 'Viande poisson', 'boeuf': 'Viande poisson', 'saumon': 'Viande poisson',
-}
-
-function getCat(name) {
-  const lower = (name || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  for (const [key, cat] of Object.entries(ING_CATS)) {
-    if (lower.includes(key)) return cat
-  }
-  return 'Autres'
-}
-
-
-function getSemaineFromDate(dateStr) {
-  if (!dateStr) return null
-  // Parser la date sans conversion timezone (YYYY-MM-DD)
-  var parts = dateStr.split('-')
-  if (parts.length !== 3) return null
-  var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
-  var day = d.getDay() || 7 // 1=lundi, 7=dimanche
-  d.setDate(d.getDate() - day + 1)
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0')
+// Calcul objectif calorique pour perte de poids
+function calcObjectifCal(tdee, poidsActuel, poidsCible, dateCible) {
+  if (!tdee || !poidsActuel || !poidsCible || !dateCible) return tdee
+  const jours = Math.max(1, Math.round((new Date(dateCible) - new Date()) / 86400000))
+  const kgAPerdreTot = poidsActuel - poidsCible
+  if (kgAPerdreTot <= 0) return tdee
+  // 1kg de graisse ≈ 7700 kcal
+  const deficitTotal = kgAPerdreTot * 7700
+  const deficitJour = Math.round(deficitTotal / jours)
+  // Maximum -500 kcal/jour pour rester sain
+  const deficit = Math.min(deficitJour, 500)
+  return Math.max(1200, tdee - deficit)
 }
 
 function getLundi(offset) {
-  var d = new Date()
-  var day = d.getDay() || 7
+  const d = new Date()
+  const day = d.getDay() || 7
   d.setDate(d.getDate() - day + 1 + (offset || 0) * 7)
   d.setHours(0, 0, 0, 0)
   return d
-}
-
-function formatDate(date) {
-  return date.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' })
 }
 
 function weekKey(lundi) {
@@ -69,1304 +55,783 @@ function weekKey(lundi) {
     String(lundi.getDate()).padStart(2, '0')
 }
 
-// plan structure:
-// {
-//   jourIndex: {
-//     repas: {
-//       id: uuid,           // meal_plan row id
-//       convives: number,
-//       invites: string[],
-//       recipes: [{ id: uuid, recipe_id: uuid, position: number }]
-//     }
-//   }
-// }
+function formatDate(date) {
+  return date.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' })
+}
 
-export default function PlanningPage() {
+// --- Mini camembert SVG -------------------------------------------------------
+
+function PieChart({ data, size = 120 }) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  if (total === 0) return <div style={{ width: size, height: size, borderRadius: '50%', background: '#f0f0ec' }} />
+  let cumul = 0
+  const slices = []
+  const cx = size / 2, cy = size / 2, r = size / 2 - 4
+
+  for (const d of data) {
+    const pct = d.value / total
+    const startAngle = cumul * 2 * Math.PI - Math.PI / 2
+    const endAngle = (cumul + pct) * 2 * Math.PI - Math.PI / 2
+    const x1 = cx + r * Math.cos(startAngle)
+    const y1 = cy + r * Math.sin(startAngle)
+    const x2 = cx + r * Math.cos(endAngle)
+    const y2 = cy + r * Math.sin(endAngle)
+    const large = pct > 0.5 ? 1 : 0
+    slices.push(
+      <path key={d.label}
+        d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`}
+        fill={d.color} />
+    )
+    cumul += pct
+  }
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {slices}
+      <circle cx={cx} cy={cy} r={r * 0.55} fill="white" />
+    </svg>
+  )
+}
+
+// --- Courbe de poids SVG -------------------------------------------------------
+
+function WeightChart({ logs, poidsActuel, poidsCible }) {
+  if (!logs || logs.length === 0) return (
+    <div style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: '13px' }}>
+      Aucune donnée pour l'instant
+    </div>
+  )
+
+  const sorted = [...logs].sort((a, b) => new Date(a.date) - new Date(b.date))
+  const vals = sorted.map(l => l.poids)
+  const allVals = [...vals, poidsCible].filter(Boolean)
+  const minV = Math.min(...allVals) - 1
+  const maxV = Math.max(...allVals) + 1
+  const W = 400, H = 140, PAD = 30
+
+  function x(i) { return PAD + (i / Math.max(sorted.length - 1, 1)) * (W - PAD * 2) }
+  function y(v) { return H - PAD - ((v - minV) / (maxV - minV)) * (H - PAD * 1.5) }
+
+  // Ligne de tendance (régression linéaire simple)
+  const n = sorted.length
+  let sx = 0, sy = 0, sxy = 0, sxx = 0
+  for (let i = 0; i < n; i++) { sx += i; sy += vals[i]; sxy += i * vals[i]; sxx += i * i }
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx || 1)
+  const intercept = (sy - slope * sx) / n
+  const tx0 = x(0), ty0 = y(intercept)
+  const tx1 = x(n - 1), ty1 = y(intercept + slope * (n - 1))
+
+  const points = sorted.map((l, i) => `${x(i)},${y(l.poids)}`).join(' ')
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W }}>
+        {/* Grille */}
+        {[0, 0.25, 0.5, 0.75, 1].map(t => {
+          const yv = H - PAD - t * (H - PAD * 1.5)
+          const val = (minV + t * (maxV - minV)).toFixed(1)
+          return (
+            <g key={t}>
+              <line x1={PAD} y1={yv} x2={W - PAD} y2={yv} stroke="#f0f0ec" strokeWidth="1" />
+              <text x={PAD - 4} y={yv + 4} fontSize="9" fill="#bbb" textAnchor="end">{val}</text>
+            </g>
+          )
+        })}
+        {/* Ligne cible */}
+        {poidsCible && (
+          <line x1={PAD} y1={y(poidsCible)} x2={W - PAD} y2={y(poidsCible)}
+            stroke="#1D9E75" strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
+        )}
+        {/* Tendance */}
+        {n > 1 && <line x1={tx0} y1={ty0} x2={tx1} y2={ty1} stroke="#EF9F27" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.7" />}
+        {/* Courbe */}
+        <polyline points={points} fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinejoin="round" />
+        {/* Points */}
+        {sorted.map((l, i) => (
+          <g key={l.id}>
+            <circle cx={x(i)} cy={y(l.poids)} r="4" fill="white" stroke="#1D9E75" strokeWidth="2" />
+            <text x={x(i)} y={y(l.poids) - 8} fontSize="9" fill="#555" textAnchor="middle">{l.poids}</text>
+          </g>
+        ))}
+        {/* Dates */}
+        {sorted.filter((_, i) => i === 0 || i === sorted.length - 1 || sorted.length < 6).map((l, i) => (
+          <text key={l.id + 'd'} x={x(i)} y={H - 4} fontSize="8" fill="#bbb" textAnchor="middle">
+            {new Date(l.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' })}
+          </text>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+// --- Composant principal -------------------------------------------------------
+
+export default function NutritionPage() {
   const { user } = useAuth()
-  const [recipes, setRecipes]         = useState([])
-  const [stock, setStock]             = useState([])
-  const [plan, setPlan]               = useState({})
-  const [weekOffset, setWeekOffset]   = useState(0)
-  const [loading, setLoading]         = useState(true)
-  const [saving, setSaving]           = useState(false)
-  const [showCourses, setShowCourses] = useState(false)
+  const [onglet, setOnglet] = useState('semaine')
+  const [goals, setGoals]   = useState(null)
+  const [weightLogs, setWeightLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
 
-  // Picker de recette
-  const [picker, setPicker]           = useState(null) // { jourIndex, repas }
-  const [pickerSearch, setPickerSearch] = useState('')
+  // Formulaire profil
+  const [formGoals, setFormGoals] = useState({
+    poids_actuel: '', poids_cible: '', date_cible: '', sport: SPORTS[2]
+  })
 
-  // Invites
-  const [showInvites, setShowInvites] = useState(null) // { jourIndex, repas }
-  const [inviteInput, setInviteInput] = useState('')
+  // Saisie poids
+  const [newPoids, setNewPoids]   = useState('')
+  const [newDate, setNewDate]     = useState(new Date().toISOString().slice(0, 10))
+  const [newNote, setNewNote]     = useState('')
 
-  // Carnet d'invites - 3 onglets
-  const [showCarnet, setShowCarnet]         = useState(false)
-  const [carnetOnglet, setCarnetOnglet]     = useState('invites') // 'invites' | 'invitations' | 'restaurants'
-  const [carnet, setCarnet]                 = useState([])
-  const [carnetSearch, setCarnetSearch]     = useState('')
-
-  // Invitations recues
-  const [invitations, setInvitations]       = useState([])
-  const [showFormInvit, setShowFormInvit]   = useState(false)
-  const [editInvit, setEditInvit]           = useState(null)
-  const [formInvit, setFormInvit]           = useState({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' })
-
-  // Restaurants
-  const [restaurants, setRestaurants]       = useState([])
-  const [showFormResto, setShowFormResto]   = useState(false)
-  const [editResto, setEditResto]           = useState(null)
-  const [formResto, setFormResto]           = useState({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' })
-  const [restoSearch, setRestoSearch]       = useState('')
-
-  // Plat libre (sans recette)
-  const [showPlatLibre, setShowPlatLibre] = useState(null)
-  const [platLibreInput, setPlatLibreInput] = useState('')
-  const [platLibreStockSearch, setPlatLibreStockSearch] = useState([])
-  const [selectedStockItem, setSelectedStockItem]       = useState(null)
-  const [deduireQty, setDeduireQty]                     = useState('')
-  const [showRestoreStock, setShowRestoreStock]         = useState(null) // { name, qty, unit, slotRecipeId }
-
-  // Drag & drop copie
-  const [dragSrc, setDragSrc] = useState(null)
-  const [dragOver, setDragOver] = useState(null)
-
-  // Shopping list
-  const [shoppingIds, setShoppingIds]   = useState(new Set())
-  // Notation apres cuisine
-  const [showRating, setShowRating]     = useState(null)
-  const [pendingRating, setPendingRating] = useState(0)
-  // Feedback visuel immediat pour les slots cuisines
-  const [cookedNow, setCookedNow]       = useState(new Set())
- // meal_plan ids ajoutes aux courses
+  // Planning nutrition
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [plan, setPlan]             = useState({})
+  const [recipes, setRecipes]       = useState([])
+  const [nutMap, setNutMap]         = useState({})
+  const [planLoading, setPlanLoading] = useState(true)
 
   const lundi = getLundi(weekOffset)
   const wKey  = weekKey(lundi)
 
-  useEffect(() => { loadAll() }, [user])
-  useEffect(() => { loadPlan() }, [wKey, user])
-  useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
-  useEffect(() => { loadInvitations(); loadRestaurants() }, [wKey, user])
-  useEffect(() => { loadInvitations(); loadRestaurants() }, [user])
-  useEffect(() => { loadShoppingList() }, [user])
+  useEffect(() => {
+    loadGoals()
+    loadWeightLogs()
+    loadNutMap()
+    loadRecipes()
+  }, [user])
 
-  async function loadAll() {
-    var [r, s] = await Promise.all([
-      supabase.from('recipes').select('*').eq('user_id', user.id),
-      supabase.from('stock').select('*').eq('user_id', user.id)
-    ])
-    setRecipes(r.data || [])
-    setStock(s.data || [])
+  useEffect(() => { loadPlan() }, [wKey, user])
+
+  async function loadGoals() {
+    const { data } = await supabase.from('user_nutrition_goals').select('*').eq('user_id', user.id).single()
+    if (data) {
+      setGoals(data)
+      setFormGoals({
+        poids_actuel: data.poids_actuel || '',
+        poids_cible:  data.poids_cible  || '',
+        date_cible:   data.date_cible   || '',
+        sport:        data.sport        || SPORTS[2]
+      })
+    }
     setLoading(false)
   }
 
+  async function loadWeightLogs() {
+    const { data } = await supabase.from('user_weight_log').select('*').eq('user_id', user.id).order('date', { ascending: true })
+    setWeightLogs(data || [])
+  }
+
+  async function loadNutMap() {
+    const { data } = await supabase.from('ingredient_nutrition').select('name, calories, proteines, glucides, lipides, fibres, sel, unit_ref, weight_per_unit')
+    const map = {}
+    for (const row of (data || [])) map[row.name.toLowerCase()] = row
+    setNutMap(map)
+  }
+
+  async function loadRecipes() {
+    const { data } = await supabase.from('recipes').select('id, title, ingredients, servings, nutrition').eq('user_id', user.id)
+    setRecipes(data || [])
+  }
+
   async function loadPlan() {
-    // Charger les slots (convives, invites) et les recipes du slot
-    var { data: slots } = await supabase
+    setPlanLoading(true)
+    const { data: slots } = await supabase
       .from('meal_plan')
       .select('*, meal_plan_recipes(*)')
       .eq('user_id', user.id)
       .eq('week_start', wKey)
-
-    var p = {}
-    for (var slot of (slots || [])) {
+    const p = {}
+    for (const slot of (slots || [])) {
       if (!p[slot.jour_index]) p[slot.jour_index] = {}
       p[slot.jour_index][slot.repas] = {
         id: slot.id,
         convives: slot.convives || 2,
-        invites: slot.invites || [],
-        recipes: (slot.meal_plan_recipes || []).sort(function(a, b) { return a.position - b.position })
+        cooked: slot.cooked || false,
+        recipes: (slot.meal_plan_recipes || []).sort((a, b) => a.position - b.position)
       }
     }
     setPlan(p)
+    setPlanLoading(false)
   }
 
-  async function loadCarnet() {
-    // Charger tous les slots avec invites non vides + leurs recettes
-    var { data: slots } = await supabase
-      .from('meal_plan')
-      .select('*, meal_plan_recipes(*)')
-      .eq('user_id', user.id)
-      .not('invites', 'eq', '{}')
-      .order('week_start', { ascending: false })
-
-    var personMap = {}
-    for (var slot of (slots || [])) {
-      if (!slot.invites || !slot.invites.length) continue
-      for (var invite of slot.invites) {
-        if (!personMap[invite]) personMap[invite] = []
-        personMap[invite].push({
-          date: slot.week_start,
-          jour: JOURS[slot.jour_index],
-          repas: slot.repas,
-          recipe_ids: (slot.meal_plan_recipes || []).map(function(r) { return r.recipe_id }),
-          notes: (slot.meal_plan_recipes || []).filter(function(r) { return r.note }).map(function(r) { return '* ' + r.note })
-        })
-      }
-    }
-    setCarnet(Object.entries(personMap).map(function(e) { return { name: e[0], repas: e[1] } }))
-  }
-
-  async function markAsCoooked(slot, convives) {
-    if (slot.cooked || cookedNow.has(slot.id)) return
-    // Feedback visuel immediat
-    setCookedNow(function(s) { var n = new Set(s); n.add(slot.id); return n })
-    // Deduire les ingredients du stock
-    var stockData = (await supabase.from('stock').select('*').eq('user_id', user.id)).data || []
-    for (var sr of slot.recipes) {
-      var recipe = recipeMap[sr.recipe_id]
-      if (!recipe) continue
-      var ratio = convives / (recipe.servings || 2)
-      for (var ing of (recipe.ingredients || [])) {
-        var stockItem = stockData.find(function(s) {
-          return s.name.toLowerCase() === ing.name.toLowerCase()
-        })
-        if (stockItem) {
-          var newQty = Math.max(0, (stockItem.qty || 0) - (ing.qty || 0) * ratio)
-          await supabase.from('stock').update({ qty: Math.round(newQty * 100) / 100 }).eq('id', stockItem.id)
-        }
-      }
-      // Incrementer cook_count sur la recette
-      var newCount = (recipe.cook_count || 0) + 1
-      await supabase.from('recipes').update({ cook_count: newCount }).eq('id', recipe.id)
-    }
-    // Marquer le slot comme cuisine dans meal_plan
-    await supabase.from('meal_plan').update({ cooked: true }).eq('id', slot.id)
-
-    // Proposer la notation si une recette n'a pas encore de note
-    var unrated = slot.recipes.map(function(sr) { return recipeMap[sr.recipe_id] }).filter(function(r) { return r && (!r.rating || r.rating === 0) })
-    if (unrated.length > 0) {
-      setShowRating({ recipe: unrated[0], slotId: slot.id })
-      setPendingRating(0)
-    } else {
-      loadPlan()
-    }
-  }
-
-  async function saveRating(recipe, rating) {
-    if (rating === 0) { setShowRating(null); loadPlan(); return }
-    await supabase.from('recipes').update({ rating }).eq('id', recipe.id)
-    setShowRating(null)
-    loadPlan()
-  }
-
-  async function loadShoppingList() {
-    var { data } = await supabase.from('shopping_list').select('meal_plan_id').eq('user_id', user.id)
-    setShoppingIds(new Set((data || []).map(function(r) { return r.meal_plan_id })))
-  }
-
-  async function addSlotToShopping(jourIndex, repas) {
-    var slot = plan[jourIndex]?.[repas]
-    if (!slot) return
-    var { error } = await supabase.from('shopping_list').upsert({
+  async function saveGoals() {
+    setSaving(true)
+    const payload = {
       user_id: user.id,
-      meal_plan_id: slot.id
-    }, { onConflict: 'user_id,meal_plan_id' })
-    if (!error) setShoppingIds(function(s) { var n = new Set(s); n.add(slot.id); return n })
-  }
-
-  async function removeSlotFromShopping(slotId) {
-    await supabase.from('shopping_list').delete().eq('user_id', user.id).eq('meal_plan_id', slotId)
-    setShoppingIds(function(s) { var n = new Set(s); n.delete(slotId); return n })
-  }
-
-  async function addWeekToShopping() {
-    var toAdd = []
-    for (var ji = 0; ji < 7; ji++) {
-      for (var repas of REPAS) {
-        var slot = plan[ji]?.[repas]
-        if (slot && slot.recipes && slot.recipes.length > 0) toAdd.push(slot.id)
-      }
+      poids_actuel: parseFloat(formGoals.poids_actuel) || null,
+      poids_cible:  parseFloat(formGoals.poids_cible)  || null,
+      date_cible:   formGoals.date_cible || null,
+      sport:        formGoals.sport,
+      updated_at:   new Date().toISOString()
     }
-    if (toAdd.length === 0) return
-    var rows = toAdd.map(function(id) { return { user_id: user.id, meal_plan_id: id } })
-    await supabase.from('shopping_list').upsert(rows, { onConflict: 'user_id,meal_plan_id' })
-    setShoppingIds(function(s) { var n = new Set(s); toAdd.forEach(function(id) { n.add(id) }); return n })
-  }
-
-  async function loadInvitations() {
-    var { data } = await supabase.from('invitations_recues').select('*').eq('user_id', user.id).order('date', { ascending: false })
-    setInvitations(data || [])
-  }
-
-  async function saveInvitation() {
-    if (!formInvit.hote.trim() || !formInvit.date) return
-    var payload = { user_id: user.id, hote: formInvit.hote, date: formInvit.date, menu: formInvit.menu, notes: formInvit.notes, jour_index: formInvit.jour_index !== '' ? parseInt(formInvit.jour_index) : null, repas: formInvit.repas || null, semaine: getSemaineFromDate(formInvit.date) || wKey }
-    if (editInvit) {
-      await supabase.from('invitations_recues').update(payload).eq('id', editInvit.id)
+    if (goals) {
+      await supabase.from('user_nutrition_goals').update(payload).eq('user_id', user.id)
     } else {
-      await supabase.from('invitations_recues').insert(payload)
+      await supabase.from('user_nutrition_goals').insert(payload)
     }
-    setShowFormInvit(false); setEditInvit(null); setFormInvit({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' })
-    loadInvitations()
+    await loadGoals()
+    setSaving(false)
   }
 
-  async function deleteInvitation(id) {
-    await supabase.from('invitations_recues').delete().eq('id', id)
-    loadInvitations()
-  }
-
-  async function loadRestaurants() {
-    var { data } = await supabase.from('restaurants').select('*').eq('user_id', user.id).order('date', { ascending: false })
-    setRestaurants(data || [])
-  }
-
-  async function saveRestaurant() {
-    if (!formResto.nom.trim()) return
-    var payload = { user_id: user.id, nom: formResto.nom, adresse: formResto.adresse, date: formResto.date || null, menu: formResto.menu, prix: parseFloat(formResto.prix) || null, note: formResto.note || 0, avis: formResto.avis, jour_index: formResto.jour_index !== '' ? parseInt(formResto.jour_index) : null, repas: formResto.repas || null, semaine: getSemaineFromDate(formResto.date) || wKey }
-    if (editResto) {
-      await supabase.from('restaurants').update(payload).eq('id', editResto.id)
-    } else {
-      await supabase.from('restaurants').insert(payload)
-    }
-    setShowFormResto(false); setEditResto(null); setFormResto({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' })
-    loadRestaurants()
-  }
-
-  async function deleteRestaurant(id) {
-    await supabase.from('restaurants').delete().eq('id', id)
-    loadRestaurants()
-  }
-
-  var recipeMap = {}
-  recipes.forEach(function(r) { recipeMap[r.id] = r })
-
-  // -- Gestion slot -------------------------------------------------------------
-
-  async function ensureSlot(jourIndex, repas) {
-    // Retourne l'id du slot, le cree si inexistant
-    var existing = plan[jourIndex]?.[repas]
-    if (existing) return existing.id
-    var { data } = await supabase.from('meal_plan').insert({
+  async function addWeightLog() {
+    if (!newPoids) return
+    await supabase.from('user_weight_log').insert({
       user_id: user.id,
-      week_start: wKey,
-      jour_index: jourIndex,
-      repas: repas,
-      convives: 2,
-      invites: []
-    }).select().single()
-    return data.id
-  }
-
-  async function addRecipeToSlot(jourIndex, repas, recipeId) {
-    setSaving(true)
-    var slotId = await ensureSlot(jourIndex, repas)
-    var existing = plan[jourIndex]?.[repas]
-    var position = existing ? (existing.recipes || []).length : 0
-    await supabase.from('meal_plan_recipes').insert({
-      meal_plan_id: slotId,
-      recipe_id: recipeId,
-      position: position
+      poids: parseFloat(newPoids),
+      date: newDate,
+      note: newNote || null
     })
-    await loadPlan()
-    setSaving(false)
-    setPicker(null)
-    setPickerSearch('')
+    setNewPoids(''); setNewNote('')
+    await loadWeightLogs()
   }
 
-  async function removeRecipeFromSlot(jourIndex, repas, mprId) {
-    // Verifier si c'est un plat libre avec stock associe
-    var slot = plan[jourIndex]?.[repas]
-    if (slot) {
-      var sr = (slot.recipes || []).find(function(r) { return r.id === mprId })
-      if (sr && sr.stock_item_name && sr.stock_qty_deducted) {
-        var unit = (stock.find(function(s) { return s.name.toLowerCase() === sr.stock_item_name.toLowerCase() }) || {}).unit || ''
-        setShowRestoreStock({ name: sr.stock_item_name, qty: sr.stock_qty_deducted, unit: unit, mprId: mprId, jourIndex: jourIndex, repas: repas })
-        return
-      }
+  async function deleteWeightLog(id) {
+    await supabase.from('user_weight_log').delete().eq('id', id)
+    await loadWeightLogs()
+  }
+
+  // --- Calcul nutrition depuis le planning ------------------------------------
+
+  function computeNutritionIngredients(ingredients, servings) {
+    if (!ingredients || !ingredients.length) return null
+    const s = servings || 1
+    let cal = 0, prot = 0, gluc = 0, lip = 0, fib = 0, matched = 0
+    for (const ing of ingredients) {
+      const key = (ing.name || '').trim().toLowerCase()
+      const entry = nutMap[key]
+      if (!entry) continue
+      const qty = parseFloat(ing.qty || 0)
+      const unit = (ing.unit || '').toLowerCase()
+      let factor = 0
+      if (unit === 'unite(s)' || unit === 'unité(s)') {
+        factor = entry.weight_per_unit ? (qty * entry.weight_per_unit) / 100 : entry.unit_ref === 'unite' ? qty : qty / 100
+      } else if (unit === 'kg') { factor = qty * 10
+      } else if (unit === 'l') { factor = qty * 10
+      } else if (unit === 'sachet(s)') { factor = (qty * 5) / 100
+      } else if (unit === 'c. à soupe') { factor = (qty * 15) / 100
+      } else if (unit === 'c. à café') { factor = (qty * 5) / 100
+      } else { factor = qty / 100 }
+      cal  += (entry.calories  || 0) * factor
+      prot += (entry.proteines || 0) * factor
+      gluc += (entry.glucides  || 0) * factor
+      lip  += (entry.lipides   || 0) * factor
+      fib  += (entry.fibres    || 0) * factor
+      matched++
     }
-    await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
-    if (slot && slot.recipes.length <= 1) {
-      await supabase.from('meal_plan').delete().eq('id', slot.id)
-    }
-    await loadPlan()
+    if (matched === 0) return null
+    return { calories: Math.round(cal / s), proteines: parseFloat((prot / s).toFixed(1)), glucides: parseFloat((gluc / s).toFixed(1)), lipides: parseFloat((lip / s).toFixed(1)) }
   }
 
-  async function deduireStock(stockItem, qty) {
-    if (!stockItem) return
-    var newQty = Math.max(0, stockItem.qty - (parseFloat(qty) || stockItem.qty))
-    await supabase.from('stock').update({ qty: Math.round(newQty * 100) / 100 }).eq('id', stockItem.id)
-    setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
-  }
+  const recipeMap = {}
+  recipes.forEach(r => { recipeMap[r.id] = r })
 
-  async function remettreEnStock(name, qty) {
-    var stockItem = stock.find(function(s) { return s.name.toLowerCase() === name.toLowerCase() })
-    if (stockItem) {
-      var newQty = (stockItem.qty || 0) + parseFloat(qty)
-      newQty = Math.round(newQty * 100) / 100
-      await supabase.from('stock').update({ qty: newQty }).eq('id', stockItem.id)
-      setStock(function(s) { return s.map(function(i) { return i.id === stockItem.id ? { ...i, qty: newQty } : i }) })
-    }
-    setShowRestoreStock(null)
-  }
+  // Nutrition par jour et par repas
+  const nutritionSemaine = {}
+  let totalCal = 0, totalProt = 0, totalGluc = 0, totalLip = 0, totalFib = 0, joursAvecDonnees = 0
 
-  async function addPlatLibre(jourIndex, repas, nom, stockItemName, stockQtyDeducted) {
-    if (!nom.trim()) return
-    setSaving(true)
-    var slotId = await ensureSlot(jourIndex, repas)
-    var existing = plan[jourIndex]?.[repas]
-    var position = existing ? (existing.recipes || []).length : 0
-    await supabase.from('meal_plan_recipes').insert({
-      meal_plan_id: slotId,
-      recipe_id: null,
-      position: position,
-      note: nom.trim(),
-      stock_item_name: stockItemName || null,
-      stock_qty_deducted: stockQtyDeducted || null
-    })
-    await loadPlan()
-    setSaving(false)
-    setShowPlatLibre(null)
-    setPlatLibreInput('')
-  }
-
-  async function copySlot(srcJourIndex, srcRepas, dstJourIndex, dstRepas) {
-    if (srcJourIndex === dstJourIndex && srcRepas === dstRepas) return
-    var srcSlot = plan[srcJourIndex]?.[srcRepas]
-    if (!srcSlot || srcSlot.recipes.length === 0) return
-    setSaving(true)
-    var dstSlotId = await ensureSlot(dstJourIndex, dstRepas)
-    var dstSlot = plan[dstJourIndex]?.[dstRepas]
-    var startPos = dstSlot ? dstSlot.recipes.length : 0
-    for (var i = 0; i < srcSlot.recipes.length; i++) {
-      var sr = srcSlot.recipes[i]
-      await supabase.from('meal_plan_recipes').insert({
-        meal_plan_id: dstSlotId,
-        recipe_id: sr.recipe_id || null,
-        note: sr.note || null,
-        position: startPos + i
-      })
-    }
-    await loadPlan()
-    setSaving(false)
-  }
-
-  async function updateConvives(jourIndex, repas, val) {
-    var slot = plan[jourIndex]?.[repas]
-    if (!slot) return
-    await supabase.from('meal_plan').update({ convives: val }).eq('id', slot.id)
-    await loadPlan()
-  }
-
-  async function addInvite(jourIndex, repas, name) {
-    if (!name.trim()) return
-    var slot = plan[jourIndex]?.[repas]
-    if (!slot) return
-    var newList = [...(slot.invites || []), name.trim()]
-    await supabase.from('meal_plan').update({ invites: newList }).eq('id', slot.id)
-    setInviteInput('')
-    await loadPlan()
-  }
-
-  async function removeInvite(jourIndex, repas, name) {
-    var slot = plan[jourIndex]?.[repas]
-    if (!slot) return
-    var newList = (slot.invites || []).filter(function(i) { return i !== name })
-    await supabase.from('meal_plan').update({ invites: newList }).eq('id', slot.id)
-    await loadPlan()
-  }
-
-  // -- Courses depuis le planning (avec convives par repas) ------------------
-
-  var needed = {}
-  for (var ji = 0; ji < 7; ji++) {
-    for (var repas of REPAS) {
-      var slot = plan[ji]?.[repas]
+  for (let ji = 0; ji < 7; ji++) {
+    nutritionSemaine[ji] = {}
+    for (const repas of REPAS) {
+      const slot = plan[ji]?.[repas]
       if (!slot) continue
-      var convives = slot.convives || 2
-      for (var slotRecipe of (slot.recipes || [])) {
-        var recipe = recipeMap[slotRecipe.recipe_id]
-        if (!recipe) continue
-        var base = recipe.servings || 2
-        var ratio = convives / base
-        for (var ing of (recipe.ingredients || [])) {
-          var key = ing.name
-          if (!needed[key]) needed[key] = { name: ing.name, qty: 0, unit: ing.unit }
-          needed[key].qty += (ing.qty || 0) * ratio
+      let slotCal = 0, slotProt = 0, slotGluc = 0, slotLip = 0, slotFib = 0, hasData = false
+
+      for (const sr of (slot.recipes || [])) {
+        if (sr.recipe_id) {
+          // Recette liée
+          const recipe = recipeMap[sr.recipe_id]
+          if (!recipe) continue
+          const convives = slot.convives || 2
+          const ratio = convives / (recipe.servings || 2)
+          // Priorité : valeur importée, sinon calcul
+          const nut = recipe.nutrition?.calories
+            ? recipe.nutrition
+            : computeNutritionIngredients(recipe.ingredients, recipe.servings)
+          if (nut) {
+            slotCal  += (nut.calories  || 0) * ratio
+            slotProt += (nut.proteines || 0) * ratio
+            slotGluc += (nut.glucides  || 0) * ratio
+            slotLip  += (nut.lipides   || 0) * ratio
+            slotFib  += (nut.fibres    || 0) * ratio
+            hasData = true
+          }
+        } else if (sr.note) {
+          // Plat libre → pas de données nutritionnelles disponibles
+          hasData = false
+        }
+      }
+
+      if (hasData) {
+        nutritionSemaine[ji][repas] = {
+          calories: Math.round(slotCal),
+          proteines: parseFloat(slotProt.toFixed(1)),
+          glucides: parseFloat(slotGluc.toFixed(1)),
+          lipides: parseFloat(slotLip.toFixed(1)),
+          fibres: parseFloat(slotFib.toFixed(1))
         }
       }
     }
-  }
 
-  var coursesList = Object.values(needed).map(function(item) {
-    var inStock = stock.find(function(s) { return s.name.toLowerCase() === item.name.toLowerCase() })
-    var stockQty = inStock ? inStock.qty : 0
-    var manque = Math.max(0, item.qty - stockQty)
-    return Object.assign({}, item, {
-      inStock: stockQty,
-      manque: Math.ceil(manque * 10) / 10,
-      enStock: manque <= 0,
-      cat: getCat(item.name)
-    })
-  })
-
-  var aAcheter  = coursesList.filter(function(i) { return !i.enStock })
-  var dejaDispo = coursesList.filter(function(i) { return i.enStock })
-  var coursesGroups = {}
-  aAcheter.forEach(function(item) {
-    if (!coursesGroups[item.cat]) coursesGroups[item.cat] = []
-    coursesGroups[item.cat].push(item)
-  })
-
-  var totalRecipeCount = 0
-  for (var ji2 = 0; ji2 < 7; ji2++) {
-    for (var r2 of REPAS) {
-      totalRecipeCount += (plan[ji2]?.[r2]?.recipes || []).length
+    // Total jour
+    const jourNut = Object.values(nutritionSemaine[ji])
+    if (jourNut.length > 0) {
+      const jourCal = jourNut.reduce((s, n) => s + n.calories, 0)
+      totalCal  += jourCal
+      totalProt += jourNut.reduce((s, n) => s + n.proteines, 0)
+      totalGluc += jourNut.reduce((s, n) => s + n.glucides, 0)
+      totalLip  += jourNut.reduce((s, n) => s + n.lipides, 0)
+      totalFib  += jourNut.reduce((s, n) => s + (n.fibres || 0), 0)
+      if (jourCal > 0) joursAvecDonnees++
     }
   }
 
-  var filteredRecipes = recipes.filter(function(r) {
-    return !pickerSearch || r.title.toLowerCase().includes(pickerSearch.toLowerCase())
-  })
+  const moyenneCal  = joursAvecDonnees > 0 ? Math.round(totalCal / joursAvecDonnees) : 0
+  const moyenneProt = joursAvecDonnees > 0 ? parseFloat((totalProt / joursAvecDonnees).toFixed(1)) : 0
+  const moyenneGluc = joursAvecDonnees > 0 ? parseFloat((totalGluc / joursAvecDonnees).toFixed(1)) : 0
+  const moyenneLip  = joursAvecDonnees > 0 ? parseFloat((totalLip  / joursAvecDonnees).toFixed(1)) : 0
+  const moyenneFib  = joursAvecDonnees > 0 ? parseFloat((totalFib  / joursAvecDonnees).toFixed(1)) : 0
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
+  // TDEE et objectif
+  const lastWeight = weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].poids : goals?.poids_actuel
+  const tdee = calcTDEE(lastWeight, goals?.sport)
+  const objectifCal = calcObjectifCal(tdee, lastWeight, goals?.poids_cible, goals?.date_cible)
 
-  // Invitations et restaurants de la semaine affichee
-  var invitSemaine = invitations.filter(function(inv) {
-    return inv.semaine === wKey && inv.jour_index !== null && inv.jour_index !== undefined && inv.repas
-  })
-  var restoSemaine = restaurants.filter(function(r) {
-    return r.semaine === wKey && r.jour_index !== null && r.jour_index !== undefined && r.repas
-  })
+  // Jours restants
+  const joursRestants = goals?.date_cible
+    ? Math.max(0, Math.round((new Date(goals.date_cible) - new Date()) / 86400000))
+    : null
+  const kgRestants = lastWeight && goals?.poids_cible ? Math.max(0, lastWeight - goals.poids_cible) : null
 
-  var S = {
-    btn: { background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer' },
-    tag: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#666', display: 'inline-flex', alignItems: 'center', gap: '3px' }
+  // Dernier poids enregistré
+  const dernierPoids = weightLogs.length > 0 ? weightLogs[weightLogs.length - 1] : null
+
+  // Conseils
+  function getConseils() {
+    const conseils = []
+    if (!objectifCal || !moyenneCal) return conseils
+    const ecart = moyenneCal - objectifCal
+    if (ecart > 200) conseils.push({ type: 'warning', txt: `Tu consommes en moyenne ${ecart} kcal de trop par jour. Réduis les portions ou les matières grasses.` })
+    else if (ecart < -200) conseils.push({ type: 'ok', txt: `Bon travail ! Tu es en dessous de ton objectif de ${Math.abs(ecart)} kcal/jour.` })
+    else conseils.push({ type: 'ok', txt: 'Tes apports caloriques sont bien alignés avec ton objectif !' })
+    if (moyenneProt < 1.2 * (lastWeight || 80)) conseils.push({ type: 'warning', txt: `Apport en protéines insuffisant (${moyenneProt}g/j). Vise ${Math.round(1.2 * (lastWeight || 80))}g pour préserver ta masse musculaire.` })
+    if (moyenneLip > 80) conseils.push({ type: 'info', txt: `Apport en lipides élevé (${moyenneLip}g/j). Privilégie les bonnes graisses (avocat, noix, huile d'olive).` })
+    if (moyenneFib < 25) conseils.push({ type: 'info', txt: `Apport en fibres insuffisant (${moyenneFib}g/j). Vise 25-30g/j avec légumes, légumineuses et céréales complètes.` })
+    if (joursRestants !== null && kgRestants !== null) {
+      const rythme = kgRestants / (joursRestants / 7 || 1)
+      if (rythme > 1) conseils.push({ type: 'warning', txt: `L'objectif est ambitieux (${rythme.toFixed(1)}kg/semaine). Un rythme sain est de 0.5-1kg/semaine.` })
+    }
+    return conseils
   }
+
+  const S = {
+    input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8' },
+    card: { background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' },
+    label: { fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' },
+    stat: { background: '#fafaf8', borderRadius: '10px', padding: '10px 14px', textAlign: 'center' },
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>Chargement...</div>
 
   return (
     <div>
-
-      {/* En-tete semaine */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <button onClick={function() { setWeekOffset(function(w) { return w - 1 }) }} style={S.btn}>&#8249;</button>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', fontWeight: '500' }}>
-            {weekOffset === 0 ? 'Cette semaine' : weekOffset === 1 ? 'Semaine prochaine' : weekOffset === -1 ? 'Semaine derniere' : 'Semaine du ' + formatDate(lundi)}
-          </div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{formatDate(lundi)} - {formatDate(new Date(lundi.getTime() + 6 * 86400000))}</div>
+      {/* En-tête */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '2px' }}>Nutrition & Santé</div>
+        <div style={{ fontSize: '12px', color: '#888' }}>
+          {dernierPoids ? `Dernier poids : ${dernierPoids.poids} kg le ${new Date(dernierPoids.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })}` : 'Commence par saisir ton profil'}
         </div>
-        <button onClick={function() { setWeekOffset(function(w) { return w + 1 }) }} style={S.btn}>&#8250;</button>
-        {weekOffset !== 0 && (
-          <button onClick={function() { setWeekOffset(0) }} style={{ ...S.btn, border: '0.5px solid #1D9E75', color: '#1D9E75' }}>Auj.</button>
-        )}
-        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-
-          <button onClick={function() { setShowCarnet(true) }}
-            style={{ ...S.btn }}>
-            Carnet invitations
-          </button>
-          <button onClick={addWeekToShopping}
-            style={{ ...S.btn, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', fontWeight: '500' }}>
-            + Courses semaine
-          </button>
-        </div>
-        {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Sauvegarde...</span>}
       </div>
 
-      {/* Grille planning */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
-        {/* En-tete colonnes */}
-        <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: '0.5px solid #e0e0e0', background: '#fafaf8' }}>
-          <div />
-          {REPAS.map(function(repas) {
-            return (
-              <div key={repas} style={{ padding: '10px 8px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #e0e0e0' }}>
-                {repas}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Lignes jours */}
-        {JOURS.map(function(jour, ji) {
-          var date = new Date(lundi); date.setDate(date.getDate() + ji)
-          var isToday = new Date().toDateString() === date.toDateString()
-          return (
-            <div key={jour} style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: ji < 6 ? '0.5px solid #e0e0e0' : 'none' }}>
-              {/* Libelle jour */}
-              <div style={{ padding: '10px 8px', background: isToday ? '#E1F5EE' : '#fafaf8', borderRight: '0.5px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '11px', fontWeight: isToday ? '600' : '500', color: isToday ? '#0F6E56' : '#333' }}>{jour}</div>
-                <div style={{ fontSize: '10px', color: '#aaa' }}>{formatDate(date)}</div>
-              </div>
-
-              {/* Slots repas */}
-              {REPAS.map(function(repas) {
-                var slot = plan[ji]?.[repas]
-                var slotRecipes = slot ? slot.recipes : []
-                var convives = slot ? slot.convives : 2
-                var invites = slot ? (slot.invites || []) : []
-
-                var isDragOver = dragOver && dragOver.jourIndex === ji && dragOver.repas === repas
-                var isDragSrc  = dragSrc  && dragSrc.jourIndex  === ji && dragSrc.repas  === repas
-                var hasInvit = invitSemaine.some(function(inv) { return parseInt(inv.jour_index) === ji && inv.repas === repas })
-                var hasResto = restoSemaine.some(function(r) { return parseInt(r.jour_index) === ji && r.repas === repas })
-                var hasExternal = hasInvit || hasResto
-
-                return (
-                  <div key={repas}
-                    draggable={slotRecipes.length > 0}
-                    onDragStart={function() { setDragSrc({ jourIndex: ji, repas: repas }) }}
-                    onDragEnd={function() { setDragSrc(null); setDragOver(null) }}
-                    onDragOver={function(e) { e.preventDefault(); setDragOver({ jourIndex: ji, repas: repas }) }}
-                    onDrop={function(e) {
-                      e.preventDefault()
-                      if (dragSrc) copySlot(dragSrc.jourIndex, dragSrc.repas, ji, repas)
-                      setDragSrc(null); setDragOver(null)
-                    }}
-                    style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px', opacity: isDragSrc ? 0.5 : 1, background: isDragOver ? '#E1F5EE' : 'white', transition: 'background 0.15s' }}>
-
-                    {/* Recettes et plats libres dans le slot */}
-                    {slotRecipes.map(function(sr) {
-                      var r = sr.recipe_id ? recipeMap[sr.recipe_id] : null
-                      // Plat libre (pas de recipe_id, juste une note)
-                      if (!r && sr.note) {
-                        return (
-                          <div key={sr.id} style={{ background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ fontSize: '12px', flexShrink: 0 }}>*</span>
-                            <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500' }}>{sr.note}</div>
-                            <button onClick={function() { removeRecipeFromSlot(ji, repas, sr.id) }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: 0, lineHeight: 1, flexShrink: 0 }}>x</button>
-                          </div>
-                        )
-                      }
-                      if (!r) return null
-                      return (
-                        <div key={sr.id} style={{ background: '#f5f5f0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
-                          <span style={{ fontSize: '14px', flexShrink: 0 }}>{r.emoji}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.title}</div>
-                            <div style={{ fontSize: '9px', color: '#aaa' }}>{r.time} min</div>
-                          </div>
-                          <button onClick={function() { removeRecipeFromSlot(ji, repas, sr.id) }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: 0, lineHeight: 1, flexShrink: 0 }}>x</button>
-                        </div>
-                      )
-                    })}
-
-                    {/* Entrees invitations */}
-                    {invitSemaine.filter(function(inv) { return parseInt(inv.jour_index) === ji && inv.repas === repas }).map(function(inv) {
-                      return (
-                        <div key={inv.id}
-                          onClick={function() { setCarnetOnglet('invitations'); setShowCarnet(true) }}
-                          style={{ background: '#EFF6FF', border: '0.5px solid #93C5FD', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                          <span style={{ fontSize: '12px', flexShrink: 0 }}>🏠</span>
-                          <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500', color: '#1D4ED8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Invite chez {inv.hote}
-                          </div>
-                        </div>
-                      )
-                    })}
-
-                    {/* Entrees restaurants */}
-                    {restoSemaine.filter(function(r) { return parseInt(r.jour_index) === ji && r.repas === repas }).map(function(r) {
-                      return (
-                        <div key={r.id}
-                          onClick={function() { setCarnetOnglet('restaurants'); setShowCarnet(true) }}
-                          style={{ background: '#F5F3FF', border: '0.5px solid #C4B5FD', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                          <span style={{ fontSize: '12px', flexShrink: 0 }}>🍽️</span>
-                          <div style={{ flex: 1, minWidth: 0, fontSize: '10px', fontWeight: '500', color: '#6D28D9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {r.nom}
-                          </div>
-                        </div>
-                      )
-                    })}
-
-                    {/* Bouton ajouter recette */}
-                    {!hasExternal && <button
-                      onClick={function() { setPicker({ jourIndex: ji, repas: repas }); setPickerSearch('') }}
-                      style={{ width: '100%', border: '1px dashed #ddd', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
-                      onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#ccc' }}
-                    >
-                      + {slotRecipes.length === 0 ? 'Ajouter' : 'Ajouter plat'}
-                    </button>}
-
-                    {/* Bouton plat libre */}
-                    {!hasExternal && <button
-                      onClick={function() { setShowPlatLibre({ jourIndex: ji, repas: repas }); setPlatLibreInput('') }}
-                      style={{ width: '100%', border: '1px dashed #bbf7d0', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#86efac', fontSize: '11px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
-                      onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#bbf7d0'; e.currentTarget.style.color = '#86efac' }}
-                    >
-                      + Plat libre
-                    </button>}
-
-                    {/* Convives + invites (visible si slot existe) */}
-                    {slot && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                        {/* Convives */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <button onClick={function() { updateConvives(ji, repas, Math.max(1, convives - 1)) }}
-                            style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>-</button>
-                          <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>Pers. {convives}</span>
-                          <button onClick={function() { updateConvives(ji, repas, convives + 1) }}
-                            style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>+</button>
-                        </div>
-                        {/* Bouton invites */}
-                        <button
-                          onClick={function() { setShowInvites({ jourIndex: ji, repas: repas }); setInviteInput('') }}
-                          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: invites.length > 0 ? '#1D9E75' : '#aaa' }}
-                        >
-                          {invites.length > 0 ? invites.length + ' invite' + (invites.length > 1 ? 's' : '') : '+ Invites'}
-                        </button>
-                        {/* Bouton courses */}
-                        {slot.recipes && slot.recipes.length > 0 && (
-                          <button
-                            onClick={function() { shoppingIds.has(slot.id) ? removeSlotFromShopping(slot.id) : addSlotToShopping(ji, repas) }}
-                            style={{ background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', border: '0.5px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontWeight: shoppingIds.has(slot.id) ? '600' : '400' }}
-                          >
-                            {shoppingIds.has(slot.id) ? '✓ Courses' : '+ Courses'}
-                          </button>
-                        )}
-                        {/* Bouton J'ai cuisine */}
-                        {slot.recipes && slot.recipes.length > 0 && (
-                          <button
-                            onClick={function() { markAsCoooked(slot, convives) }}
-                            style={{ background: (slot.cooked || cookedNow.has(slot.id)) ? '#EFF6FF' : 'none', border: '0.5px solid ' + ((slot.cooked || cookedNow.has(slot.id)) ? '#93C5FD' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: (slot.cooked || cookedNow.has(slot.id)) ? 'default' : 'pointer', color: (slot.cooked || cookedNow.has(slot.id)) ? '#1D4ED8' : '#aaa', fontWeight: (slot.cooked || cookedNow.has(slot.id)) ? '600' : '400' }}
-                            disabled={slot.cooked || cookedNow.has(slot.id)}
-                            title="Deduit les ingredients du stock et incremente le compteur de la recette"
-                          >
-                            {(slot.cooked || cookedNow.has(slot.id)) ? '✓ Cuisine !' : '+ Cuisine'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+      {/* Résumé objectif */}
+      {goals?.poids_cible && (
+        <div style={{ background: 'linear-gradient(135deg, #E1F5EE 0%, #f0faf5 100%)', border: '0.5px solid #5DCAA5', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56', marginBottom: '2px' }}>
+              Objectif : {goals.poids_cible} kg
+              {goals.date_cible && ` d'ici le ${new Date(goals.date_cible).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })}`}
             </div>
-          )
-        })}
-      </div>
-
-      {/* Courses */}
-      {showCourses && (
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '500' }}>Courses de la semaine</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>{totalRecipeCount} plat(s) planifie(s) - quantites adaptees par repas</div>
+            <div style={{ fontSize: '12px', color: '#3B6D11' }}>
+              {kgRestants > 0 ? `${kgRestants.toFixed(1)} kg restants` : '🎉 Objectif atteint !'}
+              {joursRestants !== null && kgRestants > 0 && ` · ${joursRestants} jours`}
             </div>
           </div>
-
-          {totalRecipeCount === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette planifiee cette semaine.</div>
-          ) : (
-            <>
-              {aAcheter.length > 0 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>A acheter ({aAcheter.length})</div>
-                  {Object.entries(coursesGroups).map(function(entry) {
-                    var cat = entry[0], items = entry[1]
-                    var cs = CAT_STYLE[cat] || CAT_STYLE['Autres']
-                    return (
-                      <div key={cat} style={{ marginBottom: '10px' }}>
-                        <span style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
-                        <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
-                          {items.map(function(item) {
-                            return (
-                              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: '0.5px solid #f0f0ec', fontSize: '13px' }}>
-                                <div style={{ flex: 1 }}>{item.name}</div>
-                                <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>{item.manque} {item.unit}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              {dejaDispo.length > 0 && (
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: '500', color: '#3B6D11', marginBottom: '6px' }}>Deja en stock</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {dejaDispo.map(function(item) {
-                      return <span key={item.name} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#EAF3DE', color: '#3B6D11' }}>{item.name}</span>
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
+          {objectifCal && (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '20px', fontWeight: '600', color: '#0F6E56' }}>{objectifCal}</div>
+              <div style={{ fontSize: '11px', color: '#3B6D11' }}>kcal/jour objectif</div>
+            </div>
           )}
         </div>
       )}
 
-      {/* Modal picker de recette */}
-      {picker && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.25rem', width: '100%', maxWidth: '480px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '500' }}>Ajouter une recette</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
-                  {JOURS[picker.jourIndex]} - {picker.repas}
-                </div>
-              </div>
-              <button onClick={function() { setPicker(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
+      {/* Onglets */}
+      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '4px', marginBottom: '1rem' }}>
+        {[
+          { id: 'semaine', label: '📊 Semaine' },
+          { id: 'poids',   label: '⚖️ Poids' },
+          { id: 'profil',  label: '👤 Profil' },
+          { id: 'conseils',label: '💡 Conseils' },
+        ].map(o => (
+          <button key={o.id} onClick={() => setOnglet(o.id)} style={{
+            flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', fontSize: '12px', cursor: 'pointer',
+            background: onglet === o.id ? '#E1F5EE' : 'transparent',
+            color: onglet === o.id ? '#0F6E56' : '#888',
+            fontWeight: onglet === o.id ? '500' : '400'
+          }}>{o.label}</button>
+        ))}
+      </div>
+
+      {/* ── Onglet Semaine ──────────────────────────────────────────────────── */}
+      {onglet === 'semaine' && (
+        <div>
+          {/* Navigation semaine */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <button onClick={() => setWeekOffset(w => w - 1)} style={{ padding: '6px 12px', border: '0.5px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>← Préc.</button>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#555' }}>
+              {formatDate(lundi)} – {formatDate(new Date(lundi.getTime() + 6 * 86400000))}
+              {weekOffset === 0 && <span style={{ fontSize: '11px', color: '#1D9E75', marginLeft: '6px' }}>Cette semaine</span>}
             </div>
-            <input
-              autoFocus
-              value={pickerSearch}
-              onChange={function(e) { setPickerSearch(e.target.value) }}
-              placeholder="Rechercher..."
-              style={{ padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '10px' }}
-            />
-            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {filteredRecipes.map(function(r) {
-                return (
-                  <div key={r.id}
-                    onClick={function() { addRecipeToSlot(picker.jourIndex, picker.repas, r.id) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '0.5px solid #e0e0e0', borderRadius: '10px', cursor: 'pointer', background: 'white' }}
-                    onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.background = '#E1F5EE' }}
-                    onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.background = 'white' }}
-                  >
-                    {r.photo_url
-                      ? <img src={r.photo_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-                      : <div style={{ width: '40px', height: '40px', background: '#f5f5f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{r.emoji}</div>
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.title}</div>
-                      <div style={{ fontSize: '11px', color: '#888' }}>{r.time} min - base {r.servings} pers.</div>
-                    </div>
-                  </div>
-                )
-              })}
-              {filteredRecipes.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune recette trouvee</div>
-              )}
-            </div>
+            <button onClick={() => setWeekOffset(w => w + 1)} style={{ padding: '6px 12px', border: '0.5px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>Suiv. →</button>
           </div>
-        </div>
-      )}
 
-      {/* Modal invites */}
-      {showInvites && (function() {
-        var slot = plan[showInvites.jourIndex]?.[showInvites.repas]
-        var invites = slot ? (slot.invites || []) : []
-        return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '380px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '500' }}>Invites</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>
-                    {JOURS[showInvites.jourIndex]} - {showInvites.repas}
+          {/* Récap hebdo */}
+          {joursAvecDonnees > 0 && (
+            <div style={S.card}>
+              <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '12px' }}>
+                Moyenne journalière <span style={{ fontWeight: '400', color: '#888', fontSize: '12px' }}>({joursAvecDonnees} jour{joursAvecDonnees > 1 ? 's' : ''} avec données)</span>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <PieChart size={100} data={[
+                  { label: 'Glucides nets', value: Math.max(0, moyenneGluc - moyenneFib) * 4, color: '#60C8E8' },
+                  { label: 'Fibres',        value: moyenneFib  * 2, color: '#34A87A' },
+                  { label: 'Protéines',     value: moyenneProt * 4, color: '#1D9E75' },
+                  { label: 'Lipides',       value: moyenneLip  * 9, color: '#EF9F27' },
+                ]} />
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <div style={{ ...S.stat, background: '#E1F5EE' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#0F6E56' }}>{moyenneCal}</div>
+                    <div style={{ fontSize: '10px', color: '#3B6D11' }}>kcal/jour</div>
+                    {objectifCal && <div style={{ fontSize: '10px', color: moyenneCal > objectifCal ? '#E24B4A' : '#1D9E75', marginTop: '2px' }}>
+                      objectif {objectifCal} {moyenneCal > objectifCal ? '▲' : '✓'}
+                    </div>}
+                  </div>
+                  <div style={S.stat}>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1D9E75' }}>{moyenneProt}g</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>protéines</div>
+                  </div>
+                  <div style={S.stat}>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#60C8E8' }}>{moyenneGluc}g</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>glucides</div>
+                  </div>
+                  <div style={S.stat}>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#EF9F27' }}>{moyenneLip}g</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>lipides</div>
+                  </div>
+                  <div style={{ ...S.stat, gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#34A87A' }}>{moyenneFib}g</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>fibres <span style={{ color: '#bbb' }}>(recommandé : 25-30g/j)</span></div>
                   </div>
                 </div>
-                <button onClick={function() { setShowInvites(null) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
               </div>
-
-              {/* Liste invites */}
-              {invites.length === 0 ? (
-                <div style={{ fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '12px' }}>Aucun invite pour ce repas</div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-                  {invites.map(function(name) {
-                    return (
-                      <span key={name} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', background: '#E1F5EE', color: '#0F6E56', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        {name}
-                        <button onClick={function() { removeInvite(showInvites.jourIndex, showInvites.repas, name) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, lineHeight: 1, fontSize: '13px' }}>x</button>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Ajouter un invite */}
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  autoFocus
-                  value={inviteInput}
-                  onChange={function(e) { setInviteInput(e.target.value) }}
-                  onKeyDown={function(e) { if (e.key === 'Enter') addInvite(showInvites.jourIndex, showInvites.repas, inviteInput) }}
-                  placeholder="Prenom de l'invite..."
-                  style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
-                />
-                <button onClick={function() { addInvite(showInvites.jourIndex, showInvites.repas, inviteInput) }}
-                  style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                  Ajouter
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Modal plat libre */}
-      {showPlatLibre && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '380px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '500' }}>Ajouter un plat libre</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
-                  {JOURS[showPlatLibre.jourIndex]} - {showPlatLibre.repas}
-                </div>
-              </div>
-              <button onClick={function() { setShowPlatLibre(null); setSelectedStockItem(null); setDeduireQty('') }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
-            </div>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-              Plat simple sans recette. Si l'article est dans ton stock, il sera deduit automatiquement.
-            </div>
-            {/* Recherche dans le stock */}
-            {stock.length > 0 && platLibreInput.length >= 2 && !selectedStockItem && (
-              <div style={{ marginBottom: '8px' }}>
-                {stock.filter(function(s) { return s.name.toLowerCase().includes(platLibreInput.toLowerCase()) && s.qty > 0 }).slice(0, 5).map(function(s) {
+              {/* Légende camembert */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '10px', fontSize: '11px', color: '#666', flexWrap: 'wrap' }}>
+                {[
+                  { color: '#60C8E8', label: 'Glucides nets', val: Math.max(0, moyenneGluc - moyenneFib), kcal: 4 },
+                  { color: '#34A87A', label: 'Fibres',        val: moyenneFib,  kcal: 2 },
+                  { color: '#1D9E75', label: 'Protéines',     val: moyenneProt, kcal: 4 },
+                  { color: '#EF9F27', label: 'Lipides',       val: moyenneLip,  kcal: 9 },
+                ].map(m => {
+                  const pct = moyenneCal > 0 ? Math.round(m.val * m.kcal / moyenneCal * 100) : 0
                   return (
-                    <div key={s.id}
-                      onClick={function() { setSelectedStockItem(s); setDeduireQty(String(s.qty)) }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#f5f5f0', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #e0e0e0' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '500' }}>{s.name}</span>
-                      <span style={{ fontSize: '11px', color: '#888' }}>{s.qty} {s.unit} en stock</span>
+                    <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: m.color, flexShrink: 0 }} />
+                      {m.label} {pct}%
                     </div>
                   )
                 })}
               </div>
-            )}
-
-            {/* Article stock selectionne - saisie quantite */}
-            {selectedStockItem && (
-              <div style={{ background: '#E1F5EE', border: '0.5px solid #1D9E75', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56' }}>{selectedStockItem.name}</span>
-                  <button onClick={function() { setSelectedStockItem(null); setDeduireQty('') }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '14px' }}>x</button>
-                </div>
-                <div style={{ fontSize: '12px', color: '#555', marginBottom: '8px' }}>
-                  Stock actuel : {selectedStockItem.qty} {selectedStockItem.unit}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '12px', color: '#555', flexShrink: 0 }}>Quantite a deduire :</label>
-                  <input type="number" value={deduireQty} onChange={function(e) { setDeduireQty(e.target.value) }}
-                    style={{ width: '80px', padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '13px', outline: 'none' }} />
-                  <span style={{ fontSize: '12px', color: '#888' }}>{selectedStockItem.unit}</span>
-                </div>
-
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                autoFocus
-                value={platLibreInput}
-                onChange={function(e) { setPlatLibreInput(e.target.value) }}
-                onKeyDown={function(e) {
-                  if (e.key === 'Enter') {
-                    var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
-                    if (!name) return
-                    var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
-                    addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
-                    if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
-                    setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
-                  }
-                }}
-                placeholder="Ex: Pizza, Frites, Salade..."
-                style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
-              />
-              <button onClick={function() {
-                  var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
-                  if (!name) return
-                  var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
-                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
-                  if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
-                  setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
-                }}
-                style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                Ajouter
-              </button>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Carnet - 3 onglets */}
-      {showCarnet && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '600px', marginTop: '1rem', marginBottom: '1rem' }}>
-
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '16px', fontWeight: '500' }}>Carnet invitations culinaire</div>
-              <button onClick={function() { setShowCarnet(false); setShowFormInvit(false); setShowFormResto(false) }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>x</button>
-            </div>
-
-            {/* Onglets */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: '#f5f5f0', borderRadius: '10px', padding: '4px' }}>
-              {[
-                { id: 'invites', label: 'Mes invites', emoji: 'Invites' },
-                { id: 'invitations', label: 'Invitations recues', emoji: 'Invitations' },
-                { id: 'restaurants', label: 'Restaurants', emoji: 'Restaurants' },
-              ].map(function(tab) {
+          {/* Détail par jour */}
+          {planLoading ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Chargement du planning...</div>
+          ) : (
+            <div>
+              {JOURS.map((jour, ji) => {
+                const jourNut = nutritionSemaine[ji]
+                const jourCal = Object.values(jourNut).reduce((s, n) => s + n.calories, 0)
+                const hasSlots = REPAS.some(r => plan[ji]?.[r])
+                if (!hasSlots) return null
                 return (
-                  <button key={tab.id} onClick={function() { setCarnetOnglet(tab.id); setShowFormInvit(false); setShowFormResto(false) }}
-                    style={{ flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '11px', fontWeight: carnetOnglet === tab.id ? '600' : '400', background: carnetOnglet === tab.id ? 'white' : 'transparent', color: carnetOnglet === tab.id ? '#0F6E56' : '#888', boxShadow: carnetOnglet === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-                    {tab.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Onglet 1 : Mes invites */}
-            {carnetOnglet === 'invites' && (
-              <div>
-                <input value={carnetSearch} onChange={function(e) { setCarnetSearch(e.target.value) }}
-                  placeholder="Rechercher un invite..."
-                  style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box' }} />
-                {carnet.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>
-                    Ajoutez des invites sur les repas du planning pour les voir ici.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {carnet.filter(function(p) { return !carnetSearch || p.name.toLowerCase().includes(carnetSearch.toLowerCase()) })
-                      .sort(function(a, b) { return a.name.localeCompare(b.name) })
-                      .map(function(person) {
-                        return (
-                          <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
-                            <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
-                                {person.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '13px', fontWeight: '500' }}>{person.name}</div>
-                                <div style={{ fontSize: '11px', color: '#888' }}>{person.repas.length} repas partage{person.repas.length > 1 ? 's' : ''}</div>
-                              </div>
+                  <div key={ji} style={S.card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '500' }}>
+                        {jour} <span style={{ fontSize: '11px', color: '#888', fontWeight: '400' }}>
+                          {formatDate(new Date(lundi.getTime() + ji * 86400000))}
+                        </span>
+                      </div>
+                      {jourCal > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: objectifCal && jourCal > objectifCal ? '#E24B4A' : '#1D9E75' }}>{jourCal} kcal</span>
+                          {objectifCal && (
+                            <div style={{ width: '60px', height: '6px', background: '#f0f0ec', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: Math.min(100, jourCal / objectifCal * 100) + '%', background: jourCal > objectifCal ? '#E24B4A' : '#1D9E75', borderRadius: '3px' }} />
                             </div>
-                            <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {person.repas.map(function(r, idx) {
-                                var recipeNames = r.recipe_ids.map(function(rid) {
-                                  if (!rid) return null
-                                  return recipeMap[rid] ? recipeMap[rid].emoji + ' ' + recipeMap[rid].title : null
-                                }).filter(Boolean)
-                                var menu = r.notes ? [...recipeNames, ...r.notes] : recipeNames
-                                return (
-                                  <div key={idx} style={{ fontSize: '12px', color: '#555' }}>
-                                    <span style={{ fontWeight: '500', color: '#333' }}>{r.jour} {r.date} - {r.repas}</span>
-                                    <div style={{ marginTop: '2px', color: '#888', fontSize: '11px' }}>
-                                      {menu.length > 0 ? menu.join(', ') : <span style={{ fontStyle: 'italic', color: '#ccc' }}>Menu non renseigne</span>}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Onglet 2 : Invitations recues */}
-            {carnetOnglet === 'invitations' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-                  <button onClick={function() { setShowFormInvit(true); setEditInvit(null); setFormInvit({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' }) }}
-                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                    + Ajouter
-                  </button>
-                </div>
-
-                {showFormInvit && (
-                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editInvit ? 'Modifier' : 'Nouvelle invitation'}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Chez qui</label>
-                        <input value={formInvit.hote} onChange={function(e) { setFormInvit(function(f) { return { ...f, hote: e.target.value } }) }}
-                          placeholder="Prenom ou nom" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
-                        <input type="date" value={formInvit.date} onChange={function(e) {
-                          var dateStr = e.target.value
-                          var jourAuto = ''
-                          if (dateStr) {
-                            var parts = dateStr.split('-')
-                            var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
-                            jourAuto = String((d.getDay() + 6) % 7) // 0=lundi, 6=dimanche
-                          }
-                          setFormInvit(function(f) { return { ...f, date: dateStr, jour_index: jourAuto } })
-                        }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Jour (planning)</label>
-                        <select value={formInvit.jour_index} onChange={function(e) { setFormInvit(function(f) { return { ...f, jour_index: e.target.value } }) }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
-                          <option value="">-- Choisir --</option>
-                          {JOURS.map(function(j, i) { return <option key={i} value={String(i)}>{j}</option> })}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Repas</label>
-                        <select value={formInvit.repas} onChange={function(e) { setFormInvit(function(f) { return { ...f, repas: e.target.value } }) }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
-                          <option value="">-- Choisir --</option>
-                          {REPAS.map(function(r) { return <option key={r} value={r}>{r}</option> })}
-                        </select>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Menu servi</label>
-                      <input value={formInvit.menu} onChange={function(e) { setFormInvit(function(f) { return { ...f, menu: e.target.value } }) }}
-                        placeholder="Ex: Fondue savoyarde, tarte aux pommes..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ marginBottom: '10px' }}>
-                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Notes</label>
-                      <input value={formInvit.notes} onChange={function(e) { setFormInvit(function(f) { return { ...f, notes: e.target.value } }) }}
-                        placeholder="Impressions, idees a retenir..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button onClick={function() { setShowFormInvit(false); setEditInvit(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-                      <button onClick={saveInvitation} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
-                    </div>
-                  </div>
-                )}
-
-                {invitations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucune invitation enregistree.</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {invitations.map(function(inv) {
+                    {REPAS.map(repas => {
+                      const slot = plan[ji]?.[repas]
+                      if (!slot) return null
+                      const nut = jourNut[repas]
                       return (
-                        <div key={inv.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                            <div style={{ fontSize: '13px', fontWeight: '500' }}>Chez {inv.hote}</div>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <button onClick={function() { setEditInvit(inv); setFormInvit({ hote: inv.hote, date: inv.date, menu: inv.menu || '', notes: inv.notes || '' }); setShowFormInvit(true) }}
-                                style={{ fontSize: '11px', padding: '3px 8px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>Editer</button>
-                              <button onClick={function() { deleteInvitation(inv.id) }}
-                                style={{ fontSize: '11px', padding: '3px 8px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#FCEBEB', color: '#791F1F' }}>x</button>
-                            </div>
+                        <div key={repas} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderTop: '0.5px solid #f5f5f0', fontSize: '12px' }}>
+                          <span style={{ color: '#888', minWidth: '70px' }}>{REPAS_LABEL[repas]}</span>
+                          <div style={{ flex: 1, color: '#555' }}>
+                            {slot.recipes.map(sr => sr.recipe_id ? (recipeMap[sr.recipe_id]?.title || '') : (sr.note || 'Plat libre')).filter(Boolean).join(', ')}
                           </div>
-                          {inv.date && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{new Date(inv.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
-                          {inv.menu && <div style={{ fontSize: '12px', color: '#555', marginBottom: '2px' }}>Menu : {inv.menu}</div>}
-                          {inv.notes && <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>{inv.notes}</div>}
+                          {nut ? (
+                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>{nut.calories} kcal</span>
+                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#f0f0ec', color: '#666' }}>{nut.proteines}g prot</span>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic' }}>pas de données</span>
+                          )}
                         </div>
                       )
                     })}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Onglet 3 : Restaurants */}
-            {carnetOnglet === 'restaurants' && (
-              <div>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  <input value={restoSearch} onChange={function(e) { setRestoSearch(e.target.value) }}
-                    placeholder="Rechercher un restaurant..."
-                    style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
-                  <button onClick={function() { setShowFormResto(true); setEditResto(null); setFormResto({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' }) }}
-                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                    + Ajouter
-                  </button>
-                </div>
-
-                {showFormResto && (
-                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editResto ? 'Modifier' : 'Nouveau restaurant'}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Nom du restaurant</label>
-                        <input value={formResto.nom} onChange={function(e) { setFormResto(function(f) { return { ...f, nom: e.target.value } }) }}
-                          placeholder="Ex: Le Petit Bistrot" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Date</label>
-                        <input type="date" value={formResto.date} onChange={function(e) {
-                          var dateStr = e.target.value
-                          var jourAuto = ''
-                          if (dateStr) {
-                            var parts = dateStr.split('-')
-                            var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
-                            jourAuto = String((d.getDay() + 6) % 7)
-                          }
-                          setFormResto(function(f) { return { ...f, date: dateStr, jour_index: jourAuto } })
-                        }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Adresse</label>
-                      <input value={formResto.adresse} onChange={function(e) { setFormResto(function(f) { return { ...f, adresse: e.target.value } }) }}
-                        placeholder="Rue, ville..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Jour (planning)</label>
-                        <select value={formResto.jour_index} onChange={function(e) { setFormResto(function(f) { return { ...f, jour_index: e.target.value } }) }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
-                          <option value="">-- Choisir --</option>
-                          {JOURS.map(function(j, i) { return <option key={i} value={String(i)}>{j}</option> })}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Repas</label>
-                        <select value={formResto.repas} onChange={function(e) { setFormResto(function(f) { return { ...f, repas: e.target.value } }) }}
-                          style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
-                          <option value="">-- Choisir --</option>
-                          {REPAS.map(function(r) { return <option key={r} value={r}>{r}</option> })}
-                        </select>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Ce que j'ai mange</label>
-                      <input value={formResto.menu} onChange={function(e) { setFormResto(function(f) { return { ...f, menu: e.target.value } }) }}
-                        placeholder="Ex: Entrecote, tiramisu..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Prix du repas</label>
-                        <input type="number" step="0.5" value={formResto.prix} onChange={function(e) { setFormResto(function(f) { return { ...f, prix: e.target.value } }) }}
-                          placeholder="45.00" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Note (1-5)</label>
-                        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                          {[1,2,3,4,5].map(function(n) {
-                            return (
-                              <span key={n} onClick={function() { setFormResto(function(f) { return { ...f, note: n } }) }}
-                                style={{ fontSize: '20px', cursor: 'pointer', color: n <= formResto.note ? '#F59E0B' : '#E5E7EB' }}>
-                                &#9733;
-                              </span>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '10px' }}>
-                      <label style={{ fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' }}>Avis / Notes</label>
-                      <input value={formResto.avis} onChange={function(e) { setFormResto(function(f) { return { ...f, avis: e.target.value } }) }}
-                        placeholder="Ambiance, service, a retenir..." style={{ width: '100%', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button onClick={function() { setShowFormResto(false); setEditResto(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-                      <button onClick={saveRestaurant} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
-                    </div>
-                  </div>
-                )}
-
-                {restaurants.filter(function(r) { return !restoSearch || r.nom.toLowerCase().includes(restoSearch.toLowerCase()) || (r.adresse || '').toLowerCase().includes(restoSearch.toLowerCase()) }).length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#aaa', fontSize: '13px' }}>Aucun restaurant enregistre.</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {restaurants.filter(function(r) { return !restoSearch || r.nom.toLowerCase().includes(restoSearch.toLowerCase()) || (r.adresse || '').toLowerCase().includes(restoSearch.toLowerCase()) }).map(function(r) {
-                      return (
-                        <div key={r.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.nom}</div>
-                              {r.note > 0 && (
-                                <div style={{ fontSize: '13px', color: '#F59E0B' }}>
-                                  {'★'.repeat(r.note)}{'☆'.repeat(5 - r.note)}
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              {r.prix && <span style={{ fontSize: '12px', fontWeight: '500', color: '#0F6E56' }}>{r.prix} CHF</span>}
-                              <button onClick={function() { setEditResto(r); setFormResto({ nom: r.nom, adresse: r.adresse || '', date: r.date || '', menu: r.menu || '', prix: r.prix || '', note: r.note || 0, avis: r.avis || '' }); setShowFormResto(true) }}
-                                style={{ fontSize: '11px', padding: '3px 8px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>Editer</button>
-                              <button onClick={function() { deleteRestaurant(r.id) }}
-                                style={{ fontSize: '11px', padding: '3px 8px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#FCEBEB', color: '#791F1F' }}>x</button>
-                            </div>
-                          </div>
-                          {r.adresse && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{r.adresse}</div>}
-                          {r.date && <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>{new Date(r.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
-                          {r.menu && <div style={{ fontSize: '12px', color: '#555', marginBottom: '2px' }}>Menu : {r.menu}</div>}
-                          {r.avis && <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>{r.avis}</div>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-
-      {/* Popup remise en stock */}
-      {showRestoreStock && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '340px', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>📦</div>
-            <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '8px' }}>Remettre en stock ?</div>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '20px', lineHeight: 1.5 }}>
-              Tu as supprime <strong>{showRestoreStock.name}</strong> du planning.<br/>
-              Remettre {showRestoreStock.qty} {showRestoreStock.unit} en stock ?
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-              <button onClick={async function() {
-                var { name, qty, mprId, jourIndex, repas } = showRestoreStock
-                await remettreEnStock(name, qty)
-                var slot = plan[jourIndex]?.[repas]
-                await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
-                if (slot && slot.recipes.length <= 1) {
-                  await supabase.from('meal_plan').delete().eq('id', slot.id)
-                }
-                loadPlan()
-              }}
-                style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                Oui, remettre
-              </button>
-              <button onClick={async function() {
-                var { mprId, jourIndex, repas } = showRestoreStock
-                setShowRestoreStock(null)
-                var slot = plan[jourIndex]?.[repas]
-                await supabase.from('meal_plan_recipes').delete().eq('id', mprId)
-                if (slot && slot.recipes.length <= 1) {
-                  await supabase.from('meal_plan').delete().eq('id', slot.id)
-                }
-                loadPlan()
-              }}
-                style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
-                Non, garder
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Popup notation apres cuisine */}
-      {showRating && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '340px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>{showRating.recipe.emoji}</div>
-            <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '4px' }}>{showRating.recipe.title}</div>
-            <div style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>Comment etait ce plat ?</div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
-              {[1,2,3,4,5].map(function(n) {
-                return (
-                  <span key={n}
-                    onClick={function() { setPendingRating(n) }}
-                    style={{ fontSize: '32px', cursor: 'pointer', color: n <= pendingRating ? '#F59E0B' : '#E5E7EB', transition: 'color 0.1s' }}>
-                    &#9733;
-                  </span>
                 )
               })}
+              {!JOURS.some((_, ji) => REPAS.some(r => plan[ji]?.[r])) && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>📅</div>
+                  <div style={{ fontSize: '13px' }}>Aucun repas planifié cette semaine</div>
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-              <button onClick={function() { setShowRating(null); loadPlan() }}
-                style={{ padding: '8px 16px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', color: '#888' }}>
-                Passer
-              </button>
-              <button onClick={function() { saveRating(showRating.recipe, pendingRating) }}
-                disabled={pendingRating === 0}
-                style={{ padding: '8px 20px', background: pendingRating > 0 ? '#1D9E75' : '#f0f0ec', color: pendingRating > 0 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: pendingRating > 0 ? 'pointer' : 'default', fontWeight: '500' }}>
-                Enregistrer
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
+      {/* ── Onglet Poids ────────────────────────────────────────────────────── */}
+      {onglet === 'poids' && (
+        <div>
+          {/* Saisie poids */}
+          <div style={S.card}>
+            <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>Enregistrer mon poids</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+              <div>
+                <label style={S.label}>Poids (kg)</label>
+                <input type="number" step="0.1" min="30" max="300" value={newPoids} onChange={e => setNewPoids(e.target.value)}
+                  placeholder="85.0" style={S.input} />
+              </div>
+              <div>
+                <label style={S.label}>Date</label>
+                <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} style={S.input} />
+              </div>
+            </div>
+            <input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Note optionnelle..." style={{ ...S.input, marginBottom: '8px' }} />
+            <button onClick={addWeightLog} disabled={!newPoids}
+              style={{ width: '100%', padding: '9px', background: newPoids ? '#1D9E75' : '#ddd', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: newPoids ? 'pointer' : 'default', fontWeight: '500' }}>
+              Enregistrer
+            </button>
+          </div>
+
+          {/* Courbe */}
+          {weightLogs.length > 0 && (
+            <div style={S.card}>
+              <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>
+                Courbe de poids
+                <span style={{ fontSize: '11px', color: '#888', fontWeight: '400', marginLeft: '6px' }}>— tendance en orange</span>
+              </div>
+              <WeightChart logs={weightLogs} poidsActuel={goals?.poids_actuel} poidsCible={goals?.poids_cible} />
+              {goals?.poids_cible && (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '11px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '16px', height: '2px', background: '#1D9E75' }} />
+                    Poids
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '16px', height: '2px', background: '#1D9E75', opacity: 0.4 }} />
+                    Objectif ({goals.poids_cible} kg)
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '16px', height: '2px', background: '#EF9F27' }} />
+                    Tendance
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Historique */}
+          {weightLogs.length > 0 && (
+            <div style={S.card}>
+              <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>Historique</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {[...weightLogs].reverse().map((log, i) => {
+                  const prev = weightLogs[weightLogs.length - 1 - i - 1]
+                  const diff = prev ? parseFloat((log.poids - prev.poids).toFixed(1)) : null
+                  return (
+                    <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '0.5px solid #f5f5f0' }}>
+                      <div style={{ fontSize: '12px', color: '#888', minWidth: '90px' }}>
+                        {new Date(log.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                      </div>
+                      <div style={{ fontWeight: '600', fontSize: '14px', color: '#333' }}>{log.poids} kg</div>
+                      {diff !== null && (
+                        <span style={{ fontSize: '11px', color: diff < 0 ? '#1D9E75' : diff > 0 ? '#E24B4A' : '#aaa', fontWeight: '500' }}>
+                          {diff > 0 ? '+' : ''}{diff} kg
+                        </span>
+                      )}
+                      {log.note && <span style={{ fontSize: '11px', color: '#888', fontStyle: 'italic', flex: 1 }}>{log.note}</span>}
+                      <button onClick={() => deleteWeightLog(log.id)}
+                        style={{ background: 'none', border: 'none', color: '#ddd', cursor: 'pointer', fontSize: '14px', padding: 0, marginLeft: 'auto' }}>✕</button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Onglet Profil ───────────────────────────────────────────────────── */}
+      {onglet === 'profil' && (
+        <div style={S.card}>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '12px' }}>Mon profil nutritionnel</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+            <div>
+              <label style={S.label}>Poids actuel (kg)</label>
+              <input type="number" step="0.1" value={formGoals.poids_actuel}
+                onChange={e => setFormGoals(f => ({ ...f, poids_actuel: e.target.value }))}
+                placeholder="85" style={S.input} />
+            </div>
+            <div>
+              <label style={S.label}>Poids cible (kg)</label>
+              <input type="number" step="0.1" value={formGoals.poids_cible}
+                onChange={e => setFormGoals(f => ({ ...f, poids_cible: e.target.value }))}
+                placeholder="80" style={S.input} />
+            </div>
+          </div>
+          <div style={{ marginBottom: '10px' }}>
+            <label style={S.label}>Date cible</label>
+            <input type="date" value={formGoals.date_cible}
+              onChange={e => setFormGoals(f => ({ ...f, date_cible: e.target.value }))}
+              style={S.input} />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={S.label}>Niveau d'activité physique</label>
+            <select value={formGoals.sport} onChange={e => setFormGoals(f => ({ ...f, sport: e.target.value }))} style={S.input}>
+              {SPORTS.map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+
+          {/* Estimation TDEE */}
+          {formGoals.poids_actuel && (
+            <div style={{ background: '#f5faf8', border: '0.5px solid #b8e8d8', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '12px' }}>
+              <div style={{ fontWeight: '500', color: '#0F6E56', marginBottom: '4px' }}>Estimation de tes besoins</div>
+              <div style={{ color: '#555' }}>
+                TDEE : ~{calcTDEE(parseFloat(formGoals.poids_actuel), formGoals.sport)} kcal/jour
+                {formGoals.poids_cible && formGoals.date_cible && (
+                  <> · Objectif : ~{calcObjectifCal(
+                    calcTDEE(parseFloat(formGoals.poids_actuel), formGoals.sport),
+                    parseFloat(formGoals.poids_actuel),
+                    parseFloat(formGoals.poids_cible),
+                    formGoals.date_cible
+                  )} kcal/jour</>
+                )}
+              </div>
+              <div style={{ color: '#888', marginTop: '4px', fontSize: '11px' }}>
+                Note : estimation basée sur le poids uniquement (formule simplifiée). Pour plus de précision, consulte un nutritionniste.
+              </div>
+            </div>
+          )}
+
+          <button onClick={saveGoals} disabled={saving}
+            style={{ width: '100%', padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Enregistrement...' : 'Enregistrer le profil'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Onglet Conseils ─────────────────────────────────────────────────── */}
+      {onglet === 'conseils' && (
+        <div>
+          {!goals?.poids_cible ? (
+            <div style={{ ...S.card, textAlign: 'center', padding: '3rem' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>👤</div>
+              <div style={{ fontSize: '13px', color: '#888' }}>Complète ton profil pour recevoir des conseils personnalisés</div>
+              <button onClick={() => setOnglet('profil')} style={{ marginTop: '12px', padding: '8px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                Compléter le profil
+              </button>
+            </div>
+          ) : (
+            <div>
+              {/* Bilan */}
+              <div style={S.card}>
+                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>Bilan de la semaine</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                  <div style={S.stat}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>{moyenneCal || '–'}</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>kcal moy./jour</div>
+                  </div>
+                  <div style={S.stat}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#1D9E75' }}>{objectifCal || '–'}</div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>kcal objectif</div>
+                  </div>
+                  <div style={{ ...S.stat, background: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#FCEBEB' : '#E1F5EE') : '#f5f5f0' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#E24B4A' : '#1D9E75') : '#aaa' }}>
+                      {moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '+' : '') + (moyenneCal - objectifCal) : '–'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#888' }}>écart kcal</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conseils */}
+              <div style={S.card}>
+                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>Recommandations</div>
+                {getConseils().length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '1rem' }}>
+                    Pas assez de données cette semaine pour générer des conseils.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {getConseils().map((c, i) => (
+                      <div key={i} style={{
+                        padding: '10px 12px', borderRadius: '8px', fontSize: '13px', lineHeight: 1.5,
+                        background: c.type === 'warning' ? '#FAEEDA' : c.type === 'ok' ? '#E1F5EE' : '#E6F1FB',
+                        color: c.type === 'warning' ? '#633806' : c.type === 'ok' ? '#0F6E56' : '#185FA5',
+                        borderLeft: '3px solid ' + (c.type === 'warning' ? '#EF9F27' : c.type === 'ok' ? '#1D9E75' : '#4A90D9')
+                      }}>
+                        {c.type === 'warning' ? '⚠️ ' : c.type === 'ok' ? '✅ ' : 'ℹ️ '}{c.txt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Projection */}
+              {kgRestants > 0 && joursRestants > 0 && tdee && (
+                <div style={S.card}>
+                  <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>Projection</div>
+                  <div style={{ fontSize: '13px', color: '#555', lineHeight: 1.6 }}>
+                    Pour perdre <strong>{kgRestants.toFixed(1)} kg</strong> en <strong>{joursRestants} jours</strong>, tu dois maintenir un déficit de <strong>{tdee - objectifCal} kcal/jour</strong>.
+                    {moyenneCal > 0 && (
+                      <> À ton rythme actuel ({moyenneCal} kcal/j), tu perdrais environ <strong>{((tdee - moyenneCal) * joursRestants / 7700).toFixed(1)} kg</strong> d'ici là.</>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
