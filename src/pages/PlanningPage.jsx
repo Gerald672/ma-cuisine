@@ -995,7 +995,10 @@ export default function PlanningPage() {
               <input
                 autoFocus
                 value={platLibreInput}
-                onChange={function(e) { setPlatLibreInput(e.target.value) }}
+                onChange={function(e) {
+                  setPlatLibreInput(e.target.value)
+                  searchNutrition(e.target.value)
+                }}
                 onKeyDown={function(e) {
                   if (e.key === 'Enter') {
                     var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
@@ -1017,44 +1020,43 @@ export default function PlanningPage() {
                 Valeurs nutritionnelles <span style={{ fontWeight: '400' }}>(optionnel — par portion)</span>
               </div>
 
-              {/* Recherche dans ingredient_nutrition */}
-              <div style={{ position: 'relative', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <input
-                      placeholder="Rechercher un ingrédient..."
-                      onChange={function(e) { searchNutrition(e.target.value) }}
-                      style={{ width: '100%', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                    {nutSuggestions.length > 0 && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'white', border: '0.5px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginTop: '2px', overflow: 'hidden' }}>
-                        {nutSuggestions.map(function(entry) {
-                          return (
-                            <div key={entry.name}
-                              onMouseDown={function() { applyNutSuggestion(entry, platLibrePoids) }}
-                              style={{ padding: '7px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '0.5px solid #f5f5f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                              onMouseEnter={function(e) { e.currentTarget.style.background = '#f5faf8' }}
-                              onMouseLeave={function(e) { e.currentTarget.style.background = 'white' }}>
-                              <span style={{ fontWeight: '500' }}>{entry.name}</span>
-                              <span style={{ color: '#888', fontSize: '11px' }}>{entry.calories} kcal/{entry.unit_ref}</span>
-                            </div>
-                          )
-                        })}
+              {/* Suggestions depuis ingredient_nutrition */}
+              {nutSuggestions.length > 0 && (
+                <div style={{ marginBottom: '8px', border: '0.5px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ fontSize: '10px', color: '#aaa', padding: '5px 10px', background: '#f5f5f0' }}>
+                    Trouvé dans la base — choisir pour pré-remplir :
+                  </div>
+                  {nutSuggestions.map(function(entry) {
+                    return (
+                      <div key={entry.name}
+                        onMouseDown={function() { applyNutSuggestion(entry, platLibrePoids) }}
+                        style={{ padding: '7px 12px', fontSize: '12px', cursor: 'pointer', borderTop: '0.5px solid #f5f5f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}
+                        onMouseEnter={function(e) { e.currentTarget.style.background = '#f5faf8' }}
+                        onMouseLeave={function(e) { e.currentTarget.style.background = 'white' }}>
+                        <span style={{ fontWeight: '500' }}>{entry.name}</span>
+                        <span style={{ color: '#888', fontSize: '11px' }}>{entry.calories} kcal/{entry.unit_ref}</span>
                       </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <input type="number" min="0" value={platLibrePoids}
-                      onChange={function(e) { setPlatLibrePoids(e.target.value) }}
-                      style={{ width: '60px', padding: '6px 8px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '12px', outline: 'none' }}
-                    />
-                    <span style={{ fontSize: '11px', color: '#888' }}>g</span>
-                  </div>
+                    )
+                  })}
                 </div>
-                <div style={{ fontSize: '10px', color: '#bbb', marginTop: '4px' }}>
-                  Tape un ingrédient pour pré-remplir automatiquement · ajuste le poids si besoin
+              )}
+
+              {/* Poids si une suggestion a été appliquée ou champs remplis */}
+              {(platLibreCal || nutSuggestions.length > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11px', color: '#888' }}>Poids consommé :</label>
+                  <input type="number" min="0" value={platLibrePoids}
+                    onChange={function(e) {
+                      setPlatLibrePoids(e.target.value)
+                      // Recalculer si une entrée nutMap correspond
+                      var key = platLibreInput.trim().toLowerCase()
+                      if (nutMap[key]) applyNutSuggestion(nutMap[key], e.target.value)
+                    }}
+                    style={{ width: '70px', padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '12px', outline: 'none' }}
+                  />
+                  <span style={{ fontSize: '11px', color: '#888' }}>g</span>
                 </div>
-              </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                 {[
