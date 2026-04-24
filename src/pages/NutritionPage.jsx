@@ -356,7 +356,6 @@ export default function NutritionPage() {
           if (!recipe) continue
           const convives = slot.convives || 2
           const ratio = convives / (recipe.servings || 2)
-          // Priorité : valeur importée, sinon calcul
           const nut = recipe.nutrition?.calories
             ? recipe.nutrition
             : computeNutritionIngredients(recipe.ingredients, recipe.servings)
@@ -369,8 +368,15 @@ export default function NutritionPage() {
             hasData = true
           }
         } else if (sr.note) {
-          // Plat libre → pas de données nutritionnelles disponibles
-          hasData = false
+          // Plat libre → utiliser les valeurs saisies si disponibles
+          if (sr.calories) {
+            slotCal  += sr.calories  || 0
+            slotProt += sr.proteines || 0
+            slotGluc += sr.glucides  || 0
+            slotLip  += sr.lipides   || 0
+            slotFib  += sr.fibres    || 0
+            hasData = true
+          }
         }
       }
 
@@ -611,7 +617,9 @@ export default function NutritionPage() {
                               <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#f0f0ec', color: '#666' }}>{nut.proteines}g prot</span>
                             </div>
                           ) : (
-                            <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic' }}>pas de données</span>
+                            <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic' }}>
+                              {slot.recipes.some(sr => !sr.recipe_id && sr.note && !sr.calories) ? 'nutrition non saisie' : 'pas de données'}
+                            </span>
                           )}
                         </div>
                       )
