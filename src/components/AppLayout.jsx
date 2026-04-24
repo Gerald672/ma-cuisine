@@ -7,6 +7,7 @@ import CoursesPage from '../pages/CoursesPage'
 import BudgetPage from '../pages/BudgetPage'
 import PlanningPage from '../pages/PlanningPage'
 import PartageePage from '../pages/PartageePage'
+import NutritionPage from '../pages/NutritionPage'
 
 const NAV = [
   { id: 'bibliotheque', label: 'Bibliothèque', icon: '📚' },
@@ -15,6 +16,7 @@ const NAV = [
   { id: 'courses',      label: 'Courses',       icon: '🛒' },
   { id: 'budget',       label: 'Budget',        icon: '💰' },
   { id: 'partage',      label: 'Partage',       icon: '🤝' },
+  { id: 'nutrition',    label: 'Nutrition',     icon: '🥗' },
 ]
 
 export default function AppLayout() {
@@ -60,6 +62,7 @@ export default function AppLayout() {
     courses:      <CoursesPage />,
     budget:       <BudgetPage />,
     partage:      <PartageePage />,
+    nutrition:    <NutritionPage />,
   }
 
   const PAGE_TITLES = {
@@ -69,6 +72,7 @@ export default function AppLayout() {
     courses:      'Liste de courses',
     budget:       'Budget & coût',
     partage:      'Partage de recettes',
+    nutrition:    'Nutrition & Santé',
   }
 
   return (
