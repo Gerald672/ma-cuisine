@@ -326,22 +326,35 @@ function getEtat(item) {
     setScanStatus('Code detecte : ' + code + ' — Recherche du produit...')
 
     try {
-      var resp = await fetch('https://world.openfoodfacts.org/api/v0/product/' + code + '.json')
+      // API v2 Open Food Facts (plus fiable que v0)
+      var resp = await fetch(
+        'https://world.openfoodfacts.org/api/v2/product/' + code +
+        '?fields=product_name,product_name_fr,generic_name_fr,generic_name,quantity,categories,nutriments',
+        { headers: { 'User-Agent': 'MaCuisine/1.0' } }
+      )
+
+      if (!resp.ok) throw new Error('HTTP ' + resp.status)
       var data = await resp.json()
 
       if (data.status === 0 || !data.product) {
-        setScanStatus('Produit non trouve dans la base Open Food Facts.')
-        setScanLoading(false)
-        // Ouvrir le formulaire vide pour saisie manuelle
-        setForm({ name: '', qty: '', unit: 'unite(s)', cat: 'Epicerie', seuil: '' })
-        setEditItem(null)
-        setShowModal(true)
-        return
+        // Essai fallback v0
+        var resp2 = await fetch('https://world.openfoodfacts.org/api/v0/product/' + code + '.json')
+        var data2 = await resp2.json()
+        if (data2.status === 0 || !data2.product) {
+          setScanStatus('Produit non trouve (code : ' + code + '). Saisie manuelle.')
+          setScanLoading(false)
+          setForm({ name: '', qty: '', unit: 'unite(s)', cat: 'Épicerie', seuil: '', peremption: '' })
+          setEditItem(null)
+          setShowModal(true)
+          return
+        }
+        data = data2
       }
 
       var product = data.product
       var name = product.product_name_fr || product.product_name || product.generic_name_fr || product.generic_name || ''
-      name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+      name = name.trim()
+      if (name) name = name.charAt(0).toUpperCase() + name.slice(1)
 
       // Quantite et unite depuis le produit
       var qty = ''
@@ -357,7 +370,7 @@ function getEtat(item) {
       }
 
       var cat = guessCat(name, product.categories || '')
-      setScanStatus('Produit trouve : ' + name)
+      setScanStatus('Produit trouve : ' + (name || code))
       setScanLoading(false)
 
       // Verifier si l'article existe deja dans le stock
@@ -369,7 +382,6 @@ function getEtat(item) {
       })
 
       if (existing) {
-        // Article trouve -> ouvrir en mode edition avec quantite additionnelle
         setScanStatus('Produit trouve : ' + name + ' — deja dans le stock, tu peux ajuster la quantite')
         setEditItem(existing)
         setForm({
@@ -381,14 +393,17 @@ function getEtat(item) {
           peremption: existing.peremption || ''
         })
       } else {
-        // Nouvel article
         setEditItem(null)
         setForm({ name, qty: qty || '', unit, cat, seuil: '', peremption: '' })
       }
       setShowModal(true)
     } catch (e) {
-      setScanStatus('Erreur de connexion. Verifie ta connexion internet.')
+      setScanStatus('Erreur de connexion (' + e.message + '). Verifie ta connexion internet.')
       setScanLoading(false)
+      // Ouvrir quand même le formulaire pour saisie manuelle
+      setForm({ name: '', qty: '', unit: 'unite(s)', cat: 'Épicerie', seuil: '', peremption: '' })
+      setEditItem(null)
+      setShowModal(true)
     }
   }
 
