@@ -124,7 +124,13 @@ export default function PlanningPage() {
   const [platLibreStockSearch, setPlatLibreStockSearch] = useState([])
   const [selectedStockItem, setSelectedStockItem]       = useState(null)
   const [deduireQty, setDeduireQty]                     = useState('')
-  const [showRestoreStock, setShowRestoreStock]         = useState(null) // { name, qty, unit, slotRecipeId }
+  const [showRestoreStock, setShowRestoreStock]         = useState(null)
+  // Nutrition plat libre
+  const [platLibreCal, setPlatLibreCal]   = useState('')
+  const [platLibreProt, setPlatLibreProt] = useState('')
+  const [platLibreGluc, setPlatLibreGluc] = useState('')
+  const [platLibreLip, setPlatLibreLip]   = useState('')
+  const [platLibreFib, setPlatLibreFib]   = useState('') // { name, qty, unit, slotRecipeId }
 
   // Drag & drop copie
   const [dragSrc, setDragSrc] = useState(null)
@@ -411,12 +417,18 @@ export default function PlanningPage() {
       position: position,
       note: nom.trim(),
       stock_item_name: stockItemName || null,
-      stock_qty_deducted: stockQtyDeducted || null
+      stock_qty_deducted: stockQtyDeducted || null,
+      calories:  parseFloat(platLibreCal)  || null,
+      proteines: parseFloat(platLibreProt) || null,
+      glucides:  parseFloat(platLibreGluc) || null,
+      lipides:   parseFloat(platLibreLip)  || null,
+      fibres:    parseFloat(platLibreFib)  || null,
     })
     await loadPlan()
     setSaving(false)
     setShowPlatLibre(null)
     setPlatLibreInput('')
+    setPlatLibreCal(''); setPlatLibreProt(''); setPlatLibreGluc(''); setPlatLibreLip(''); setPlatLibreFib('')
   }
 
   async function copySlot(srcJourIndex, srcRepas, dstJourIndex, dstRepas) {
@@ -964,18 +976,45 @@ export default function PlanningPage() {
                 placeholder="Ex: Pizza, Frites, Salade..."
                 style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
               />
-              <button onClick={function() {
-                  var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
-                  if (!name) return
-                  var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
-                  addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
-                  if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
-                  setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
-                }}
-                style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                Ajouter
-              </button>
             </div>
+
+            {/* Nutrition optionnelle */}
+            <div style={{ marginTop: '12px', padding: '10px 12px', background: '#fafaf8', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
+              <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', marginBottom: '8px' }}>
+                Valeurs nutritionnelles <span style={{ fontWeight: '400' }}>(optionnel — par portion)</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                {[
+                  { label: 'Calories (kcal)', val: platLibreCal,  set: setPlatLibreCal,  placeholder: '350' },
+                  { label: 'Protéines (g)',   val: platLibreProt, set: setPlatLibreProt, placeholder: '20'  },
+                  { label: 'Glucides (g)',    val: platLibreGluc, set: setPlatLibreGluc, placeholder: '45'  },
+                  { label: 'Lipides (g)',     val: platLibreLip,  set: setPlatLibreLip,  placeholder: '12'  },
+                  { label: 'Fibres (g)',      val: platLibreFib,  set: setPlatLibreFib,  placeholder: '5'   },
+                ].map(function(f) {
+                  return (
+                    <div key={f.label}>
+                      <label style={{ fontSize: '10px', color: '#999', display: 'block', marginBottom: '2px' }}>{f.label}</label>
+                      <input type="number" min="0" step="0.1" value={f.val}
+                        onChange={function(e) { f.set(e.target.value) }}
+                        placeholder={f.placeholder}
+                        style={{ width: '100%', padding: '5px 8px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <button onClick={function() {
+                var name = selectedStockItem ? selectedStockItem.name : platLibreInput.trim()
+                if (!name) return
+                var qtyDed = selectedStockItem ? (parseFloat(deduireQty) || selectedStockItem.qty) : null
+                addPlatLibre(showPlatLibre.jourIndex, showPlatLibre.repas, name, selectedStockItem ? selectedStockItem.name : null, qtyDed)
+                if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
+                setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
+              }}
+              style={{ width: '100%', marginTop: '10px', padding: '9px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+              Ajouter
+            </button>
           </div>
         </div>
       )}
