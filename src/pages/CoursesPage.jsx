@@ -109,6 +109,10 @@ export default function CoursesPage() {
   const [loading, setLoading]   = useState(true)
   const [checkedNeutral, setCheckedNeutral] = useState(new Set())
   const [stockFaibleAction, setStockFaibleAction] = useState(null) // item du stock faible cliqué
+  const [stockFaibleStep, setStockFaibleStep]     = useState('choice') // 'choice' | 'form'
+  const [stockFaibleQty, setStockFaibleQty]       = useState('')
+  const [stockFaibleSeuil, setStockFaibleSeuil]   = useState('')
+  const [stockFaiblePeremption, setStockFaiblePeremption] = useState('')
   const [planningSlots, setPlanningSlots]     = useState([]) // slots ajoutes depuis le planning
   const [checkedPlanning, setCheckedPlanning] = useState(new Set()) // items coches dans la liste planning
   const [loadingPlanning, setLoadingPlanning] = useState(true)
@@ -284,15 +288,17 @@ export default function CoursesPage() {
   }
 
   async function handleStockFaibleAchete(item) {
-    // Remettre le stock à son seuil (ou seuil x 2 si épuisé)
-    const newQty = item.seuil > 0 ? item.seuil * 2 : 1
+    const newQty   = parseFloat(stockFaibleQty)   || 0
+    const newSeuil = parseFloat(stockFaibleSeuil) || 0
     await supabase.from('stock')
-      .update({ qty: newQty, peremption: null })
+      .update({ qty: newQty, seuil: newSeuil, peremption: stockFaiblePeremption || null })
       .eq('user_id', user.id)
       .eq('name', item.name)
-    setStock(s => s.map(i => i.name === item.name ? { ...i, qty: newQty, peremption: null } : i))
+    setStock(s => s.map(i => i.name === item.name ? { ...i, qty: newQty, seuil: newSeuil, peremption: stockFaiblePeremption || null } : i))
     setCheckedNeutral(c => { const n = new Set(c); n.delete(item.name); return n })
     setStockFaibleAction(null)
+    setStockFaibleStep('choice')
+    setStockFaibleQty(''); setStockFaibleSeuil(''); setStockFaiblePeremption('')
   }
 
   async function handleStockFaibleSupprimer(item) {
@@ -302,6 +308,8 @@ export default function CoursesPage() {
       .eq('name', item.name)
     setStock(s => s.filter(i => i.name !== item.name))
     setStockFaibleAction(null)
+    setStockFaibleStep('choice')
+    setStockFaibleQty(''); setStockFaibleSeuil(''); setStockFaiblePeremption('')
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
@@ -319,23 +327,71 @@ export default function CoursesPage() {
               Stock actuel : {stockFaibleAction.qty} {stockFaibleAction.unit}
               {stockFaibleAction.seuil > 0 && <span> · Seuil : {stockFaibleAction.seuil} {stockFaibleAction.unit}</span>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                onClick={() => handleStockFaibleAchete(stockFaibleAction)}
-                style={{ padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                ✅ Je l&apos;ai acheté — mettre à jour le stock
-              </button>
-              <button
-                onClick={() => handleStockFaibleSupprimer(stockFaibleAction)}
-                style={{ padding: '10px', background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C0C0', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
-                🗑 Supprimer définitivement du stock
-              </button>
-              <button
-                onClick={() => setStockFaibleAction(null)}
-                style={{ padding: '10px', background: 'none', color: '#888', border: '0.5px solid #ddd', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
-                Annuler
-              </button>
-            </div>
+
+            {stockFaibleStep === 'choice' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  onClick={() => setStockFaibleStep('form')}
+                  style={{ padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  ✅ Je l&apos;ai acheté — mettre à jour le stock
+                </button>
+                <button
+                  onClick={() => handleStockFaibleSupprimer(stockFaibleAction)}
+                  style={{ padding: '10px', background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C0C0', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  🗑 Supprimer définitivement du stock
+                </button>
+                <button
+                  onClick={() => { setStockFaibleAction(null); setStockFaibleStep('choice') }}
+                  style={{ padding: '10px', background: 'none', color: '#888', border: '0.5px solid #ddd', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Quantité achetée ({stockFaibleAction.unit})</label>
+                    <input
+                      type="number" min="0" step="0.1"
+                      value={stockFaibleQty}
+                      onChange={e => setStockFaibleQty(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Seuil d&apos;alerte ({stockFaibleAction.unit})</label>
+                    <input
+                      type="number" min="0" step="0.1"
+                      value={stockFaibleSeuil}
+                      onChange={e => setStockFaibleSeuil(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Date de péremption <span style={{ color: '#bbb' }}>(optionnel)</span></label>
+                  <input
+                    type="date"
+                    value={stockFaiblePeremption}
+                    onChange={e => setStockFaiblePeremption(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <button
+                    onClick={() => setStockFaibleStep('choice')}
+                    style={{ flex: 1, padding: '10px', background: 'none', color: '#888', border: '0.5px solid #ddd', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
+                    ← Retour
+                  </button>
+                  <button
+                    onClick={() => handleStockFaibleAchete(stockFaibleAction)}
+                    disabled={!stockFaibleQty}
+                    style={{ flex: 2, padding: '10px', background: !stockFaibleQty ? '#ccc' : '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: stockFaibleQty ? 'pointer' : 'default', fontWeight: '500' }}>
+                    Enregistrer
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -447,7 +503,7 @@ export default function CoursesPage() {
               const etat = item.qty === 0 ? { label: 'Épuisé', bg: '#FCEBEB', color: '#791F1F' } : { label: 'Faible', bg: '#FAEEDA', color: '#854F0B' }
               const catStyle = CAT_STYLE[item.cat] || CAT_STYLE['Autres']
               return (
-                <div key={item.name} onClick={() => setStockFaibleAction(item)} style={{
+                <div key={item.name} onClick={() => { setStockFaibleAction(item); setStockFaibleStep('choice'); setStockFaibleQty(String(item.seuil > 0 ? item.seuil * 2 : 1)); setStockFaibleSeuil(String(item.seuil || '')); setStockFaiblePeremption('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
                   borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer',
                   opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
