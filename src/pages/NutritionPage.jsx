@@ -276,13 +276,25 @@ export default function NutritionPage() {
 
   async function addWeightLog() {
     if (!newPoids) return
+    const poids = parseFloat(newPoids)
     await supabase.from('user_weight_log').insert({
       user_id: user.id,
-      poids: parseFloat(newPoids),
+      poids,
       date: newDate,
       note: newNote || null
     })
+    // Sync automatique avec poids_actuel dans le profil
+    if (goals) {
+      await supabase.from('user_nutrition_goals')
+        .update({ poids_actuel: poids, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+    } else {
+      await supabase.from('user_nutrition_goals')
+        .insert({ user_id: user.id, poids_actuel: poids })
+    }
+    setFormGoals(f => ({ ...f, poids_actuel: String(poids) }))
     setNewPoids(''); setNewNote('')
+    await loadGoals()
     await loadWeightLogs()
   }
 
@@ -706,11 +718,12 @@ export default function NutritionPage() {
           <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '12px' }}>Mon profil nutritionnel</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
             <div>
-              <label style={S.label}>Poids actuel (kg)</label>
-              <input type="number" step="0.1" value={formGoals.poids_actuel}
-                onChange={e => setFormGoals(f => ({ ...f, poids_actuel: e.target.value }))}
-                placeholder="85" style={S.input} />
-            </div>
+                <label style={S.label}>Poids actuel (kg)</label>
+                <div style={{ ...S.input, background: '#f0f0ec', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{formGoals.poids_actuel || '—'}</span>
+                  <span style={{ fontSize: '10px', color: '#aaa' }}>mis à jour via l'onglet Poids</span>
+                </div>
+              </div>
             <div>
               <label style={S.label}>Poids cible (kg)</label>
               <input type="number" step="0.1" value={formGoals.poids_cible}
