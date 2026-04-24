@@ -567,6 +567,7 @@ export default function BibliothequePage() {
   const [editingId, setEditingId]         = useState(null)
   const [saving, setSaving]               = useState(false)
   const [detailServings, setDetailServings] = useState(4)
+  const [showNutritionDetail, setShowNutritionDetail] = useState(false)
   const [priceMap, setPriceMap]           = useState({})
   const [nutMap, setNutMap]               = useState({})
   const [stockPerimes, setStockPerimes]   = useState([])
@@ -722,6 +723,13 @@ export default function BibliothequePage() {
     setRecipes(rs => rs.map(r => r.id === id ? { ...r, cook_count: newCount } : r))
   }
 
+  async function saveNutrition(recipeId, nutrition) {
+    await supabase.from('recipes').update({ nutrition }).eq('id', recipeId)
+    setShowDetail(d => d ? { ...d, nutrition } : d)
+    setRecipes(rs => rs.map(r => r.id === recipeId ? { ...r, nutrition } : r))
+    setShowNutritionDetail(false)
+  }
+
   // -- Helpers formulaire -----------------------------------------------------
 
   function openEdit(recipe) {
@@ -771,11 +779,24 @@ export default function BibliothequePage() {
   // Coût recalculé en temps réel dans le formulaire
   const autoCostForm = computeCost(form.ingredients, priceMap)
 
-  const nutritionDetail = showDetail
-    ? ((showDetail.nutrition && showDetail.nutrition.calories)
-        ? showDetail.nutrition
-        : computeNutrition(scaledIngredients, nutMap, showDetail.servings || 4, detailServings))
+  const nutritionImported = showDetail?.nutrition?.calories ? showDetail.nutrition : null
+  const nutritionCalculee = showDetail
+    ? computeNutrition(scaledIngredients, nutMap, showDetail.servings || 4, detailServings)
     : null
+  const nutritionDetail = nutritionCalculee || nutritionImported
+
+  // -- Vérification de cohérence nutrition ------------------------------------
+  function ecartPct(a, b) {
+    if (!a || !b || b === 0) return 0
+    return Math.abs(a - b) / b * 100
+  }
+  const nutritionCoherence = (() => {
+    if (!nutritionImported || !nutritionCalculee) return null
+    const macros = ['calories', 'proteines', 'glucides', 'lipides']
+    const ecarts = macros.map(k => ({ key: k, pct: ecartPct(nutritionCalculee[k], nutritionImported[k]) }))
+    const maxEcart = Math.max(...ecarts.map(e => e.pct))
+    return { ecarts, maxEcart, ok: maxEcart < 20 }
+  })()
 
   // -- Styles partagés --------------------------------------------------------
 
@@ -1122,9 +1143,61 @@ export default function BibliothequePage() {
 
               {nutritionDetail && (
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
-                    Nutrition <span style={{ fontWeight: '400', textTransform: 'none' }}>/ portion</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Nutrition <span style={{ fontWeight: '400', textTransform: 'none' }}>/ portion</span>
+                    </div>
+                    {/* Badge source */}
+                    {nutritionCalculee && !nutritionImported && (
+                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E1F5EE', color: '#0F6E56' }}>calculée</span>
+                    )}
+                    {nutritionImported && !nutritionCalculee && (
+                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#f0f0ec', color: '#888' }}>importée</span>
+                    )}
+                    {/* Badge cohérence */}
+                    {nutritionCoherence && (
+                      nutritionCoherence.ok
+                        ? <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E1F5EE', color: '#0F6E56' }}>✓ cohérent</span>
+                        : <button onClick={() => setShowNutritionDetail(v => !v)}
+                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '8px', background: '#FAEEDA', color: '#854F0B', border: '0.5px solid #EF9F27', cursor: 'pointer', fontWeight: '500' }}>
+                            ⚠️ écart {Math.round(nutritionCoherence.maxEcart)}% — voir
+                          </button>
+                    )}
                   </div>
+
+                  {/* Comparaison détaillée si écart */}
+                  {showNutritionDetail && nutritionCoherence && !nutritionCoherence.ok && (
+                    <div style={{ background: '#FFFBF0', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '12px', marginBottom: '10px', fontSize: '12px' }}>
+                      <div style={{ fontWeight: '500', color: '#854F0B', marginBottom: '8px' }}>Quelle valeur utiliser ?</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+                        {['calories', 'proteines', 'glucides', 'lipides'].map(k => {
+                          const pct = Math.round(ecartPct(nutritionCalculee[k], nutritionImported[k]))
+                          return (
+                            <div key={k} style={{ background: pct > 20 ? '#FCEBEB' : '#f5f5f0', borderRadius: '6px', padding: '6px 8px' }}>
+                              <div style={{ color: '#666', marginBottom: '2px', textTransform: 'capitalize' }}>{k}</div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <span style={{ color: '#0F6E56', fontWeight: '500' }}>{nutritionCalculee[k]} <span style={{ fontWeight: '400', fontSize: '10px' }}>calc.</span></span>
+                                <span style={{ color: '#aaa' }}>vs</span>
+                                <span style={{ color: '#854F0B' }}>{nutritionImported[k]} <span style={{ fontSize: '10px' }}>imp.</span></span>
+                                {pct > 20 && <span style={{ fontSize: '10px', color: '#E24B4A', fontWeight: '500' }}>Δ{pct}%</span>}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => saveNutrition(showDetail.id, nutritionCalculee)}
+                          style={{ flex: 1, padding: '7px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                          Utiliser calculée
+                        </button>
+                        <button onClick={() => saveNutrition(showDetail.id, nutritionImported)}
+                          style={{ flex: 1, padding: '7px', background: '#f5f5f0', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                          Garder importée
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                     {[
                       { label: 'Calories',  value: nutritionDetail.calories,  unit: 'kcal', hi: true },
