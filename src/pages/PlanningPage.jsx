@@ -961,7 +961,7 @@ export default function PlanningPage() {
                 {stock.filter(function(s) { return s.name.toLowerCase().includes(platLibreInput.toLowerCase()) && s.qty > 0 }).slice(0, 5).map(function(s) {
                   return (
                     <div key={s.id}
-                      onClick={function() { setSelectedStockItem(s); setDeduireQty(String(s.qty)) }}
+                      onClick={function() { setSelectedStockItem(s); setDeduireQty(String(s.qty)); setPlatLibreInput(s.name); searchNutrition(s.name) }}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#f5f5f0', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #e0e0e0' }}>
                       <span style={{ fontSize: '13px', fontWeight: '500' }}>{s.name}</span>
                       <span style={{ fontSize: '11px', color: '#888' }}>{s.qty} {s.unit} en stock</span>
