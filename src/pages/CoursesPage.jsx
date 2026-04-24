@@ -108,6 +108,7 @@ export default function CoursesPage() {
   const [checked, setChecked]   = useState(new Set())
   const [loading, setLoading]   = useState(true)
   const [checkedNeutral, setCheckedNeutral] = useState(new Set())
+  const [stockFaibleAction, setStockFaibleAction] = useState(null) // item du stock faible cliqué
   const [planningSlots, setPlanningSlots]     = useState([]) // slots ajoutes depuis le planning
   const [checkedPlanning, setCheckedPlanning] = useState(new Set()) // items coches dans la liste planning
   const [loadingPlanning, setLoadingPlanning] = useState(true)
@@ -282,10 +283,62 @@ export default function CoursesPage() {
     setCheckedNeutral(c => { const n = new Set(c); n.has(name) ? n.delete(name) : n.add(name); return n })
   }
 
+  async function handleStockFaibleAchete(item) {
+    // Remettre le stock à son seuil (ou seuil x 2 si épuisé)
+    const newQty = item.seuil > 0 ? item.seuil * 2 : 1
+    await supabase.from('stock')
+      .update({ qty: newQty, peremption: null })
+      .eq('user_id', user.id)
+      .eq('name', item.name)
+    setStock(s => s.map(i => i.name === item.name ? { ...i, qty: newQty, peremption: null } : i))
+    setCheckedNeutral(c => { const n = new Set(c); n.delete(item.name); return n })
+    setStockFaibleAction(null)
+  }
+
+  async function handleStockFaibleSupprimer(item) {
+    await supabase.from('stock')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('name', item.name)
+    setStock(s => s.filter(i => i.name !== item.name))
+    setStockFaibleAction(null)
+  }
+
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
   return (
     <div>
+
+      {/* Popup action stock faible */}
+      {stockFaibleAction && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '340px' }}>
+            <div style={{ fontSize: '22px', textAlign: 'center', marginBottom: '8px' }}>🛒</div>
+            <div style={{ fontSize: '15px', fontWeight: '500', textAlign: 'center', marginBottom: '4px' }}>{stockFaibleAction.name}</div>
+            <div style={{ fontSize: '12px', color: '#888', textAlign: 'center', marginBottom: '1.25rem' }}>
+              Stock actuel : {stockFaibleAction.qty} {stockFaibleAction.unit}
+              {stockFaibleAction.seuil > 0 && <span> · Seuil : {stockFaibleAction.seuil} {stockFaibleAction.unit}</span>}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => handleStockFaibleAchete(stockFaibleAction)}
+                style={{ padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                ✅ Je l&apos;ai acheté — mettre à jour le stock
+              </button>
+              <button
+                onClick={() => handleStockFaibleSupprimer(stockFaibleAction)}
+                style={{ padding: '10px', background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C0C0', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                🗑 Supprimer définitivement du stock
+              </button>
+              <button
+                onClick={() => setStockFaibleAction(null)}
+                style={{ padding: '10px', background: 'none', color: '#888', border: '0.5px solid #ddd', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Liste depuis le planning */}
       {!loadingPlanning && planningSlots.length > 0 && (
         <div style={{ background: 'white', border: '0.5px solid #1D9E75', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
@@ -394,7 +447,7 @@ export default function CoursesPage() {
               const etat = item.qty === 0 ? { label: 'Épuisé', bg: '#FCEBEB', color: '#791F1F' } : { label: 'Faible', bg: '#FAEEDA', color: '#854F0B' }
               const catStyle = CAT_STYLE[item.cat] || CAT_STYLE['Autres']
               return (
-                <div key={item.name} onClick={() => toggleNeutral(item.name)} style={{
+                <div key={item.name} onClick={() => setStockFaibleAction(item)} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
                   borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer',
                   opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
