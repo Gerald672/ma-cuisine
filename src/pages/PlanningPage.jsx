@@ -130,7 +130,10 @@ export default function PlanningPage() {
   const [platLibreProt, setPlatLibreProt] = useState('')
   const [platLibreGluc, setPlatLibreGluc] = useState('')
   const [platLibreLip, setPlatLibreLip]   = useState('')
-  const [platLibreFib, setPlatLibreFib]   = useState('') // { name, qty, unit, slotRecipeId }
+  const [platLibreFib, setPlatLibreFib]   = useState('')
+  const [platLibrePoids, setPlatLibrePoids] = useState('100') // poids en grammes pour calcul
+  const [nutSuggestions, setNutSuggestions] = useState([]) // suggestions depuis ingredient_nutrition
+  const [nutMap, setNutMap]                 = useState({}) // cache ingredient_nutrition
 
   // Drag & drop copie
   const [dragSrc, setDragSrc] = useState(null)
@@ -149,6 +152,7 @@ export default function PlanningPage() {
   const wKey  = weekKey(lundi)
 
   useEffect(() => { loadAll() }, [user])
+  useEffect(() => { loadNutMap() }, [])
   useEffect(() => { loadPlan() }, [wKey, user])
   useEffect(() => { if (showCarnet) loadCarnet() }, [showCarnet, user])
   useEffect(() => { loadInvitations(); loadRestaurants() }, [wKey, user])
@@ -163,6 +167,34 @@ export default function PlanningPage() {
     setRecipes(r.data || [])
     setStock(s.data || [])
     setLoading(false)
+  }
+
+  async function loadNutMap() {
+    var { data } = await supabase.from('ingredient_nutrition')
+      .select('name, calories, proteines, glucides, lipides, fibres, unit_ref, weight_per_unit')
+    var map = {}
+    for (var row of (data || [])) map[row.name.toLowerCase()] = row
+    setNutMap(map)
+  }
+
+  function searchNutrition(query) {
+    if (!query || query.length < 2) { setNutSuggestions([]); return }
+    var q = query.toLowerCase()
+    var results = Object.values(nutMap)
+      .filter(function(e) { return e.name.toLowerCase().includes(q) })
+      .slice(0, 5)
+    setNutSuggestions(results)
+  }
+
+  function applyNutSuggestion(entry, poids) {
+    var p = parseFloat(poids) || 100
+    var factor = entry.unit_ref === 'unite' ? 1 : p / 100
+    setPlatLibreCal(String(Math.round((entry.calories  || 0) * factor)))
+    setPlatLibreProt(String(parseFloat(((entry.proteines || 0) * factor).toFixed(1))))
+    setPlatLibreGluc(String(parseFloat(((entry.glucides  || 0) * factor).toFixed(1))))
+    setPlatLibreLip(String(parseFloat(((entry.lipides   || 0) * factor).toFixed(1))))
+    setPlatLibreFib(String(parseFloat(((entry.fibres    || 0) * factor).toFixed(1))))
+    setNutSuggestions([])
   }
 
   async function loadPlan() {
@@ -429,6 +461,7 @@ export default function PlanningPage() {
     setShowPlatLibre(null)
     setPlatLibreInput('')
     setPlatLibreCal(''); setPlatLibreProt(''); setPlatLibreGluc(''); setPlatLibreLip(''); setPlatLibreFib('')
+    setPlatLibrePoids('100'); setNutSuggestions([])
   }
 
   async function copySlot(srcJourIndex, srcRepas, dstJourIndex, dstRepas) {
@@ -983,6 +1016,46 @@ export default function PlanningPage() {
               <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', marginBottom: '8px' }}>
                 Valeurs nutritionnelles <span style={{ fontWeight: '400' }}>(optionnel — par portion)</span>
               </div>
+
+              {/* Recherche dans ingredient_nutrition */}
+              <div style={{ position: 'relative', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      placeholder="Rechercher un ingrédient..."
+                      onChange={function(e) { searchNutrition(e.target.value) }}
+                      style={{ width: '100%', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    {nutSuggestions.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'white', border: '0.5px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginTop: '2px', overflow: 'hidden' }}>
+                        {nutSuggestions.map(function(entry) {
+                          return (
+                            <div key={entry.name}
+                              onMouseDown={function() { applyNutSuggestion(entry, platLibrePoids) }}
+                              style={{ padding: '7px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '0.5px solid #f5f5f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                              onMouseEnter={function(e) { e.currentTarget.style.background = '#f5faf8' }}
+                              onMouseLeave={function(e) { e.currentTarget.style.background = 'white' }}>
+                              <span style={{ fontWeight: '500' }}>{entry.name}</span>
+                              <span style={{ color: '#888', fontSize: '11px' }}>{entry.calories} kcal/{entry.unit_ref}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <input type="number" min="0" value={platLibrePoids}
+                      onChange={function(e) { setPlatLibrePoids(e.target.value) }}
+                      style={{ width: '60px', padding: '6px 8px', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '12px', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#888' }}>g</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '10px', color: '#bbb', marginTop: '4px' }}>
+                  Tape un ingrédient pour pré-remplir automatiquement · ajuste le poids si besoin
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                 {[
                   { label: 'Calories (kcal)', val: platLibreCal,  set: setPlatLibreCal,  placeholder: '350' },
