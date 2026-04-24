@@ -289,6 +289,78 @@ function TagsInput({ tags = [], onChange }) {
   )
 }
 
+// --- IngredientInput avec autocomplétion --------------------------------------
+
+function IngredientInput({ value, onChange, allIngredients, style }) {
+  const [open, setOpen]       = useState(false)
+  const [query, setQuery]     = useState(value || '')
+  const wrapRef               = useRef()
+
+  // Sync si la valeur change de l'extérieur (ex: import)
+  useEffect(() => { setQuery(value || '') }, [value])
+
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const suggestions = query.length >= 2
+    ? allIngredients.filter(name => name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : []
+
+  function handleChange(e) {
+    setQuery(e.target.value)
+    onChange(e.target.value)
+    setOpen(true)
+  }
+
+  function select(name) {
+    setQuery(name)
+    onChange(name)
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <input
+        value={query}
+        onChange={handleChange}
+        onFocus={() => query.length >= 2 && setOpen(true)}
+        placeholder="Ingrédient"
+        style={style}
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: 'white', border: '0.5px solid #ddd', borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginTop: '2px', overflow: 'hidden'
+        }}>
+          {suggestions.map(name => (
+            <div
+              key={name}
+              onMouseDown={() => select(name)}
+              style={{
+                padding: '8px 12px', fontSize: '13px', cursor: 'pointer', color: '#333',
+                borderBottom: '0.5px solid #f5f5f0',
+                transition: 'background 0.1s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f5faf8'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}
+            >
+              {name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- PhotoUpload --------------------------------------------------------------
 
 function PhotoUpload({ currentUrl, onUploaded, userId }) {
@@ -669,6 +741,12 @@ export default function BibliothequePage() {
   function toggleCat(cat) { setForm(f => ({ ...f, cats: f.cats.includes(cat) ? f.cats.filter(c => c !== cat) : [...f.cats, cat] })) }
 
   // -- Données dérivées -------------------------------------------------------
+
+  // Liste de tous les ingrédients connus (prix + nutrition) pour autocomplétion
+  const allIngredients = [...new Set([
+    ...Object.keys(priceMap),
+    ...Object.keys(nutMap)
+  ])].sort()
 
   const allFreeTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
 
@@ -1200,7 +1278,12 @@ export default function BibliothequePage() {
                 const linePrice = entry && ing.qty ? parseFloat((parseFloat(ing.qty) * entry.price_per_unit).toFixed(2)) : null
                 return (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '6px', marginBottom: '6px', alignItems: 'start' }}>
-                    <input value={ing.name} onChange={e => updateIngredient(i, 'name', e.target.value)} placeholder="Ingrédient" style={S.input} />
+                    <IngredientInput
+                      value={ing.name}
+                      onChange={val => updateIngredient(i, 'name', val)}
+                      allIngredients={allIngredients}
+                      style={S.input}
+                    />
                     <input type="number" value={ing.qty} onChange={e => updateIngredient(i, 'qty', e.target.value)} placeholder="Qté" style={S.input} />
                     <div>
                       <select value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={S.input}>{UNITES.map(u => <option key={u}>{u}</option>)}</select>
