@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import BarcodeScanner from '../components/BarcodeScanner'
+import Degustations from '../components/Degustations'
+import Suggestions from '../components/Suggestions'
 
 const COULEURS = { rouge: 'Rouge', blanc: 'Blanc', rose: 'Rosé', bulles: 'Effervescent', doux: 'Doux / liquoreux' }
 const COULEUR_STYLE = {
@@ -198,6 +200,7 @@ export default function CavePage() {
   const [accordVinId, setAccordVinId] = useState('')
   const [accordVinTxt, setAccordVinTxt] = useState('')
   const [question, setQuestion] = useState('')
+  const [tastings, setTastings] = useState([])
   const [confirmDel, setConfirmDel] = useState(false)
   const photoRef = useRef(null)
   const importRef = useRef(null)
@@ -216,6 +219,9 @@ export default function CavePage() {
     if (error) toast('Erreur de chargement : ' + error.message)
     setWines(data || [])
     setLoading(false)
+    // dégustations (facultatif : la table peut ne pas exister encore)
+    var t = await supabase.from('wine_tastings').select('nom,producteur,millesime,note,lieu').order('date_degustation', { ascending: false }).limit(60)
+    setTastings(t.error ? [] : (t.data || []))
   }
 
   async function callAI(body) {
@@ -457,12 +463,25 @@ export default function CavePage() {
 
       {/* Sous-onglets */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-        {[['cave', 'Ma cave'], ['accords', 'Accords'], ['questions', 'Questions']].map(function(t) {
+        {[['cave', 'Ma cave'], ['degust', 'Dégustations'], ['suggestions', 'Suggestions'], ['accords', 'Accords'], ['questions', 'Questions']].map(function(t) {
           return (
             <button key={t[0]} onClick={() => { setTab(t[0]); setAnswer('') }} style={chip(tab === t[0])}>{t[1]}</button>
           )
         })}
       </div>
+
+      {/* ===== DÉGUSTATIONS (hors cave) ===== */}
+      {tab === 'degust' && (
+        <Degustations user={user} toast={toast}
+          lireEtiquette={async function(file) { var b64 = await photoEnBase64(file); return callAI({ action: 'etiquette', image: b64 }) }}
+          versCave={function(draft) { setTab('cave'); openForm({ ...FORM_VIDE, ...draft }); toast('Indique le casier et le nombre de bouteilles, puis ajoute.') }} />
+      )}
+
+      {/* ===== SUGGESTIONS D'ACHAT ===== */}
+      {tab === 'suggestions' && (
+        <Suggestions wines={wines} tastings={tastings} toast={toast} callAI={callAI}
+          versCave={function(draft) { setTab('cave'); openForm({ ...FORM_VIDE, ...draft }); toast('Indique le casier, puis ajoute. (Pense à le faire seulement une fois la bouteille achetée.)') }} />
+      )}
 
       {/* ===== MA CAVE ===== */}
       {tab === 'cave' && (

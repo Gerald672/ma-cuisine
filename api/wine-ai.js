@@ -117,6 +117,31 @@ export default async function handler(req, res) {
       return res.status(200).json({ texte })
     }
 
+    if (b.action === 'suggerer') {
+      const pr = b.profil || {}
+      const liste = a => (Array.isArray(a) ? a : []).slice(0, 40).map(x => court(x, 120)).join('; ') || '—'
+      const q = 'Voici le profil de ma cave :\n'
+        + '- ' + (Number(pr.nbBouteilles) || 0) + ' bouteilles, ' + (Number(pr.nbRefs) || 0) + ' références\n'
+        + '- Répartition par couleur : ' + court(JSON.stringify(pr.parCouleur || {}), 300) + '\n'
+        + '- Régions les plus présentes : ' + liste(pr.regions) + '\n'
+        + '- Pays : ' + liste(pr.pays) + '\n'
+        + '- Producteurs présents : ' + liste(pr.producteurs) + '\n'
+        + '- Prix habituel payé : ' + (pr.prixMoyen ? 'environ ' + Number(pr.prixMoyen) + ' CHF en moyenne (médiane ' + Number(pr.prixMediane) + ', de ' + Number(pr.prixMin) + ' à ' + Number(pr.prixMax) + ')' : 'inconnu') + '\n'
+        + '- Mes vins préférés (bien notés) : ' + liste(pr.favoris) + '\n'
+        + '- Vins goûtés ailleurs et aimés : ' + liste(pr.degustes) + '\n'
+        + '- Déjà en cave (à NE PAS re-proposer) : ' + liste(pr.possedes) + '\n\n'
+        + 'Budget par bouteille : ' + court(pr.budget || 'dans mon prix habituel', 60) + '. Focus : ' + court(pr.focus || 'ce qui manque à ma cave', 60) + '.\n\n'
+        + 'Propose ' + Math.min(8, Math.max(3, Number(pr.nombre) || 6)) + ' vins À ACHETER pour compléter ma cave : combler ce qui manque (couleurs, régions, styles, vins de garde ou de soif) tout en restant proches de mes goûts et du budget. Mélange des valeurs sûres et 1 ou 2 découvertes. Au moins la moitié de Suisse romande ou de vins faciles à trouver en Suisse si mes goûts vont dans ce sens. Ne propose que de vrais vins existants que tu connais (cuvée précise si tu es sûr), n\'invente ni cuvée ni millésime ; les prix sont des ordres de grandeur en CHF.\n'
+        + 'Réponds UNIQUEMENT en JSON : {"analyse":"2 ou 3 phrases : ce que montre ma cave et ce qui lui manque","suggestions":[{"nom":"","producteur":"","region":"","pays":"","couleur":"rouge|blanc|rose|bulles|doux","millesime":"","prix_chf":"ex. 18-24","pourquoi":"1 phrase : pourquoi celui-ci me plaira / ce qu\'il apporte","ou_acheter":"ex. domaine en direct, Coop, caviste"}]}'
+      const t = await claude([{ role: 'user', content: q }], { system: SOMMELIER, max_tokens: 2400, web: true })
+      const d = extraireJson(t)
+      if (!Array.isArray(d.suggestions)) return res.status(502).json({ erreur: 'Réponse illisible, réessaie.' })
+      return res.status(200).json({ analyse: court(d.analyse, 600), suggestions: d.suggestions.slice(0, 8).map(x => ({
+        nom: court(x.nom, 120), producteur: court(x.producteur, 120), region: court(x.region, 80), pays: court(x.pays, 60),
+        couleur: COULEURS[x.couleur] ? x.couleur : 'rouge', millesime: court(x.millesime, 10), prix_chf: court(x.prix_chf, 30),
+        pourquoi: court(x.pourquoi, 300), ou_acheter: court(x.ou_acheter, 100) })) })
+    }
+
     return res.status(400).json({ erreur: 'Action inconnue' })
   } catch (e) {
     return res.status(502).json({ erreur: e.message || 'Erreur Claude' })
