@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import MenusSuggestions from '../components/MenusSuggestions'
 
 // --- Constantes ---------------------------------------------------------------
 
@@ -230,7 +231,7 @@ export default function NutritionPage() {
   }
 
   async function loadRecipes() {
-    const { data } = await supabase.from('recipes').select('id, title, ingredients, servings, nutrition').eq('user_id', user.id)
+    const { data } = await supabase.from('recipes').select('id, title, ingredients, servings, nutrition, cats, emoji').eq('user_id', user.id)
     setRecipes(data || [])
   }
 
@@ -354,8 +355,7 @@ export default function NutritionPage() {
           // Recette liée
           const recipe = recipeMap[sr.recipe_id]
           if (!recipe) continue
-          const convives = slot.convives || 2
-          const ratio = convives / (recipe.servings || 2)
+          const ratio = 1 // une portion par personne (la valeur nutritionnelle de la recette est par portion)
           const nut = recipe.nutrition?.calories
             ? recipe.nutrition
             : computeNutritionIngredients(recipe.ingredients, recipe.servings)
@@ -487,6 +487,7 @@ export default function NutritionPage() {
       <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '4px', marginBottom: '1rem' }}>
         {[
           { id: 'semaine', label: '📊 Semaine' },
+          { id: 'menus',   label: '🍽 Menus' },
           { id: 'poids',   label: '⚖️ Poids' },
           { id: 'profil',  label: '👤 Profil' },
           { id: 'conseils',label: '💡 Conseils' },
@@ -499,6 +500,14 @@ export default function NutritionPage() {
           }}>{o.label}</button>
         ))}
       </div>
+
+      {/* ── Onglet Menus : suggestions selon l'objectif ── */}
+      {onglet === 'menus' && (
+        <MenusSuggestions user={user} recipes={recipes}
+          nutOf={r => (r.nutrition && r.nutrition.calories) ? r.nutrition : computeNutritionIngredients(r.ingredients, r.servings)}
+          objectifCal={objectifCal} lundi={lundi} wKey={wKey} plan={plan} reloadPlan={loadPlan}
+          weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
+      )}
 
       {/* ── Onglet Semaine ──────────────────────────────────────────────────── */}
       {onglet === 'semaine' && (
