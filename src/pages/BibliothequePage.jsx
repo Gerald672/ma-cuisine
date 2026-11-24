@@ -578,6 +578,8 @@ export default function BibliothequePage() {
   const [filtre, setFiltre]               = useState('Toutes')
   const [sortKey, setSortKey]             = useState('alpha_asc')
   const [activeTagFilter, setActiveTagFilter] = useState(null)
+  const [showTags, setShowTags]               = useState(false)
+  const [tagQuery, setTagQuery]               = useState('')
   const [showImport, setShowImport]       = useState(false)
   const [showEdit, setShowEdit]           = useState(false)
   const [showDetail, setShowDetail]       = useState(null)
@@ -951,38 +953,60 @@ export default function BibliothequePage() {
           style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
       </div>
 
-      {/* -- Filtres catégories + sélecteur de tri -- */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center' }}>
+      {/* -- Filtres catégories : une seule ligne qu'on fait défiler -- */}
+      <div className="mc-scroll" style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', marginBottom: '8px', paddingBottom: '2px', WebkitOverflowScrolling: 'touch' }}>
         {FILTRES.map(f => (
           <button key={f} onClick={() => setFiltre(f)} style={{
-            padding: '5px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
             border: '0.5px solid ' + (filtre === f ? '#5DCAA5' : '#e0e0e0'),
             background: filtre === f ? '#E1F5EE' : 'white',
             color: filtre === f ? '#0F6E56' : '#888', fontWeight: filtre === f ? '500' : '400'
           }}>{f}</button>
         ))}
+      </div>
+
+      {/* -- Une seule ligne : bouton Tags (menu repliable) + tri -- */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: showTags ? '8px' : '16px' }}>
+        {allFreeTags.length > 0 && (
+          <button onClick={() => setShowTags(!showTags)} style={{
+            padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+            border: '0.5px solid ' + (activeTagFilter ? '#1D9E75' : '#e0e0e0'),
+            background: activeTagFilter ? '#E1F5EE' : 'white', color: activeTagFilter ? '#0F6E56' : '#555', fontWeight: activeTagFilter ? '500' : '400'
+          }}>
+            {activeTagFilter ? '#' + activeTagFilter : '# Tags (' + allFreeTags.length + ')'} {showTags ? '▴' : '▾'}
+          </button>
+        )}
+        {activeTagFilter && (
+          <button onClick={() => { setActiveTagFilter(null); setShowTags(false) }} aria-label="Retirer le tag"
+            style={{ background: '#ddd', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', color: '#666', fontSize: '12px', padding: 0, lineHeight: 1 }}>x</button>
+        )}
         <select value={sortKey} onChange={e => setSortKey(e.target.value)}
-          style={{ marginLeft: 'auto', padding: '5px 10px', borderRadius: '8px', border: '0.5px solid #e0e0e0', fontSize: '12px', background: 'white', color: '#555', outline: 'none', cursor: 'pointer' }}>
+          style={{ marginLeft: 'auto', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid #e0e0e0', fontSize: '12px', background: 'white', color: '#555', outline: 'none', cursor: 'pointer', maxWidth: '55%' }}>
           {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
 
-      {/* -- Tags libres -- */}
-      {allFreeTags.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', color: '#bbb', flexShrink: 0 }}>Tags :</span>
-          {allFreeTags.map(tag => (
-            <button key={tag} onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)} style={{
-              padding: '3px 10px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer',
-              border: '0.5px solid ' + (activeTagFilter === tag ? '#888' : '#e0e0e0'),
-              background: activeTagFilter === tag ? '#F0F0EC' : 'white',
-              color: activeTagFilter === tag ? '#333' : '#999', fontWeight: activeTagFilter === tag ? '500' : '400'
-            }}>#{tag}</button>
-          ))}
-          {activeTagFilter && <button onClick={() => setActiveTagFilter(null)} style={{ fontSize: '11px', color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>effacer</button>}
+      {/* -- Panneau des tags : recherche + liste défilante, se referme au choix -- */}
+      {showTags && allFreeTags.length > 0 && (
+        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '10px', marginBottom: '16px' }}>
+          <input value={tagQuery} onChange={e => setTagQuery(e.target.value)} placeholder="Chercher un tag..."
+            style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box', marginBottom: '8px' }} />
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxHeight: '132px', overflowY: 'auto' }}>
+            {allFreeTags.filter(t => !tagQuery.trim() || t.toLowerCase().includes(tagQuery.trim().toLowerCase())).map(tag => (
+              <button key={tag} onClick={() => { setActiveTagFilter(activeTagFilter === tag ? null : tag); setShowTags(false); setTagQuery('') }} style={{
+                padding: '5px 11px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                border: '0.5px solid ' + (activeTagFilter === tag ? '#1D9E75' : '#e0e0e0'),
+                background: activeTagFilter === tag ? '#E1F5EE' : 'white',
+                color: activeTagFilter === tag ? '#0F6E56' : '#777', fontWeight: activeTagFilter === tag ? '500' : '400'
+              }}>#{tag}</button>
+            ))}
+            {allFreeTags.filter(t => !tagQuery.trim() || t.toLowerCase().includes(tagQuery.trim().toLowerCase())).length === 0 && (
+              <span style={{ fontSize: '12px', color: '#aaa' }}>Aucun tag ne correspond.</span>
+            )}
+          </div>
         </div>
       )}
-      {allFreeTags.length === 0 && <div style={{ marginBottom: '16px' }} />}
+      {allFreeTags.length === 0 && <div style={{ marginBottom: '0' }} />}
 
       {/* -- Grille -- */}
       {loading ? (

@@ -73,6 +73,8 @@ const CSS = `
   .mc-avatar { width: 34px; height: 34px; border-radius: 50%; border: none; background: ${VERT_CLAIR}; color: ${VERT_FONCE}; font-size: 14px; font-weight: 600; text-transform: uppercase; }
   .mc-main { max-width: 960px; margin: 0 auto; padding: 14px 14px calc(88px + env(safe-area-inset-bottom)); }
   .mc-topnav { display: none; }
+  .mc-scroll { scrollbar-width: none; }
+  .mc-scroll::-webkit-scrollbar { display: none; }
   .mc-bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border-top: 0.5px solid #e0e0e0; display: flex; padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
   .mc-tab { flex: 1; min-height: 52px; background: none; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
