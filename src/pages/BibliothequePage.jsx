@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import CollectionsView, { AddToCollectionModal } from '../components/Collections'
 
 // --- Constantes ---------------------------------------------------------------
 
@@ -583,6 +584,8 @@ export default function BibliothequePage() {
   const [showImport, setShowImport]       = useState(false)
   const [showEdit, setShowEdit]           = useState(false)
   const [showDetail, setShowDetail]       = useState(null)
+  const [vue, setVue]                     = useState('recettes')
+  const [showAddCol, setShowAddCol]       = useState(null)
   const [showPriceBase, setShowPriceBase] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [importUrl, setImportUrl]         = useState('')
@@ -834,6 +837,19 @@ export default function BibliothequePage() {
   return (
     <div>
 
+      {/* -- Sous-menu : toutes les recettes / collections (Noël...) -- */}
+      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '4px', marginBottom: '12px' }}>
+        {[{ id: 'recettes', label: '📚 Toutes les recettes' }, { id: 'collections', label: '🎄 Collections' }].map(o => (
+          <button key={o.id} onClick={() => setVue(o.id)} style={{
+            flex: 1, padding: '8px 6px', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer',
+            background: vue === o.id ? '#E1F5EE' : 'transparent', color: vue === o.id ? '#0F6E56' : '#888', fontWeight: vue === o.id ? '600' : '400'
+          }}>{o.label}</button>
+        ))}
+      </div>
+
+      {vue === 'collections' && <CollectionsView user={user} recipes={recipes} onOpenRecipe={openDetail} />}
+
+      {vue === 'recettes' && (<>
       {/* -- Alerte ingredients perimés -- */}
       {stockPerimes.filter(s => shouldShowAlert(s.name)).length > 0 && (
         <div style={{ marginBottom: '12px' }}>
@@ -1052,6 +1068,8 @@ export default function BibliothequePage() {
           ))}
         </div>
       )}
+
+      </>)}
 
       {/* -- Modal Import URL -- */}
       {showImport && (
@@ -1293,6 +1311,7 @@ export default function BibliothequePage() {
                 <button onClick={() => setConfirmDelete(showDetail)} style={{ background: 'none', border: '0.5px solid #E24B4A', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#E24B4A' }}>Supprimer</button>
                 <button onClick={() => shareRecipeByEmail(showDetail, scaledIngredients, detailServings, nutritionDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>✉️ Partager</button>
                 <button onClick={() => printRecipe(showDetail, scaledIngredients, detailServings, nutritionDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>🖨️ Imprimer</button>
+                <button onClick={() => setShowAddCol(showDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>📁 Collection</button>
                 <button onClick={() => openEdit(showDetail)} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>✏️ Modifier</button>
               </div>
             </div>
@@ -1489,6 +1508,8 @@ export default function BibliothequePage() {
           </div>
         </div>
       )}
+
+      {showAddCol && <AddToCollectionModal user={user} recipe={showAddCol} onClose={() => setShowAddCol(null)} />}
 
       {/* -- Modal Confirmation suppression -- */}
       {confirmDelete && (
