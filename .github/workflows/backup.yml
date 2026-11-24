@@ -39,7 +39,9 @@ jobs:
               "meal_plan_recipes": $(fetch_table meal_plan_recipes),
               "ingredient_nutrition": $(fetch_table ingredient_nutrition),
               "user_preferences": $(fetch_table user_preferences),
-              "share_codes": $(fetch_table share_codes)
+              "share_codes": $(fetch_table share_codes),
+              "wines": $(fetch_table wines),
+              "wine_movements": $(fetch_table wine_movements)
             }
           }
           EOF

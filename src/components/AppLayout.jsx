@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import BibliothequePage from '../pages/BibliothequePage'
@@ -8,29 +8,138 @@ import BudgetPage from '../pages/BudgetPage'
 import PlanningPage from '../pages/PlanningPage'
 import PartageePage from '../pages/PartageePage'
 import NutritionPage from '../pages/NutritionPage'
+import CavePage from '../pages/CavePage'
 
-const NAV = [
-  { id: 'bibliotheque', label: 'Bibliothèque', icon: '📚' },
-  { id: 'planning',     label: 'Planning',      icon: '📅' },
-  { id: 'stock',        label: 'Mon stock',     icon: '🥕' },
-  { id: 'courses',      label: 'Courses',       icon: '🛒' },
-  { id: 'budget',       label: 'Budget',        icon: '💰' },
-  { id: 'partage',      label: 'Partage',       icon: '🤝' },
-  { id: 'nutrition',    label: 'Nutrition',     icon: '🥗' },
+const VERT = '#1D9E75'
+const VERT_FONCE = '#0F6E56'
+const VERT_CLAIR = '#E1F5EE'
+
+// Icônes ligne (même épaisseur partout) — look sobre et lisible
+const ICONS = {
+  bibliotheque: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15ZM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
+  planning:     'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM8 12h2M12 12h2M8 16h2M12 16h2',
+  stock:        'M3 8l9-5 9 5v9l-9 5-9-5V8ZM3 8l9 5 9-5M12 13v9',
+  courses:      'M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L19 8H6M9 19.5a1 1 0 1 0 0 .01M17 19.5a1 1 0 1 0 0 .01',
+  budget:       'M12 3v18M16 7.5C16 6 14.4 5 12 5S8 6 8 7.8c0 4.2 8 2.2 8 6.4 0 1.8-1.8 2.8-4 2.8s-4-1-4-2.5',
+  partage:      'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20c0-3 2.7-5 6-5s6 2 6 5M14 15.3c.6-.2 1.3-.3 2-.3 3.3 0 6 2 6 5',
+  nutrition:    'M12 21c-4.5 0-8-3.4-8-8 0-5 4-9 8-10 4 1 8 5 8 10 0 4.6-3.5 8-8 8ZM12 8v13M12 14c-2 0-3.5-1-4-3M12 12c2 0 3.5-1 4-3',
+  cave:         'M8 3h8v5a4 4 0 0 1-8 0V3ZM12 12v9M8 21h8M8 6h8',
+  plus:         'M5 12h.01M12 12h.01M19 12h.01',
+}
+
+function Icon({ name, size = 22, color = 'currentColor', stroke = 1.8 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={name === 'plus' ? 3.2 : stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONS[name]} />
+    </svg>
+  )
+}
+
+// Onglets principaux (barre du bas) et le reste (menu « Plus »)
+const MAIN = [
+  { id: 'bibliotheque', label: 'Recettes' },
+  { id: 'planning',     label: 'Planning' },
+  { id: 'courses',      label: 'Courses' },
+  { id: 'stock',        label: 'Stock' },
 ]
+const MORE = [
+  { id: 'cave',      label: 'Cave',      desc: 'Vins & scan' },
+  { id: 'budget',    label: 'Budget',    desc: 'Coût des repas' },
+  { id: 'nutrition', label: 'Nutrition', desc: 'Calories & santé' },
+  { id: 'partage',   label: 'Partage',   desc: 'Recettes entre comptes' },
+]
+const ALL = MAIN.concat(MORE)
+
+const TITLES = {
+  bibliotheque: 'Recettes',
+  planning:     'Planning',
+  stock:        'Mon stock',
+  courses:      'Courses',
+  budget:       'Budget & coût',
+  partage:      'Partage de recettes',
+  nutrition:    'Nutrition & santé',
+  cave:         'Ma cave',
+}
+
+const CSS = `
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: #f5f5f0; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  .mc-shell { min-height: 100vh; min-height: 100dvh; background: #f5f5f0; }
+  .mc-header { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,0.96); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 0.5px solid #e0e0e0; padding-top: env(safe-area-inset-top); }
+  .mc-header-in { max-width: 960px; margin: 0 auto; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+  .mc-logo { width: 30px; height: 30px; border-radius: 8px; background: ${VERT}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mc-title { flex: 1; font-size: 17px; font-weight: 600; color: #1a1a1a; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-avatar { width: 34px; height: 34px; border-radius: 50%; border: none; background: ${VERT_CLAIR}; color: ${VERT_FONCE}; font-size: 14px; font-weight: 600; text-transform: uppercase; }
+  .mc-main { max-width: 960px; margin: 0 auto; padding: 14px 14px calc(88px + env(safe-area-inset-bottom)); }
+  .mc-topnav { display: none; }
+  .mc-bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-top: 0.5px solid #e0e0e0; display: flex; padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
+  .mc-tab { flex: 1; min-height: 52px; background: none; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-size: 11px; color: #8a8a85; position: relative; border-radius: 10px; }
+  .mc-tab.on { color: ${VERT_FONCE}; font-weight: 600; }
+  .mc-tab.on::before { content: ''; position: absolute; top: -5px; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: ${VERT}; }
+  .mc-tab:active { background: #f0f0ec; }
+  .mc-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.4); animation: mcfade .15s ease; }
+  .mc-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: white; border-radius: 18px 18px 0 0;
+    padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto; animation: mcup .2s ease; max-height: 85vh; overflow-y: auto; }
+  .mc-grab { width: 38px; height: 4px; border-radius: 2px; background: #d8d8d2; margin: 0 auto 12px; }
+  .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .mc-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; border: 0.5px solid #e0e0e0; background: #fafaf8; text-align: left; min-height: 64px; }
+  .mc-card.on { background: ${VERT_CLAIR}; border-color: #5DCAA5; }
+  .mc-card:active { background: #f0f0ec; }
+  .mc-row { width: 100%; text-align: left; background: none; border: none; padding: 13px 6px; font-size: 15px; border-top: 0.5px solid #f0f0ec; min-height: 48px; }
+  @keyframes mcup { from { transform: translateY(30px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes mcfade { from { opacity: 0 } to { opacity: 1 } }
+
+  /* Téléphone : champs à 16px (évite le zoom automatique), listes défilantes à l'aise */
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px !important; }
+    .mc-main { padding-left: 12px; padding-right: 12px; }
+  }
+
+  /* Ordinateur / tablette large : onglets en haut, plus de barre du bas */
+  @media (min-width: 768px) {
+    .mc-bottom { display: none; }
+    .mc-main { padding-bottom: 32px; }
+    .mc-topnav { display: flex; gap: 4px; max-width: 960px; margin: 0 auto; padding: 12px 14px 0; }
+    .mc-toptab { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border: none; border-radius: 10px; background: transparent; color: #777; font-size: 14px; }
+    .mc-toptab:hover { background: #ebebe6; }
+    .mc-toptab.on { background: ${VERT_CLAIR}; color: ${VERT_FONCE}; font-weight: 600; }
+  }
+`
+
+function pageDepuisHash() {
+  var h = (window.location.hash || '').replace('#', '')
+  return TITLES[h] ? h : 'bibliotheque'
+}
 
 export default function AppLayout() {
   const { user, signOut } = useAuth()
-  const [page, setPage]       = useState('bibliotheque')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [page, setPage]         = useState(pageDepuisHash())
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [backing, setBacking]   = useState(false)
 
   const ADMIN_EMAIL = 'gerald.thevoz@pm.me'
 
+  // La page courante est dans l'adresse (#cave) : bouton retour et rechargement fonctionnent
+  useEffect(function() {
+    function onHash() { setPage(pageDepuisHash()); setSheetOpen(false) }
+    window.addEventListener('hashchange', onHash)
+    return function() { window.removeEventListener('hashchange', onHash) }
+  }, [])
+
+  function go(id) {
+    setSheetOpen(false)
+    if (id === page) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    window.location.hash = id
+    window.scrollTo(0, 0)
+  }
+
   async function doBackup() {
     setBacking(true)
     try {
-      var tables = ['recipes', 'stock', 'ingredient_prices', 'meal_plan', 'meal_plan_recipes', 'ingredient_nutrition', 'user_preferences', 'share_codes']
+      var tables = ['recipes', 'stock', 'ingredient_prices', 'meal_plan', 'meal_plan_recipes', 'ingredient_nutrition', 'user_preferences', 'share_codes', 'wines', 'wine_movements']
       var backup = { date: new Date().toISOString(), user: user.email, data: {} }
       for (var table of tables) {
         var { data } = await supabase.from(table).select('*').eq('user_id', user.id)
@@ -48,7 +157,7 @@ export default function AppLayout() {
       a.download = 'ma-cuisine-backup-' + new Date().toISOString().slice(0, 10) + '.json'
       a.click()
       URL.revokeObjectURL(url)
-      setMenuOpen(false)
+      setSheetOpen(false)
     } catch(e) {
       alert('Erreur lors de la sauvegarde : ' + e.message)
     }
@@ -63,81 +172,83 @@ export default function AppLayout() {
     budget:       <BudgetPage />,
     partage:      <PartageePage />,
     nutrition:    <NutritionPage />,
+    cave:         <CavePage />,
   }
 
-  const PAGE_TITLES = {
-    bibliotheque: 'Bibliothèque',
-    planning:     'Planning',
-    stock:        'Mon stock',
-    courses:      'Liste de courses',
-    budget:       'Budget & coût',
-    partage:      'Partage de recettes',
-    nutrition:    'Nutrition & Santé',
-  }
+  var inMore = MORE.some(function(m) { return m.id === page })
+  var initiale = (user.email || '?').charAt(0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f0' }}>
-      {/* Header */}
-      <div style={{ background: 'white', borderBottom: '0.5px solid #e0e0e0', padding: '0 1rem', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '56px', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-            <div style={{ width: '28px', height: '28px', background: '#1D9E75', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🍳</div>
-            <span style={{ fontSize: '16px', fontWeight: '500' }}>Ma cuisine</span>
-          </div>
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: '#f5f5f0', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', cursor: 'pointer', color: '#666' }}>
-              {user.email.split('@')[0]} ▾
-            </button>
-            {menuOpen && (
-              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '6px', minWidth: '160px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 20 }}>
-                <div style={{ padding: '6px 10px', fontSize: '12px', color: '#888', borderBottom: '0.5px solid #f0f0ec', marginBottom: '4px' }}>{user.email}</div>
-                {user.email === ADMIN_EMAIL && (
-                  <button onClick={doBackup} disabled={backing}
-                    style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', padding: '7px 10px', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', color: '#1D9E75', marginBottom: '2px' }}>
-                    {backing ? 'Sauvegarde...' : 'Sauvegarder les donnees'}
-                  </button>
-                )}
-                <button onClick={() => { signOut(); setMenuOpen(false) }} style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', padding: '7px 10px', fontSize: '13px', cursor: 'pointer', borderRadius: '6px', color: '#E24B4A' }}>Se deconnecter</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="mc-shell">
+      <style>{CSS}</style>
 
-      {/* Desktop nav */}
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '1rem 1rem 0' }}>
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '6px', display: 'flex', gap: '6px', marginBottom: '1rem' }}>
-          {NAV.map(n => (
-            <button key={n.id} onClick={() => setPage(n.id)} style={{
-              flex: 1, padding: '8px 4px', border: 'none', cursor: 'pointer', borderRadius: '8px',
-              fontSize: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-              background: page === n.id ? '#E1F5EE' : 'transparent',
-              color: page === n.id ? '#0F6E56' : '#888',
-              fontWeight: page === n.id ? '500' : '400',
-            }}>
-              <span style={{ fontSize: '18px' }}>{n.icon}</span>
+      {/* En-tête */}
+      <header className="mc-header">
+        <div className="mc-header-in">
+          <div className="mc-logo"><span style={{ fontSize: '16px' }}>🍳</span></div>
+          <div className="mc-title">{TITLES[page]}</div>
+          <button className="mc-avatar" onClick={() => setSheetOpen(true)} aria-label="Compte et menu">{initiale}</button>
+        </div>
+      </header>
+
+      {/* Onglets (ordinateur) */}
+      <nav className="mc-topnav" aria-label="Navigation">
+        {ALL.map(function(n) {
+          return (
+            <button key={n.id} className={'mc-toptab' + (page === n.id ? ' on' : '')} onClick={() => go(n.id)}>
+              <Icon name={n.id} size={18} />{n.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      <main className="mc-main">{PAGES[page]}</main>
+
+      {/* Barre du bas (téléphone) : 4 onglets + Plus */}
+      <nav className="mc-bottom" aria-label="Navigation">
+        {MAIN.map(function(n) {
+          return (
+            <button key={n.id} className={'mc-tab' + (page === n.id ? ' on' : '')} onClick={() => go(n.id)} aria-current={page === n.id ? 'page' : undefined}>
+              <Icon name={n.id} size={23} stroke={page === n.id ? 2.2 : 1.8} />
               {n.label}
             </button>
-          ))}
-        </div>
-        <div style={{ paddingBottom: '5rem' }}>{PAGES[page]}</div>
-      </div>
+          )
+        })}
+        <button className={'mc-tab' + (inMore ? ' on' : '')} onClick={() => setSheetOpen(true)} aria-label="Plus">
+          <Icon name="plus" size={23} />
+          Plus
+        </button>
+      </nav>
 
-      {/* Mobile bottom nav */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderTop: '0.5px solid #e0e0e0', display: 'flex', padding: '6px 0 calc(6px + env(safe-area-inset-bottom))', zIndex: 10 }}>
-        {NAV.map(n => (
-          <button key={n.id} onClick={() => setPage(n.id)} style={{
-            flex: 1, background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-            padding: '4px', fontSize: '10px',
-            color: page === n.id ? '#0F6E56' : '#aaa',
-            fontWeight: page === n.id ? '500' : '400'
-          }}>
-            <span style={{ fontSize: '20px' }}>{n.icon}</span>
-            {n.label}
-          </button>
-        ))}
-      </div>
+      {/* Menu « Plus » + compte */}
+      {sheetOpen && (
+        <div>
+          <div className="mc-scrim" onClick={() => setSheetOpen(false)} />
+          <div className="mc-sheet" role="dialog" aria-label="Menu">
+            <div className="mc-grab" />
+            <div className="mc-grid">
+              {MORE.map(function(n) {
+                return (
+                  <button key={n.id} className={'mc-card' + (page === n.id ? ' on' : '')} onClick={() => go(n.id)}>
+                    <span style={{ color: page === n.id ? VERT_FONCE : '#555', display: 'flex' }}><Icon name={n.id} size={26} /></span>
+                    <span>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{n.label}</span>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '2px' }}>{n.desc}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: '12px', color: '#888', padding: '4px 6px 8px', wordBreak: 'break-all' }}>{user.email}</div>
+            {user.email === ADMIN_EMAIL && (
+              <button className="mc-row" onClick={doBackup} disabled={backing} style={{ color: VERT_FONCE }}>
+                {backing ? 'Sauvegarde...' : 'Sauvegarder les données'}
+              </button>
+            )}
+            <button className="mc-row" onClick={() => { setSheetOpen(false); signOut() }} style={{ color: '#E24B4A' }}>Se déconnecter</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
