@@ -63,8 +63,8 @@ const TITLES = {
 
 const CSS = `
   html { -webkit-text-size-adjust: 100%; }
-  html, body { overflow-x: hidden; max-width: 100%; }
-  body { background: #EEF1EA; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  html, body { max-width: 100%; }
+  body { overflow-x: hidden; background: #EEF1EA; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
   .mc-shell { overflow-x: clip; min-height: 100vh; min-height: 100dvh; background: #EEF1EA; }
   .mc-header { position: sticky; top: 0; z-index: 30; background: rgba(238,241,234,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     padding-top: env(safe-area-inset-top); }
