@@ -16,12 +16,12 @@ const FORM_VIDE = {
   casier: '', quantite: 1, garde: '', prix: '', note: '', commentaire: '', barcode: '', vivino_url: '', vivino_note: null,
 }
 
-const inputStyle = { width: '100%', padding: '9px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }
+const inputStyle = { width: '100%', padding: '9px 12px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box' }
 const labelStyle = { fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }
-const btnPrimary = { background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
-const btnOutline = { background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
+const btnPrimary = { background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
+const btnOutline = { background: 'white', color: '#2F6B4A', border: '0.5px solid #2F6B4A', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
 const btnGhost = { background: 'white', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer' }
-const cardStyle = { background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem', marginBottom: '12px' }
+const cardStyle = { background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1rem', marginBottom: '12px' }
 
 function casierCompare(a, b) {
   return String(a).localeCompare(String(b), 'fr', { numeric: true, sensitivity: 'base' })
@@ -439,8 +439,8 @@ export default function CavePage() {
   const chip = function(on) {
     return {
       padding: '5px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
-      border: '0.5px solid ' + (on ? '#1D9E75' : '#e0e0e0'), background: on ? '#E1F5EE' : 'white',
-      color: on ? '#0F6E56' : '#666', fontWeight: on ? '500' : '400',
+      border: '0.5px solid ' + (on ? '#2F6B4A' : '#DDE2D6'), background: on ? '#E3EDE2' : 'white',
+      color: on ? '#1F4A33' : '#666', fontWeight: on ? '500' : '400',
     }
   }
 
@@ -449,7 +449,7 @@ export default function CavePage() {
       {scanMode && <BarcodeScanner onResult={handleBarcode} onClose={() => setScanMode(null)} />}
 
       {msg && (
-        <div style={{ background: '#E1F5EE', border: '0.5px solid #5DCAA5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#085041', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#E3EDE2', border: '0.5px solid #9DC2A8', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#143626', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{msg}</span>
           <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '16px' }}>x</button>
         </div>
@@ -512,12 +512,12 @@ export default function CavePage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '500', color: '#888', padding: '0 4px 6px' }}>
                     <span>Casier {g[0]}</span><span>{n} btl</span>
                   </div>
-                  <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', overflow: 'hidden' }}>
                     {g[1].map(function(w, i) {
                       var cs = COULEUR_STYLE[w.couleur] || COULEUR_STYLE.rouge
                       return (
                         <div key={w.id} onClick={() => ouvrirFiche(w)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', borderTop: i ? '0.5px solid #f0f0ec' : 'none', opacity: w.quantite ? 1 : 0.5 }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', borderTop: i ? '0.5px solid #E9ECE3' : 'none', opacity: w.quantite ? 1 : 0.5 }}>
                           <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: cs.dot, flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '13px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.nom} {w.millesime || ''}</div>
@@ -530,7 +530,7 @@ export default function CavePage() {
                               style={{ width: '28px', height: '28px', borderRadius: '50%', border: '0.5px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>−</button>
                             <span style={{ minWidth: '18px', textAlign: 'center', fontSize: '14px', fontWeight: '500' }}>{w.quantite || 0}</span>
                             <button onClick={() => quickQty(w, 1)} aria-label="Une bouteille de plus"
-                              style={{ width: '28px', height: '28px', borderRadius: '50%', border: '0.5px solid #1D9E75', background: '#E1F5EE', color: '#0F6E56', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>+</button>
+                              style={{ width: '28px', height: '28px', borderRadius: '50%', border: '0.5px solid #2F6B4A', background: '#E3EDE2', color: '#1F4A33', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>+</button>
                           </div>
                         </div>
                       )
@@ -588,7 +588,7 @@ export default function CavePage() {
             </div>
           )}
           {(answer || busy === 'accord') && (
-            <div style={{ marginTop: '12px', background: '#fafaf8', border: '0.5px solid #e0e0e0', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ marginTop: '12px', background: '#F6F8F2', border: '0.5px solid #DDE2D6', borderRadius: '8px', padding: '12px' }}>
               {busy === 'accord' ? <span style={{ fontSize: '13px', color: '#888' }}>Réflexion... (jusqu’à une minute si Claude cherche sur internet)</span> : <MiniMd text={answer} />}
             </div>
           )}
@@ -607,7 +607,7 @@ export default function CavePage() {
             {busy === 'question' ? 'Réflexion...' : 'Demander'}
           </button>
           {(answer || busy === 'question') && (
-            <div style={{ marginTop: '12px', background: '#fafaf8', border: '0.5px solid #e0e0e0', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ marginTop: '12px', background: '#F6F8F2', border: '0.5px solid #DDE2D6', borderRadius: '8px', padding: '12px' }}>
               {busy === 'question' ? <span style={{ fontSize: '13px', color: '#888' }}>Réflexion... (jusqu’à une minute si Claude cherche sur internet)</span> : <MiniMd text={answer} />}
             </div>
           )}
@@ -647,7 +647,7 @@ export default function CavePage() {
               })}
             </div>
             {(answer || busy === 'fiche') && (
-              <div style={{ background: '#fafaf8', border: '0.5px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+              <div style={{ background: '#F6F8F2', border: '0.5px solid #DDE2D6', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
                 {busy === 'fiche' ? <span style={{ fontSize: '13px', color: '#888' }}>Réflexion...</span> : <MiniMd text={answer} />}
               </div>
             )}

@@ -25,7 +25,7 @@ const TAG = {
   rapide:         { label: 'Rapide',        bg: '#E6F1FB', color: '#185FA5' },
   economique:     { label: 'Éco.',          bg: '#FAEEDA', color: '#854F0B' },
   dessert:        { label: 'Dessert',       bg: '#EEEDFE', color: '#3C3489' },
-  plat:           { label: 'Plat',          bg: '#E1F5EE', color: '#085041' },
+  plat:           { label: 'Plat',          bg: '#E3EDE2', color: '#143626' },
   entree:         { label: 'Entrée',        bg: '#FAECE7', color: '#712B13' },
   soupe:          { label: 'Soupe',         bg: '#E6F1FB', color: '#0C447C' },
   accompagnement: { label: 'Accomp.',       bg: '#F0FDF4', color: '#166534' },
@@ -186,10 +186,10 @@ function computeNutrition(ingredients, nutMap, baseServings, currentServings) {
 function printRecipe(recipe, scaledIngredients, convives, nutrition) {
   var ings = (scaledIngredients && scaledIngredients.length ? scaledIngredients : recipe.ingredients || [])
   var ingRows = ings.map(function(i) {
-    return '<li style="padding:4px 0;border-bottom:1px solid #f0f0ec;font-size:13px">' + i.qty + ' ' + i.unit + ' ' + i.name + '</li>'
+    return '<li style="padding:4px 0;border-bottom:1px solid #E9ECE3;font-size:13px">' + i.qty + ' ' + i.unit + ' ' + i.name + '</li>'
   }).join('')
   var stepRows = (recipe.steps || []).map(function(s, i) {
-    return '<li style="padding:6px 0;font-size:13px"><b style="color:#1D9E75">' + (i+1) + '.</b> ' + s + '</li>'
+    return '<li style="padding:6px 0;font-size:13px"><b style="color:#2F6B4A">' + (i+1) + '.</b> ' + s + '</li>'
   }).join('')
   var photo = recipe.photo_url
     ? '<img src="' + recipe.photo_url + '" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block">'
@@ -204,9 +204,9 @@ function printRecipe(recipe, scaledIngredients, convives, nutrition) {
   if (nutrition) {
     nutHtml = '<h2>Nutrition / portion</h2>'
       + '<table style="border-collapse:collapse;font-size:12px;width:100%">'
-      + '<tr style="background:#f5f5f0">'
+      + '<tr style="background:#EEF1EA">'
       + '<td style="padding:6px 10px;font-weight:600">Calories</td>'
-      + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:#1D9E75">' + nutrition.calories + ' kcal</td>'
+      + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:#2F6B4A">' + nutrition.calories + ' kcal</td>'
       + '<td style="padding:6px 10px">Proteines</td>'
       + '<td style="padding:6px 10px;text-align:right">' + nutrition.proteines + ' g</td>'
       + '</tr><tr>'
@@ -215,7 +215,7 @@ function printRecipe(recipe, scaledIngredients, convives, nutrition) {
       + '<td style="padding:6px 10px">Lipides</td>'
       + '<td style="padding:6px 10px;text-align:right">' + nutrition.lipides + ' g</td>'
       + '</tr>'
-      + (nutrition.fibres != null ? '<tr style="background:#f5f5f0"><td style="padding:6px 10px">Fibres</td><td style="padding:6px 10px;text-align:right">' + nutrition.fibres + ' g</td><td style="padding:6px 10px">Sel</td><td style="padding:6px 10px;text-align:right">' + nutrition.sel + ' g</td></tr>' : '')
+      + (nutrition.fibres != null ? '<tr style="background:#EEF1EA"><td style="padding:6px 10px">Fibres</td><td style="padding:6px 10px;text-align:right">' + nutrition.fibres + ' g</td><td style="padding:6px 10px">Sel</td><td style="padding:6px 10px;text-align:right">' + nutrition.sel + ' g</td></tr>' : '')
       + '</table>'
   }
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + recipe.title + '</title>'
@@ -232,7 +232,7 @@ function printRecipe(recipe, scaledIngredients, convives, nutrition) {
     + nutHtml
     + (stepRows ? '<h2>Preparation</h2><ol>' + stepRows + '</ol>' : '')
     + (recipe.notes ? '<div class="notes"><b>Notes :</b> ' + recipe.notes + '</div>' : '')
-    + '<br><button onclick="window.print()" style="padding:8px 16px;background:#1D9E75;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">Imprimer</button>'
+    + '<br><button onclick="window.print()" style="padding:8px 16px;background:#2F6B4A;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">Imprimer</button>'
     + '</body></html>'
   var w = window.open('', '_blank')
   w.document.write(html)
@@ -298,9 +298,9 @@ function TagsInput({ tags = [], onChange }) {
   }
   return (
     <div onClick={() => document.getElementById('tag-free-input')?.focus()}
-      style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '8px', background: '#fafaf8', minHeight: '36px', cursor: 'text' }}>
+      style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center', padding: '6px 10px', border: '0.5px solid #ddd', borderRadius: '8px', background: '#F6F8F2', minHeight: '36px', cursor: 'text' }}>
       {tags.map((t, i) => (
-        <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: '#F0F0EC', color: '#555', border: '0.5px solid #ddd' }}>
+        <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: '#E9ECE3', color: '#555', border: '0.5px solid #ddd' }}>
           #{t}
           <button type="button" onClick={e => { e.stopPropagation(); onChange(tags.filter((_, idx) => idx !== i)) }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, lineHeight: 1, fontSize: '13px' }}>×</button>
@@ -370,7 +370,7 @@ function IngredientInput({ value, onChange, allIngredients, style }) {
               onMouseDown={() => select(name)}
               style={{
                 padding: '8px 12px', fontSize: '13px', cursor: 'pointer', color: '#333',
-                borderBottom: '0.5px solid #f5f5f0',
+                borderBottom: '0.5px solid #EEF1EA',
                 transition: 'background 0.1s'
               }}
               onMouseEnter={e => e.currentTarget.style.background = '#f5faf8'}
@@ -415,13 +415,13 @@ function PhotoUpload({ currentUrl, onUploaded, userId }) {
       <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '6px' }}>Photo de la recette</label>
       {preview ? (
         <div style={{ position: 'relative', marginBottom: '6px' }}>
-          <img src={preview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', border: '0.5px solid #e0e0e0', display: 'block' }} onError={() => setPreview('')} />
+          <img src={preview} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', border: '0.5px solid #DDE2D6', display: 'block' }} onError={() => setPreview('')} />
           <button type="button" onClick={() => { setPreview(''); onUploaded('') }}
             style={{ position: 'absolute', top: '7px', right: '7px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
       ) : (
         <div onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => inputRef.current?.click()}
-          style={{ border: '1px dashed #ccc', borderRadius: '10px', padding: '22px', textAlign: 'center', cursor: 'pointer', background: '#fafaf8', fontSize: '12px', color: '#aaa', lineHeight: '1.6' }}>
+          style={{ border: '1px dashed #ccc', borderRadius: '10px', padding: '22px', textAlign: 'center', cursor: 'pointer', background: '#F6F8F2', fontSize: '12px', color: '#aaa', lineHeight: '1.6' }}>
           {uploading ? '⏳ Upload en cours…' : <><span style={{ fontSize: '20px', display: 'block', marginBottom: '4px' }}>📷</span>Cliquer ou glisser une photo ici</>}
           <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
         </div>
@@ -487,7 +487,7 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
     !filterQ || p.name.includes(filterQ.toLowerCase())
   )
 
-  const S = { input: { padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' } }
+  const S = { input: { padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box' } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 70, padding: '1rem', overflowY: 'auto' }}>
@@ -522,7 +522,7 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
             {displayed.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: editingId === p.id ? '#F0FDF4' : '#fafaf8', borderRadius: '8px', border: '0.5px solid ' + (editingId === p.id ? '#5DCAA5' : '#f0f0ec'), transition: 'background 0.15s' }}>
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: editingId === p.id ? '#F0FDF4' : '#F6F8F2', borderRadius: '8px', border: '0.5px solid ' + (editingId === p.id ? '#9DC2A8' : '#E9ECE3'), transition: 'background 0.15s' }}>
                 {/* Nom */}
                 <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#333', textTransform: 'capitalize', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
 
@@ -534,17 +534,17 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
                       onChange={e => setEditPrice(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') updatePrice(p.id, editPrice || p.price_per_unit); if (e.key === 'Escape') setEditingId(null) }}
                       autoFocus
-                      style={{ width: '90px', ...S.input, border: '0.5px solid #1D9E75' }}
+                      style={{ width: '90px', ...S.input, border: '0.5px solid #2F6B4A' }}
                     />
                     <span style={{ fontSize: '11px', color: '#888', flexShrink: 0 }}>CHF / {p.unit}</span>
                     <button onClick={() => updatePrice(p.id, editPrice || p.price_per_unit)} disabled={saving}
-                      style={{ padding: '4px 10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✓</button>
+                      style={{ padding: '4px 10px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✓</button>
                     <button onClick={() => setEditingId(null)}
                       style={{ padding: '4px 8px', background: 'none', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#888', flexShrink: 0 }}>✕</button>
                   </>
                 ) : (
                   <>
-                    <span style={{ fontSize: '13px', color: '#1D9E75', fontWeight: '500', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{p.price_per_unit} CHF</span>
+                    <span style={{ fontSize: '13px', color: '#2F6B4A', fontWeight: '500', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{p.price_per_unit} CHF</span>
                     <span style={{ fontSize: '11px', color: '#aaa', flexShrink: 0 }}>/ {p.unit}</span>
                     {p.source && <span style={{ fontSize: '10px', color: '#ccc', flexShrink: 0, display: 'none' }} title={p.source}>ℹ</span>}
                     <button onClick={() => { setEditingId(p.id); setEditPrice(String(p.price_per_unit)) }}
@@ -561,7 +561,7 @@ function PriceBaseModal({ userId, onClose, onPricesUpdated }) {
           </div>
         )}
 
-        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '0.5px solid #E9ECE3', display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '8px 18px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Fermer</button>
         </div>
       </div>
@@ -828,7 +828,7 @@ export default function BibliothequePage() {
 
   // -- Styles partagés --------------------------------------------------------
 
-  const S = { input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8', color: 'inherit' } }
+  const S = { input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#F6F8F2', color: 'inherit' } }
   const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }
   const modalBox = { background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', marginTop: '1rem', marginBottom: '1rem', overflow: 'hidden' }
 
@@ -838,11 +838,11 @@ export default function BibliothequePage() {
     <div>
 
       {/* -- Sous-menu : toutes les recettes / collections (Noël...) -- */}
-      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '4px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '10px', padding: '4px', marginBottom: '12px' }}>
         {[{ id: 'recettes', label: '📚 Toutes les recettes' }, { id: 'collections', label: '🎄 Collections' }].map(o => (
           <button key={o.id} onClick={() => setVue(o.id)} style={{
             flex: 1, padding: '8px 6px', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer',
-            background: vue === o.id ? '#E1F5EE' : 'transparent', color: vue === o.id ? '#0F6E56' : '#888', fontWeight: vue === o.id ? '600' : '400'
+            background: vue === o.id ? '#E3EDE2' : 'transparent', color: vue === o.id ? '#1F4A33' : '#888', fontWeight: vue === o.id ? '600' : '400'
           }}>{o.label}</button>
         ))}
       </div>
@@ -880,11 +880,11 @@ export default function BibliothequePage() {
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                               {[5, 10, 15, 30].map(function(n) {
                                 return <button key={n} onClick={function() { dismissPerime(s.name, n) }}
-                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
+                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#EEF1EA', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
                               })}
                             </div>
                             <button onClick={function() { dismissPerime(s.name, 999999) }}
-                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
+                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#EEF1EA', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
                               Ne plus afficher
                             </button>
                           </div>
@@ -899,7 +899,7 @@ export default function BibliothequePage() {
 
           {/* Bientot perimés */}
           {stockPerimes.filter(s => s.days >= 0 && shouldShowAlert(s.name)).length > 0 && (
-            <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <div style={{ background: '#FAEEDA', border: '0.5px solid #C98A3A', borderRadius: '10px', padding: '10px 14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '16px', flexShrink: 0 }}>🟡</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', fontWeight: '500', color: '#854F0B', marginBottom: '6px' }}>
@@ -908,13 +908,13 @@ export default function BibliothequePage() {
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {stockPerimes.filter(s => s.days >= 0 && !dismissedPerimes.has(s.name)).map(function(s) {
                     return (
-                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FAEEDA', border: '0.5px solid #EF9F27', position: 'relative' }}>
+                      <div key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#FAEEDA', border: '0.5px solid #C98A3A', position: 'relative' }}>
                         <span onClick={function() { setSearch(s.name) }}
                           style={{ fontSize: '12px', fontWeight: '500', color: '#854F0B', cursor: 'pointer' }}>
                           {s.name} ({s.days}j)
                         </span>
                         <button onClick={function() { setEditRappel(editRappel === s.name ? null : s.name) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF9F27', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C98A3A', fontSize: '13px', padding: 0, lineHeight: 1, marginLeft: '2px' }}
                           title="Fermer / configurer le rappel">
                           x
                         </button>
@@ -924,11 +924,11 @@ export default function BibliothequePage() {
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                               {[5, 10, 15, 30].map(function(n) {
                                 return <button key={n} onClick={function() { dismissPerime(s.name, n) }}
-                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
+                                  style={{ padding: '4px 10px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#EEF1EA', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>{n}x</button>
                               })}
                             </div>
                             <button onClick={function() { dismissPerime(s.name, 999999) }}
-                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#f5f5f0', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
+                              style={{ width: '100%', padding: '5px', borderRadius: '8px', border: '0.5px solid #ddd', background: '#EEF1EA', cursor: 'pointer', fontSize: '11px', color: '#888' }}>
                               Ne plus afficher
                             </button>
                           </div>
@@ -949,8 +949,8 @@ export default function BibliothequePage() {
       {/* -- Barre actions -- */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '160px', position: 'relative' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..."
-            style={{ width: '100%', padding: '10px 14px', paddingRight: search ? '70px' : '50px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
+            style={{ width: '100%', padding: '10px 14px', paddingRight: search ? '70px' : '50px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box' }} />
           <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {search && (
               <button onClick={() => setSearch('')}
@@ -964,9 +964,9 @@ export default function BibliothequePage() {
           </div>
         </div>
         <button onClick={() => { setShowImport(true); setImportError(''); setImportUrl('') }}
-          style={{ background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>🔗 Importer URL</button>
+          style={{ background: 'white', color: '#2F6B4A', border: '0.5px solid #2F6B4A', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>🔗 Importer URL</button>
         <button onClick={openNew}
-          style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
+          style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+ Nouvelle</button>
       </div>
 
       {/* -- Filtres catégories : une seule ligne qu'on fait défiler -- */}
@@ -974,9 +974,9 @@ export default function BibliothequePage() {
         {FILTRES.map(f => (
           <button key={f} onClick={() => setFiltre(f)} style={{
             padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-            border: '0.5px solid ' + (filtre === f ? '#5DCAA5' : '#e0e0e0'),
-            background: filtre === f ? '#E1F5EE' : 'white',
-            color: filtre === f ? '#0F6E56' : '#888', fontWeight: filtre === f ? '500' : '400'
+            border: '0.5px solid ' + (filtre === f ? '#9DC2A8' : '#DDE2D6'),
+            background: filtre === f ? '#E3EDE2' : 'white',
+            color: filtre === f ? '#1F4A33' : '#888', fontWeight: filtre === f ? '500' : '400'
           }}>{f}</button>
         ))}
       </div>
@@ -986,8 +986,8 @@ export default function BibliothequePage() {
         {allFreeTags.length > 0 && (
           <button onClick={() => setShowTags(!showTags)} style={{
             padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
-            border: '0.5px solid ' + (activeTagFilter ? '#1D9E75' : '#e0e0e0'),
-            background: activeTagFilter ? '#E1F5EE' : 'white', color: activeTagFilter ? '#0F6E56' : '#555', fontWeight: activeTagFilter ? '500' : '400'
+            border: '0.5px solid ' + (activeTagFilter ? '#2F6B4A' : '#DDE2D6'),
+            background: activeTagFilter ? '#E3EDE2' : 'white', color: activeTagFilter ? '#1F4A33' : '#555', fontWeight: activeTagFilter ? '500' : '400'
           }}>
             {activeTagFilter ? '#' + activeTagFilter : '# Tags (' + allFreeTags.length + ')'} {showTags ? '▴' : '▾'}
           </button>
@@ -997,23 +997,23 @@ export default function BibliothequePage() {
             style={{ background: '#ddd', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', color: '#666', fontSize: '12px', padding: 0, lineHeight: 1 }}>x</button>
         )}
         <select value={sortKey} onChange={e => setSortKey(e.target.value)}
-          style={{ marginLeft: 'auto', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid #e0e0e0', fontSize: '12px', background: 'white', color: '#555', outline: 'none', cursor: 'pointer', maxWidth: '55%' }}>
+          style={{ marginLeft: 'auto', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid #DDE2D6', fontSize: '12px', background: 'white', color: '#555', outline: 'none', cursor: 'pointer', maxWidth: '55%' }}>
           {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
 
       {/* -- Panneau des tags : recherche + liste défilante, se referme au choix -- */}
       {showTags && allFreeTags.length > 0 && (
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '10px', marginBottom: '16px' }}>
+        <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '10px', marginBottom: '16px' }}>
           <input value={tagQuery} onChange={e => setTagQuery(e.target.value)} placeholder="Chercher un tag..."
-            style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box', marginBottom: '8px' }} />
+            style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box', marginBottom: '8px' }} />
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxHeight: '132px', overflowY: 'auto' }}>
             {allFreeTags.filter(t => !tagQuery.trim() || t.toLowerCase().includes(tagQuery.trim().toLowerCase())).map(tag => (
               <button key={tag} onClick={() => { setActiveTagFilter(activeTagFilter === tag ? null : tag); setShowTags(false); setTagQuery('') }} style={{
                 padding: '5px 11px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
-                border: '0.5px solid ' + (activeTagFilter === tag ? '#1D9E75' : '#e0e0e0'),
-                background: activeTagFilter === tag ? '#E1F5EE' : 'white',
-                color: activeTagFilter === tag ? '#0F6E56' : '#777', fontWeight: activeTagFilter === tag ? '500' : '400'
+                border: '0.5px solid ' + (activeTagFilter === tag ? '#2F6B4A' : '#DDE2D6'),
+                background: activeTagFilter === tag ? '#E3EDE2' : 'white',
+                color: activeTagFilter === tag ? '#1F4A33' : '#777', fontWeight: activeTagFilter === tag ? '500' : '400'
               }}>#{tag}</button>
             ))}
             {allFreeTags.filter(t => !tagQuery.trim() || t.toLowerCase().includes(tagQuery.trim().toLowerCase())).length === 0 && (
@@ -1034,38 +1034,46 @@ export default function BibliothequePage() {
           <p style={{ fontSize: '13px', marginTop: '4px' }}>Importe une URL ou crée ta première recette !</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-          {filteredAndSorted.map(r => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+          {filteredAndSorted.map(r => {
+            const cat = (r.cats || []).find(c => TAG[c])
+            const meta = { display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6B6556' }
+            const ico = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: '#8A8576', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }
+            return (
             <div key={r.id} onClick={() => openDetail(r)}
-              style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#5DCAA5'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#e0e0e0'}>
-              {r.photo_url
-                ? <img src={r.photo_url} alt={r.title} style={{ width: '100%', height: '110px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-                : <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', background: '#fafaf8' }}>{r.emoji}</div>
-              }
-              <div style={{ padding: '10px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>{r.title}</div>
-                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                  {(r.cats || []).slice(0, 2).map(cat => TAG[cat] && (
-                    <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
-                  ))}
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>{formatTime(r.time)}</span>
-                  {r.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#FAEEDA', color: '#854F0B' }}>~{r.cost} CHF</span>}
-                  {r.servings > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '10px', background: '#f0f0ec', color: '#888' }}>👥 {r.servings}</span>}
+              style={{ background: '#FCFDFA', border: '1px solid #DDE2D6', borderRadius: '18px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 1px 2px rgba(42,33,24,0.04)', transition: 'transform .15s, box-shadow .15s' }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 20px rgba(42,33,24,0.10)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(42,33,24,0.04)'; e.currentTarget.style.transform = 'none' }}>
+              <div style={{ position: 'relative' }}>
+                {r.photo_url
+                  ? <img src={r.photo_url} alt={r.title} style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
+                  : <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '52px', background: '#F3E6CC' }}>{r.emoji}</div>
+                }
+                {cat && <span style={{ position: 'absolute', left: '10px', top: '10px', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: '600', background: 'rgba(252,253,250,0.94)', color: '#2A2118' }}>{TAG[cat].label}</span>}
+              </div>
+              <div style={{ padding: '12px 14px 14px' }}>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: '17px', lineHeight: 1.25, marginBottom: '8px', color: '#2A2118' }}>{r.title}</div>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={meta}><svg {...ico}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{formatTime(r.time)}</span>
+                  {r.servings > 0 && <span style={meta}><svg {...ico}><circle cx="9" cy="8" r="3.5" /><path d="M2.500 20c0-3.500 3-5.500 6.500-5.500s6.500 2 6.500 5.500M16 5a3.500 3.500 0 0 1 0 7M18 14.500c2 .6 3.500 2.300 3.500 5" /></svg>{r.servings}</span>}
+                  {r.cost > 0 && <span style={meta}><svg {...ico}><circle cx="12" cy="12" r="9" /><path d="M14.500 9.500c-.5-1-1.500-1.500-2.500-1.500-1.500 0-2.500.8-2.500 2s1 1.600 2.500 2 2.500.8 2.500 2-1 2-2.500 2c-1.200 0-2.200-.6-2.600-1.600M12 6.500V8M12 16v1.500" /></svg>~{r.cost}</span>}
                 </div>
                 {(r.tags || []).length > 0 && (
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
-                    {r.tags.map(t => <span key={t} style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', background: '#F0F0EC', color: '#666', border: '0.5px solid #e0e0e0' }}>#{t}</span>)}
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {r.tags.slice(0, 3).map(t => <span key={t} style={{ padding: '1px 8px', borderRadius: '999px', fontSize: '11px', background: '#E9ECE3', color: '#6B6556' }}>#{t}</span>)}
+                    {r.tags.length > 3 && <span style={{ fontSize: '11px', color: '#8A8576', alignSelf: 'center' }}>+{r.tags.length - 3}</span>}
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
-                  {r.rating > 0 && <Stars value={r.rating} size="13px" />}
-                  {r.cook_count > 0 && <span style={{ fontSize: '10px', color: '#aaa' }}>cuisine {r.cook_count}x</span>}
-                </div>
+                {(r.rating > 0 || r.cook_count > 0) && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                    {r.rating > 0 ? <Stars value={r.rating} size="13px" /> : <span />}
+                    {r.cook_count > 0 && <span style={{ fontSize: '11px', color: '#8A8576' }}>cuisinée {r.cook_count} fois</span>}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -1082,8 +1090,8 @@ export default function BibliothequePage() {
             <p style={{ fontSize: '11px', color: '#aaa', marginBottom: '1rem' }}>Compatible : Marie Claire, Marmiton, 750g, Cuisine Actuelle, et la plupart des sites de recettes.</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowImport(false)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={openNew} style={{ background: 'none', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#1D9E75' }}>Saisie manuelle</button>
-              <button onClick={importFromUrl} disabled={importing || !importUrl.trim()} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: importing ? 0.7 : 1 }}>
+              <button onClick={openNew} style={{ background: 'none', border: '0.5px solid #2F6B4A', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#2F6B4A' }}>Saisie manuelle</button>
+              <button onClick={importFromUrl} disabled={importing || !importUrl.trim()} style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: importing ? 0.7 : 1 }}>
                 {importing ? '⏳ Analyse...' : 'Analyser'}
               </button>
             </div>
@@ -1102,7 +1110,7 @@ export default function BibliothequePage() {
                 <button onClick={() => setShowDetail(null)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.45)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: '#fafaf8', borderBottom: '0.5px solid #f0f0ec' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: '#F6F8F2', borderBottom: '0.5px solid #E9ECE3' }}>
                 <span style={{ fontSize: '36px' }}>{showDetail.emoji}</span>
                 <button onClick={() => setShowDetail(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#aaa' }}>✕</button>
               </div>
@@ -1110,30 +1118,30 @@ export default function BibliothequePage() {
 
             <div style={{ padding: '1.25rem 1.5rem' }}>
               {/* Titre + méta */}
-              <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '0.5px solid #f0f0ec' }}>
+              <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '0.5px solid #E9ECE3' }}>
                 <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '4px' }}>{showDetail.title}</div>
-                {showDetail.source && <div style={{ fontSize: '12px', color: '#1D9E75', marginBottom: '6px' }}>{showDetail.source}</div>}
+                {showDetail.source && <div style={{ fontSize: '12px', color: '#2F6B4A', marginBottom: '6px' }}>{showDetail.source}</div>}
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {(showDetail.cats || []).map(cat => TAG[cat] && (
                     <span key={cat} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: TAG[cat].bg, color: TAG[cat].color }}>{TAG[cat].label}</span>
                   ))}
-                  {showDetail.time_prep > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Prep. {formatTime(showDetail.time_prep)}</span>}
-                  {showDetail.time_cook > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Cuisson {formatTime(showDetail.time_cook)}</span>}
-                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#888' }}>Total {formatTime(showDetail.time)}</span>
+                  {showDetail.time_prep > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E9ECE3', color: '#888' }}>Prep. {formatTime(showDetail.time_prep)}</span>}
+                  {showDetail.time_cook > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E9ECE3', color: '#888' }}>Cuisson {formatTime(showDetail.time_cook)}</span>}
+                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E9ECE3', color: '#888' }}>Total {formatTime(showDetail.time)}</span>
                   {autoCostDetail !== null
-                    ? <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>~{autoCostDetail} CHF <span style={{ fontWeight: '400', opacity: 0.7 }}>calculé</span></span>
+                    ? <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E3EDE2', color: '#1F4A33', fontWeight: '500' }}>~{autoCostDetail} CHF <span style={{ fontWeight: '400', opacity: 0.7 }}>calculé</span></span>
                     : showDetail.cost > 0 && <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#FAEEDA', color: '#854F0B' }}>~{showDetail.cost} CHF</span>
                   }
                 </div>
                 {(showDetail.tags || []).length > 0 && (
                   <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
-                    {showDetail.tags.map(t => <span key={t} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#F0F0EC', color: '#555', border: '0.5px solid #ddd' }}>#{t}</span>)}
+                    {showDetail.tags.map(t => <span key={t} style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E9ECE3', color: '#555', border: '0.5px solid #ddd' }}>#{t}</span>)}
                   </div>
                 )}
               </div>
 
               {/* Notation et compteur */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#fafaf8', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#F6F8F2', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Stars value={showDetail.rating || 0} onChange={rating => rateRecipe(showDetail.id, rating)} size="20px" />
                   {showDetail.rating > 0 && <span style={{ fontSize: '11px', color: '#aaa' }}>{['','Pas top','Bof','Bien','Tres bien','Excellent !'][showDetail.rating]}</span>}
@@ -1148,7 +1156,7 @@ export default function BibliothequePage() {
                         style={{ width: '24px', height: '24px', background: 'none', color: '#aaa', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
                     )}
                     <button onClick={() => cookRecipe(showDetail.id, +1)}
-                      style={{ padding: '5px 10px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                      style={{ padding: '5px 10px', background: '#E3EDE2', color: '#1F4A33', border: '0.5px solid #9DC2A8', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
                       + J'ai cuisine
                     </button>
                   </div>
@@ -1157,15 +1165,15 @@ export default function BibliothequePage() {
 
               {/* Sélecteur convives */}
               {(showDetail.servings || 0) > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', padding: '8px 12px', background: '#FAFAF8', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', padding: '8px 12px', background: '#F6F8F2', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
                   <span style={{ fontSize: '13px', color: '#666' }}>👥 Convives :</span>
                   <button onClick={() => setDetailServings(s => Math.max(1, s - 1))} style={{ width: '26px', height: '26px', borderRadius: '50%', border: '0.5px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', flexShrink: 0 }}>−</button>
-                  <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '600', fontSize: '14px', color: '#1D9E75' }}>{detailServings}</span>
+                  <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '600', fontSize: '14px', color: '#2F6B4A' }}>{detailServings}</span>
                   <button onClick={() => setDetailServings(s => s + 1)} style={{ width: '26px', height: '26px', borderRadius: '50%', border: '0.5px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', flexShrink: 0 }}>+</button>
                   {detailServings !== showDetail.servings && (
                     <>
                       <button onClick={() => setDetailServings(showDetail.servings)} style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>reset ({showDetail.servings})</button>
-                      <span style={{ fontSize: '11px', color: '#1D9E75', marginLeft: 'auto' }}>Quantités adaptées ✓</span>
+                      <span style={{ fontSize: '11px', color: '#2F6B4A', marginLeft: 'auto' }}>Quantités adaptées ✓</span>
                     </>
                   )}
                 </div>
@@ -1180,8 +1188,8 @@ export default function BibliothequePage() {
                       const entry = priceMap[ing.name?.toLowerCase()]
                       const linePrice = entry ? parseFloat((parseFloat(ing.qty || 0) * entry.price_per_unit).toFixed(2)) : null
                       return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#fafaf8', borderRadius: '8px', fontSize: '13px' }}>
-                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#1D9E75', flexShrink: 0 }} />
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#F6F8F2', borderRadius: '8px', fontSize: '13px' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2F6B4A', flexShrink: 0 }} />
                           <span style={{ flex: 1, minWidth: 0 }}>{ing.qty} {ing.unit} {ing.name}</span>
                           {linePrice !== null && <span style={{ fontSize: '10px', color: '#854F0B', flexShrink: 0 }}>{linePrice} CHF</span>}
                         </div>
@@ -1198,7 +1206,7 @@ export default function BibliothequePage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {showDetail.steps.map((step, i) => (
                       <div key={i} style={{ display: 'flex', gap: '10px', fontSize: '13px', lineHeight: '1.5' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#E1F5EE', color: '#0F6E56', fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#E3EDE2', color: '#1F4A33', fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
                         <div>{step}</div>
                       </div>
                     ))}
@@ -1214,17 +1222,17 @@ export default function BibliothequePage() {
                     </div>
                     {/* Badge source */}
                     {nutritionCalculee && !nutritionImported && (
-                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E1F5EE', color: '#0F6E56' }}>calculée</span>
+                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E3EDE2', color: '#1F4A33' }}>calculée</span>
                     )}
                     {nutritionImported && !nutritionCalculee && (
-                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#f0f0ec', color: '#888' }}>importée</span>
+                      <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E9ECE3', color: '#888' }}>importée</span>
                     )}
                     {/* Badge cohérence */}
                     {nutritionCoherence && (
                       nutritionCoherence.ok
-                        ? <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E1F5EE', color: '#0F6E56' }}>✓ cohérent</span>
+                        ? <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '8px', background: '#E3EDE2', color: '#1F4A33' }}>✓ cohérent</span>
                         : <button onClick={() => setShowNutritionDetail(v => !v)}
-                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '8px', background: '#FAEEDA', color: '#854F0B', border: '0.5px solid #EF9F27', cursor: 'pointer', fontWeight: '500' }}>
+                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '8px', background: '#FAEEDA', color: '#854F0B', border: '0.5px solid #C98A3A', cursor: 'pointer', fontWeight: '500' }}>
                             ⚠️ écart {Math.round(nutritionCoherence.maxEcart)}% — voir
                           </button>
                     )}
@@ -1232,16 +1240,16 @@ export default function BibliothequePage() {
 
                   {/* Comparaison détaillée si écart */}
                   {showNutritionDetail && nutritionCoherence && !nutritionCoherence.ok && (
-                    <div style={{ background: '#FFFBF0', border: '0.5px solid #EF9F27', borderRadius: '10px', padding: '12px', marginBottom: '10px', fontSize: '12px' }}>
+                    <div style={{ background: '#FFFBF0', border: '0.5px solid #C98A3A', borderRadius: '10px', padding: '12px', marginBottom: '10px', fontSize: '12px' }}>
                       <div style={{ fontWeight: '500', color: '#854F0B', marginBottom: '8px' }}>Quelle valeur utiliser ?</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
                         {['calories', 'proteines', 'glucides', 'lipides'].map(k => {
                           const pct = Math.round(ecartPct(nutritionCalculee[k], nutritionImported[k]))
                           return (
-                            <div key={k} style={{ background: pct > 20 ? '#FCEBEB' : '#f5f5f0', borderRadius: '6px', padding: '6px 8px' }}>
+                            <div key={k} style={{ background: pct > 20 ? '#FCEBEB' : '#EEF1EA', borderRadius: '6px', padding: '6px 8px' }}>
                               <div style={{ color: '#666', marginBottom: '2px', textTransform: 'capitalize' }}>{k}</div>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <span style={{ color: '#0F6E56', fontWeight: '500' }}>{nutritionCalculee[k]} <span style={{ fontWeight: '400', fontSize: '10px' }}>calc.</span></span>
+                                <span style={{ color: '#1F4A33', fontWeight: '500' }}>{nutritionCalculee[k]} <span style={{ fontWeight: '400', fontSize: '10px' }}>calc.</span></span>
                                 <span style={{ color: '#aaa' }}>vs</span>
                                 <span style={{ color: '#854F0B' }}>{nutritionImported[k]} <span style={{ fontSize: '10px' }}>imp.</span></span>
                                 {pct > 20 && <span style={{ fontSize: '10px', color: '#E24B4A', fontWeight: '500' }}>Δ{pct}%</span>}
@@ -1252,11 +1260,11 @@ export default function BibliothequePage() {
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button onClick={() => saveNutrition(showDetail.id, nutritionCalculee)}
-                          style={{ flex: 1, padding: '7px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                          style={{ flex: 1, padding: '7px', background: '#E3EDE2', color: '#1F4A33', border: '0.5px solid #9DC2A8', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
                           Utiliser calculée
                         </button>
                         <button onClick={() => saveNutrition(showDetail.id, nutritionImported)}
-                          style={{ flex: 1, padding: '7px', background: '#f5f5f0', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                          style={{ flex: 1, padding: '7px', background: '#EEF1EA', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
                           Garder importée
                         </button>
                       </div>
@@ -1272,9 +1280,9 @@ export default function BibliothequePage() {
                       nutritionDetail.fibres != null ? { label: 'Fibres', value: nutritionDetail.fibres, unit: 'g' } : null,
                       nutritionDetail.sel    != null ? { label: 'Sel',    value: nutritionDetail.sel,    unit: 'g' } : null,
                     ].filter(Boolean).map(item => (
-                      <div key={item.label} style={{ background: item.hi ? '#E1F5EE' : '#fafaf8', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
+                      <div key={item.label} style={{ background: item.hi ? '#E3EDE2' : '#F6F8F2', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '2px' }}>{item.label}</div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: item.hi ? '#0F6E56' : '#333' }}>{item.value}</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: item.hi ? '#1F4A33' : '#333' }}>{item.value}</div>
                         <div style={{ fontSize: '10px', color: '#aaa' }}>{item.unit}</div>
                       </div>
                     ))}
@@ -1288,11 +1296,11 @@ export default function BibliothequePage() {
                 </div>
               )}
               {showDetail.url && (
-                <a href={showDetail.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#1D9E75', display: 'block', marginBottom: '1rem', wordBreak: 'break-all' }}>🔗 Voir la recette originale</a>
+                <a href={showDetail.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#2F6B4A', display: 'block', marginBottom: '1rem', wordBreak: 'break-all' }}>🔗 Voir la recette originale</a>
               )}
 
               {/* Notation et compteur */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#fafaf8', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F6F8F2', borderRadius: '10px', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '12px', color: '#666' }}>Note :</span>
                   <Stars value={showDetail.rating || 0} onChange={rating => rateRecipe(showDetail.id, rating)} size="22px" />
@@ -1301,18 +1309,18 @@ export default function BibliothequePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {showDetail.cook_count > 0 && <span style={{ fontSize: '12px', color: '#888' }}>Cuisine {showDetail.cook_count} fois</span>}
                   <button onClick={() => cookRecipe(showDetail.id)}
-                    style={{ padding: '6px 12px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #5DCAA5', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                    style={{ padding: '6px 12px', background: '#E3EDE2', color: '#1F4A33', border: '0.5px solid #9DC2A8', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
                     + J'ai cuisine cette recette
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #E9ECE3', flexWrap: 'wrap' }}>
                 <button onClick={() => setConfirmDelete(showDetail)} style={{ background: 'none', border: '0.5px solid #E24B4A', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#E24B4A' }}>Supprimer</button>
                 <button onClick={() => shareRecipeByEmail(showDetail, scaledIngredients, detailServings, nutritionDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>✉️ Partager</button>
                 <button onClick={() => printRecipe(showDetail, scaledIngredients, detailServings, nutritionDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>🖨️ Imprimer</button>
                 <button onClick={() => setShowAddCol(showDetail)} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: '#555' }}>📁 Collection</button>
-                <button onClick={() => openEdit(showDetail)} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>✏️ Modifier</button>
+                <button onClick={() => openEdit(showDetail)} style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>✏️ Modifier</button>
               </div>
             </div>
           </div>
@@ -1332,7 +1340,7 @@ export default function BibliothequePage() {
               <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Emoji</label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {EMOJIS.map(e => (
-                  <button key={e} onClick={() => setForm(f => ({ ...f, emoji: e }))} style={{ fontSize: '20px', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid ' + (form.emoji === e ? '#1D9E75' : '#ddd'), background: form.emoji === e ? '#E1F5EE' : 'white' }}>{e}</button>
+                  <button key={e} onClick={() => setForm(f => ({ ...f, emoji: e }))} style={{ fontSize: '20px', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid ' + (form.emoji === e ? '#2F6B4A' : '#ddd'), background: form.emoji === e ? '#E3EDE2' : 'white' }}>{e}</button>
                 ))}
               </div>
             </div>
@@ -1371,7 +1379,7 @@ export default function BibliothequePage() {
               <div>
                 <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '3px' }}>
                   Coût (CHF)
-                  {autoCostForm !== null && <span style={{ color: '#1D9E75', marginLeft: '4px', fontWeight: '400' }}>↻ auto</span>}
+                  {autoCostForm !== null && <span style={{ color: '#2F6B4A', marginLeft: '4px', fontWeight: '400' }}>↻ auto</span>}
                 </label>
                 <input
                   type="number"
@@ -1379,7 +1387,7 @@ export default function BibliothequePage() {
                   readOnly={autoCostForm !== null}
                   onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}
                   placeholder="12"
-                  style={{ ...S.input, background: autoCostForm !== null ? '#E1F5EE' : '#fafaf8', color: autoCostForm !== null ? '#0F6E56' : 'inherit' }}
+                  style={{ ...S.input, background: autoCostForm !== null ? '#E3EDE2' : '#F6F8F2', color: autoCostForm !== null ? '#1F4A33' : 'inherit' }}
                 />
               </div>
               <div>
@@ -1393,7 +1401,7 @@ export default function BibliothequePage() {
               <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Catégories</label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {CATEGORIES.map(cat => (
-                  <button key={cat} onClick={() => toggleCat(cat)} style={{ padding: '4px 12px', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid ' + (form.cats.includes(cat) ? '#5DCAA5' : '#ddd'), background: form.cats.includes(cat) ? '#E1F5EE' : 'white', color: form.cats.includes(cat) ? '#0F6E56' : '#888' }}>{cat}</button>
+                  <button key={cat} onClick={() => toggleCat(cat)} style={{ padding: '4px 12px', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid ' + (form.cats.includes(cat) ? '#9DC2A8' : '#ddd'), background: form.cats.includes(cat) ? '#E3EDE2' : 'white', color: form.cats.includes(cat) ? '#1F4A33' : '#888' }}>{cat}</button>
                 ))}
               </div>
             </div>
@@ -1410,7 +1418,7 @@ export default function BibliothequePage() {
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', color: '#666' }}>Ingrédients</label>
-                <button onClick={addIngredient} style={{ fontSize: '12px', color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}>+ Ajouter</button>
+                <button onClick={addIngredient} style={{ fontSize: '12px', color: '#2F6B4A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}>+ Ajouter</button>
               </div>
               {form.ingredients.map((ing, i) => {
                 const entry = priceMap[ing.name?.trim().toLowerCase()]
@@ -1439,11 +1447,11 @@ export default function BibliothequePage() {
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', color: '#666' }}>Étapes de préparation</label>
-                <button onClick={addStep} style={{ fontSize: '12px', color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}>+ Ajouter</button>
+                <button onClick={addStep} style={{ fontSize: '12px', color: '#2F6B4A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}>+ Ajouter</button>
               </div>
               {form.steps.map((step, i) => (
                 <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#E1F5EE', color: '#0F6E56', fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '8px' }}>{i + 1}</div>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#E3EDE2', color: '#1F4A33', fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '8px' }}>{i + 1}</div>
                   <textarea value={step} onChange={e => updateStep(i, e.target.value)} placeholder={`Étape ${i + 1}...`} rows={2} style={{ ...S.input, resize: 'vertical', flex: 1 }} />
                   <button onClick={() => removeStep(i)} style={{ background: 'none', border: 'none', color: '#E24B4A', cursor: 'pointer', fontSize: '16px', paddingTop: '8px' }}>✕</button>
                 </div>
@@ -1499,9 +1507,9 @@ export default function BibliothequePage() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #f0f0ec' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '0.5px solid #E9ECE3' }}>
               <button onClick={() => { setShowEdit(false); setForm(EMPTY_FORM); setEditingId(null) }} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={saveRecipe} disabled={saving || !form.title.trim()} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1 }}>
+              <button onClick={saveRecipe} disabled={saving || !form.title.trim()} style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1 }}>
                 {saving ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Enregistrer'}
               </button>
             </div>

@@ -19,8 +19,8 @@
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#1D9E75",
-  "background_color": "#f5f5f0",
+  "theme_color": "#2F6B4A",
+  "background_color": "#EEF1EA",
   "lang": "fr",
   "categories": ["food", "lifestyle", "utilities"]
 }

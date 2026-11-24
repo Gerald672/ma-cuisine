@@ -11,10 +11,10 @@ const REPAS_EMOJI = { 'Petit-dejeuner': 'Petit-dejeuner', 'Diner': 'Diner', 'Sou
 const CAT_STYLE = {
   'Epicerie':          { bg: '#E6F1FB', color: '#185FA5' },
   'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits legumes':    { bg: '#E1F5EE', color: '#085041' },
+  'Fruits legumes':    { bg: '#E3EDE2', color: '#143626' },
   'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
   'Viande poisson':    { bg: '#FAECE7', color: '#712B13' },
-  'Autres':            { bg: '#f0f0ec', color: '#666' },
+  'Autres':            { bg: '#E9ECE3', color: '#666' },
 }
 
 const ING_CATS = {
@@ -575,14 +575,14 @@ export default function PlanningPage() {
 
   var S = {
     btn: { background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer' },
-    tag: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#f0f0ec', color: '#666', display: 'inline-flex', alignItems: 'center', gap: '3px' }
+    tag: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: '#E9ECE3', color: '#666', display: 'inline-flex', alignItems: 'center', gap: '3px' }
   }
 
   return (
     <div>
 
       {/* En-tete semaine */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <button onClick={function() { setWeekOffset(function(w) { return w - 1 }) }} style={S.btn}>&#8249;</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>
@@ -592,7 +592,7 @@ export default function PlanningPage() {
         </div>
         <button onClick={function() { setWeekOffset(function(w) { return w + 1 }) }} style={S.btn}>&#8250;</button>
         {weekOffset !== 0 && (
-          <button onClick={function() { setWeekOffset(0) }} style={{ ...S.btn, border: '0.5px solid #1D9E75', color: '#1D9E75' }}>Auj.</button>
+          <button onClick={function() { setWeekOffset(0) }} style={{ ...S.btn, border: '0.5px solid #2F6B4A', color: '#2F6B4A' }}>Auj.</button>
         )}
         <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
 
@@ -601,21 +601,21 @@ export default function PlanningPage() {
             Carnet invitations
           </button>
           <button onClick={addWeekToShopping}
-            style={{ ...S.btn, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', fontWeight: '500' }}>
+            style={{ ...S.btn, background: '#E3EDE2', color: '#1F4A33', border: '0.5px solid #2F6B4A', fontWeight: '500' }}>
             + Courses semaine
           </button>
         </div>
-        {saving && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Sauvegarde...</span>}
+        {saving && <span style={{ fontSize: '11px', color: '#2F6B4A' }}>Sauvegarde...</span>}
       </div>
 
       {/* Grille planning */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
+      <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
         {/* En-tete colonnes */}
-        <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: '0.5px solid #e0e0e0', background: '#fafaf8' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: '0.5px solid #DDE2D6', background: '#F6F8F2' }}>
           <div />
           {REPAS.map(function(repas) {
             return (
-              <div key={repas} style={{ padding: '10px 8px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #e0e0e0' }}>
+              <div key={repas} style={{ padding: '10px 8px', fontSize: '12px', fontWeight: '500', color: '#555', textAlign: 'center', borderLeft: '0.5px solid #DDE2D6' }}>
                 {repas}
               </div>
             )
@@ -627,10 +627,10 @@ export default function PlanningPage() {
           var date = new Date(lundi); date.setDate(date.getDate() + ji)
           var isToday = new Date().toDateString() === date.toDateString()
           return (
-            <div key={jour} style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: ji < 6 ? '0.5px solid #e0e0e0' : 'none' }}>
+            <div key={jour} style={{ display: 'grid', gridTemplateColumns: '80px repeat(3, 1fr)', borderBottom: ji < 6 ? '0.5px solid #DDE2D6' : 'none' }}>
               {/* Libelle jour */}
-              <div style={{ padding: '10px 8px', background: isToday ? '#E1F5EE' : '#fafaf8', borderRight: '0.5px solid #e0e0e0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '11px', fontWeight: isToday ? '600' : '500', color: isToday ? '#0F6E56' : '#333' }}>{jour}</div>
+              <div style={{ padding: '10px 8px', background: isToday ? '#E3EDE2' : '#F6F8F2', borderRight: '0.5px solid #DDE2D6', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: '11px', fontWeight: isToday ? '600' : '500', color: isToday ? '#1F4A33' : '#333' }}>{jour}</div>
                 <div style={{ fontSize: '10px', color: '#aaa' }}>{formatDate(date)}</div>
               </div>
 
@@ -658,7 +658,7 @@ export default function PlanningPage() {
                       if (dragSrc) copySlot(dragSrc.jourIndex, dragSrc.repas, ji, repas)
                       setDragSrc(null); setDragOver(null)
                     }}
-                    style={{ borderLeft: '0.5px solid #e0e0e0', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px', opacity: isDragSrc ? 0.5 : 1, background: isDragOver ? '#E1F5EE' : 'white', transition: 'background 0.15s' }}>
+                    style={{ borderLeft: '0.5px solid #DDE2D6', padding: '6px', minHeight: '80px', display: 'flex', flexDirection: 'column', gap: '4px', opacity: isDragSrc ? 0.5 : 1, background: isDragOver ? '#E3EDE2' : 'white', transition: 'background 0.15s' }}>
 
                     {/* Recettes et plats libres dans le slot */}
                     {slotRecipes.map(function(sr) {
@@ -676,7 +676,7 @@ export default function PlanningPage() {
                       }
                       if (!r) return null
                       return (
-                        <div key={sr.id} style={{ background: '#f5f5f0', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                        <div key={sr.id} style={{ background: '#EEF1EA', borderRadius: '6px', padding: '5px 7px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
                           <span style={{ fontSize: '14px', flexShrink: 0 }}>{r.emoji}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.title}</div>
@@ -720,7 +720,7 @@ export default function PlanningPage() {
                     {!hasExternal && <button
                       onClick={function() { setPicker({ jourIndex: ji, repas: repas }); setPickerSearch('') }}
                       style={{ width: '100%', border: '1px dashed #ddd', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#ccc', fontSize: '12px', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
+                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#2F6B4A'; e.currentTarget.style.color = '#2F6B4A' }}
                       onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#ccc' }}
                     >
                       + {slotRecipes.length === 0 ? 'Ajouter' : 'Ajouter plat'}
@@ -730,7 +730,7 @@ export default function PlanningPage() {
                     {!hasExternal && <button
                       onClick={function() { setShowPlatLibre({ jourIndex: ji, repas: repas }); setPlatLibreInput('') }}
                       style={{ width: '100%', border: '1px dashed #bbf7d0', borderRadius: '6px', background: 'none', cursor: 'pointer', color: '#86efac', fontSize: '11px', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.color = '#1D9E75' }}
+                      onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#2F6B4A'; e.currentTarget.style.color = '#2F6B4A' }}
                       onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#bbf7d0'; e.currentTarget.style.color = '#86efac' }}
                     >
                       + Plat libre
@@ -743,14 +743,14 @@ export default function PlanningPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <button onClick={function() { updateConvives(ji, repas, Math.max(1, convives - 1)) }}
                             style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>-</button>
-                          <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>Pers. {convives}</span>
+                          <span style={{ fontSize: '10px', color: '#2F6B4A', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>Pers. {convives}</span>
                           <button onClick={function() { updateConvives(ji, repas, convives + 1) }}
                             style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: '#666' }}>+</button>
                         </div>
                         {/* Bouton invites */}
                         <button
                           onClick={function() { setShowInvites({ jourIndex: ji, repas: repas }); setInviteInput('') }}
-                          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: invites.length > 0 ? '#1D9E75' : '#aaa' }}
+                          style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: invites.length > 0 ? '#2F6B4A' : '#aaa' }}
                         >
                           {invites.length > 0 ? invites.length + ' invite' + (invites.length > 1 ? 's' : '') : '+ Invites'}
                         </button>
@@ -758,7 +758,7 @@ export default function PlanningPage() {
                         {slot.recipes && slot.recipes.length > 0 && (
                           <button
                             onClick={function() { shoppingIds.has(slot.id) ? removeSlotFromShopping(slot.id) : addSlotToShopping(ji, repas) }}
-                            style={{ background: shoppingIds.has(slot.id) ? '#E1F5EE' : 'none', border: '0.5px solid ' + (shoppingIds.has(slot.id) ? '#1D9E75' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#0F6E56' : '#aaa', fontWeight: shoppingIds.has(slot.id) ? '600' : '400' }}
+                            style={{ background: shoppingIds.has(slot.id) ? '#E3EDE2' : 'none', border: '0.5px solid ' + (shoppingIds.has(slot.id) ? '#2F6B4A' : '#ddd'), borderRadius: '4px', padding: '1px 5px', fontSize: '10px', cursor: 'pointer', color: shoppingIds.has(slot.id) ? '#1F4A33' : '#aaa', fontWeight: shoppingIds.has(slot.id) ? '600' : '400' }}
                           >
                             {shoppingIds.has(slot.id) ? '✓ Courses' : '+ Courses'}
                           </button>
@@ -786,7 +786,7 @@ export default function PlanningPage() {
 
       {/* Courses */}
       {showCourses && (
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '500' }}>Courses de la semaine</div>
@@ -807,10 +807,10 @@ export default function PlanningPage() {
                     return (
                       <div key={cat} style={{ marginBottom: '10px' }}>
                         <span style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
-                        <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
+                        <div style={{ border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
                           {items.map(function(item) {
                             return (
-                              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: '0.5px solid #f0f0ec', fontSize: '13px' }}>
+                              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: '0.5px solid #E9ECE3', fontSize: '13px' }}>
                                 <div style={{ flex: 1 }}>{item.name}</div>
                                 <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>{item.manque} {item.unit}</span>
                               </div>
@@ -862,13 +862,13 @@ export default function PlanningPage() {
                 return (
                   <div key={r.id}
                     onClick={function() { addRecipeToSlot(picker.jourIndex, picker.repas, r.id) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '0.5px solid #e0e0e0', borderRadius: '10px', cursor: 'pointer', background: 'white' }}
-                    onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#1D9E75'; e.currentTarget.style.background = '#E1F5EE' }}
-                    onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.background = 'white' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '0.5px solid #DDE2D6', borderRadius: '10px', cursor: 'pointer', background: 'white' }}
+                    onMouseEnter={function(e) { e.currentTarget.style.borderColor = '#2F6B4A'; e.currentTarget.style.background = '#E3EDE2' }}
+                    onMouseLeave={function(e) { e.currentTarget.style.borderColor = '#DDE2D6'; e.currentTarget.style.background = 'white' }}
                   >
                     {r.photo_url
                       ? <img src={r.photo_url} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
-                      : <div style={{ width: '40px', height: '40px', background: '#f5f5f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{r.emoji}</div>
+                      : <div style={{ width: '40px', height: '40px', background: '#EEF1EA', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{r.emoji}</div>
                     }
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.title}</div>
@@ -909,7 +909,7 @@ export default function PlanningPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
                   {invites.map(function(name) {
                     return (
-                      <span key={name} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', background: '#E1F5EE', color: '#0F6E56', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span key={name} style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', background: '#E3EDE2', color: '#1F4A33', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         {name}
                         <button onClick={function() { removeInvite(showInvites.jourIndex, showInvites.repas, name) }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, lineHeight: 1, fontSize: '13px' }}>x</button>
@@ -930,7 +930,7 @@ export default function PlanningPage() {
                   style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
                 />
                 <button onClick={function() { addInvite(showInvites.jourIndex, showInvites.repas, inviteInput) }}
-                  style={{ padding: '8px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  style={{ padding: '8px 12px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                   Ajouter
                 </button>
               </div>
@@ -962,7 +962,7 @@ export default function PlanningPage() {
                   return (
                     <div key={s.id}
                       onClick={function() { setSelectedStockItem(s); setDeduireQty(String(s.qty)); setPlatLibreInput(s.name); searchNutrition(s.name) }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#f5f5f0', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #e0e0e0' }}>
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: '4px', background: '#EEF1EA', borderRadius: '8px', cursor: 'pointer', border: '0.5px solid #DDE2D6' }}>
                       <span style={{ fontSize: '13px', fontWeight: '500' }}>{s.name}</span>
                       <span style={{ fontSize: '11px', color: '#888' }}>{s.qty} {s.unit} en stock</span>
                     </div>
@@ -973,9 +973,9 @@ export default function PlanningPage() {
 
             {/* Article stock selectionne - saisie quantite */}
             {selectedStockItem && (
-              <div style={{ background: '#E1F5EE', border: '0.5px solid #1D9E75', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+              <div style={{ background: '#E3EDE2', border: '0.5px solid #2F6B4A', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56' }}>{selectedStockItem.name}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#1F4A33' }}>{selectedStockItem.name}</span>
                   <button onClick={function() { setSelectedStockItem(null); setDeduireQty('') }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '14px' }}>x</button>
                 </div>
@@ -1015,7 +1015,7 @@ export default function PlanningPage() {
             </div>
 
             {/* Nutrition optionnelle */}
-            <div style={{ marginTop: '12px', padding: '10px 12px', background: '#fafaf8', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
+            <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F6F8F2', borderRadius: '10px', border: '0.5px solid #e8e8e4' }}>
               <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', marginBottom: '8px' }}>
                 Valeurs nutritionnelles <span style={{ fontWeight: '400' }}>(optionnel — par portion)</span>
               </div>
@@ -1023,14 +1023,14 @@ export default function PlanningPage() {
               {/* Suggestions depuis ingredient_nutrition */}
               {nutSuggestions.length > 0 && (
                 <div style={{ marginBottom: '8px', border: '0.5px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ fontSize: '10px', color: '#aaa', padding: '5px 10px', background: '#f5f5f0' }}>
+                  <div style={{ fontSize: '10px', color: '#aaa', padding: '5px 10px', background: '#EEF1EA' }}>
                     Trouvé dans la base — choisir pour pré-remplir :
                   </div>
                   {nutSuggestions.map(function(entry) {
                     return (
                       <div key={entry.name}
                         onMouseDown={function() { applyNutSuggestion(entry, platLibrePoids) }}
-                        style={{ padding: '7px 12px', fontSize: '12px', cursor: 'pointer', borderTop: '0.5px solid #f5f5f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}
+                        style={{ padding: '7px 12px', fontSize: '12px', cursor: 'pointer', borderTop: '0.5px solid #EEF1EA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}
                         onMouseEnter={function(e) { e.currentTarget.style.background = '#f5faf8' }}
                         onMouseLeave={function(e) { e.currentTarget.style.background = 'white' }}>
                         <span style={{ fontWeight: '500' }}>{entry.name}</span>
@@ -1087,7 +1087,7 @@ export default function PlanningPage() {
                 if (selectedStockItem) deduireStock(selectedStockItem, deduireQty)
                 setPlatLibreInput(''); setSelectedStockItem(null); setDeduireQty(''); setShowPlatLibre(null)
               }}
-              style={{ width: '100%', marginTop: '10px', padding: '9px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+              style={{ width: '100%', marginTop: '10px', padding: '9px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
               Ajouter
             </button>
           </div>
@@ -1106,7 +1106,7 @@ export default function PlanningPage() {
             </div>
 
             {/* Onglets */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: '#f5f5f0', borderRadius: '10px', padding: '4px' }}>
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: '#EEF1EA', borderRadius: '10px', padding: '4px' }}>
               {[
                 { id: 'invites', label: 'Mes invites', emoji: 'Invites' },
                 { id: 'invitations', label: 'Invitations recues', emoji: 'Invitations' },
@@ -1114,7 +1114,7 @@ export default function PlanningPage() {
               ].map(function(tab) {
                 return (
                   <button key={tab.id} onClick={function() { setCarnetOnglet(tab.id); setShowFormInvit(false); setShowFormResto(false) }}
-                    style={{ flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '11px', fontWeight: carnetOnglet === tab.id ? '600' : '400', background: carnetOnglet === tab.id ? 'white' : 'transparent', color: carnetOnglet === tab.id ? '#0F6E56' : '#888', boxShadow: carnetOnglet === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                    style={{ flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '11px', fontWeight: carnetOnglet === tab.id ? '600' : '400', background: carnetOnglet === tab.id ? 'white' : 'transparent', color: carnetOnglet === tab.id ? '#1F4A33' : '#888', boxShadow: carnetOnglet === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
                     {tab.label}
                   </button>
                 )
@@ -1137,9 +1137,9 @@ export default function PlanningPage() {
                       .sort(function(a, b) { return a.name.localeCompare(b.name) })
                       .map(function(person) {
                         return (
-                          <div key={person.name} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden' }}>
-                            <div style={{ padding: '10px 14px', background: '#fafaf8', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #e0e0e0' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
+                          <div key={person.name} style={{ border: '0.5px solid #DDE2D6', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ padding: '10px 14px', background: '#F6F8F2', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '0.5px solid #DDE2D6' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2F6B4A', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
                                 {person.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -1177,13 +1177,13 @@ export default function PlanningPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
                   <button onClick={function() { setShowFormInvit(true); setEditInvit(null); setFormInvit({ hote: '', date: '', menu: '', notes: '', jour_index: '', repas: '' }) }}
-                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                    style={{ padding: '7px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                     + Ajouter
                   </button>
                 </div>
 
                 {showFormInvit && (
-                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
+                  <div style={{ background: '#F6F8F2', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #DDE2D6' }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editInvit ? 'Modifier' : 'Nouvelle invitation'}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                       <div>
@@ -1236,7 +1236,7 @@ export default function PlanningPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button onClick={function() { setShowFormInvit(false); setEditInvit(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-                      <button onClick={saveInvitation} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
+                      <button onClick={saveInvitation} style={{ padding: '7px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
                     </div>
                   </div>
                 )}
@@ -1247,7 +1247,7 @@ export default function PlanningPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {invitations.map(function(inv) {
                       return (
-                        <div key={inv.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
+                        <div key={inv.id} style={{ border: '0.5px solid #DDE2D6', borderRadius: '10px', padding: '12px 14px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                             <div style={{ fontSize: '13px', fontWeight: '500' }}>Chez {inv.hote}</div>
                             <div style={{ display: 'flex', gap: '6px' }}>
@@ -1276,13 +1276,13 @@ export default function PlanningPage() {
                     placeholder="Rechercher un restaurant..."
                     style={{ flex: 1, padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
                   <button onClick={function() { setShowFormResto(true); setEditResto(null); setFormResto({ nom: '', adresse: '', date: '', menu: '', prix: '', note: 0, avis: '', jour_index: '', repas: '' }) }}
-                    style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                    style={{ padding: '7px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                     + Ajouter
                   </button>
                 </div>
 
                 {showFormResto && (
-                  <div style={{ background: '#fafaf8', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #e0e0e0' }}>
+                  <div style={{ background: '#F6F8F2', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '0.5px solid #DDE2D6' }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '10px' }}>{editResto ? 'Modifier' : 'Nouveau restaurant'}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                       <div>
@@ -1360,7 +1360,7 @@ export default function PlanningPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button onClick={function() { setShowFormResto(false); setEditResto(null) }} style={{ padding: '7px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '7px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-                      <button onClick={saveRestaurant} style={{ padding: '7px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
+                      <button onClick={saveRestaurant} style={{ padding: '7px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
                     </div>
                   </div>
                 )}
@@ -1371,7 +1371,7 @@ export default function PlanningPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {restaurants.filter(function(r) { return !restoSearch || r.nom.toLowerCase().includes(restoSearch.toLowerCase()) || (r.adresse || '').toLowerCase().includes(restoSearch.toLowerCase()) }).map(function(r) {
                       return (
-                        <div key={r.id} style={{ border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '12px 14px' }}>
+                        <div key={r.id} style={{ border: '0.5px solid #DDE2D6', borderRadius: '10px', padding: '12px 14px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                             <div>
                               <div style={{ fontSize: '13px', fontWeight: '500' }}>{r.nom}</div>
@@ -1382,7 +1382,7 @@ export default function PlanningPage() {
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              {r.prix && <span style={{ fontSize: '12px', fontWeight: '500', color: '#0F6E56' }}>{r.prix} CHF</span>}
+                              {r.prix && <span style={{ fontSize: '12px', fontWeight: '500', color: '#1F4A33' }}>{r.prix} CHF</span>}
                               <button onClick={function() { setEditResto(r); setFormResto({ nom: r.nom, adresse: r.adresse || '', date: r.date || '', menu: r.menu || '', prix: r.prix || '', note: r.note || 0, avis: r.avis || '' }); setShowFormResto(true) }}
                                 style={{ fontSize: '11px', padding: '3px 8px', border: '0.5px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#555' }}>Editer</button>
                               <button onClick={function() { deleteRestaurant(r.id) }}
@@ -1427,7 +1427,7 @@ export default function PlanningPage() {
                 }
                 loadPlan()
               }}
-                style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                style={{ padding: '10px 18px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
                 Oui, remettre
               </button>
               <button onClick={async function() {
@@ -1473,7 +1473,7 @@ export default function PlanningPage() {
               </button>
               <button onClick={function() { saveRating(showRating.recipe, pendingRating) }}
                 disabled={pendingRating === 0}
-                style={{ padding: '8px 20px', background: pendingRating > 0 ? '#1D9E75' : '#f0f0ec', color: pendingRating > 0 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: pendingRating > 0 ? 'pointer' : 'default', fontWeight: '500' }}>
+                style={{ padding: '8px 20px', background: pendingRating > 0 ? '#2F6B4A' : '#E9ECE3', color: pendingRating > 0 ? 'white' : '#aaa', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: pendingRating > 0 ? 'pointer' : 'default', fontWeight: '500' }}>
                 Enregistrer
               </button>
             </div>

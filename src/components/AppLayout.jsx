@@ -10,9 +10,9 @@ import PartageePage from '../pages/PartageePage'
 import NutritionPage from '../pages/NutritionPage'
 import CavePage from '../pages/CavePage'
 
-const VERT = '#1D9E75'
-const VERT_FONCE = '#0F6E56'
-const VERT_CLAIR = '#E1F5EE'
+const VERT = '#2F6B4A'
+const VERT_FONCE = '#1F4A33'
+const VERT_CLAIR = '#E3EDE2'
 
 // Icônes ligne (même épaisseur partout) — look sobre et lisible
 const ICONS = {
@@ -64,34 +64,34 @@ const TITLES = {
 const CSS = `
   html { -webkit-text-size-adjust: 100%; }
   html, body { overflow-x: hidden; max-width: 100%; }
-  body { background: #f5f5f0; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
-  .mc-shell { overflow-x: clip; min-height: 100vh; min-height: 100dvh; background: #f5f5f0; }
-  .mc-header { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,0.96); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    border-bottom: 0.5px solid #e0e0e0; padding-top: env(safe-area-inset-top); }
-  .mc-header-in { max-width: 960px; margin: 0 auto; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; }
-  .mc-logo { width: 30px; height: 30px; border-radius: 8px; background: ${VERT}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .mc-title { flex: 1; font-size: 17px; font-weight: 600; color: #1a1a1a; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mc-avatar { width: 34px; height: 34px; border-radius: 50%; border: none; background: ${VERT_CLAIR}; color: ${VERT_FONCE}; font-size: 14px; font-weight: 600; text-transform: uppercase; }
-  .mc-main { max-width: 960px; margin: 0 auto; padding: 14px 14px calc(88px + env(safe-area-inset-bottom)); }
+  body { background: #EEF1EA; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  .mc-shell { overflow-x: clip; min-height: 100vh; min-height: 100dvh; background: #EEF1EA; }
+  .mc-header { position: sticky; top: 0; z-index: 30; background: rgba(238,241,234,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    padding-top: env(safe-area-inset-top); }
+  .mc-header-in { max-width: 960px; margin: 0 auto; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 10px 16px 6px; }
+  .mc-titlebox { flex: 1; min-width: 0; }
+  .mc-title { font-family: var(--serif); font-size: 28px; line-height: 1.1; font-weight: 400; color: #2A2118; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-date { font-size: 12.5px; color: #8A8576; margin-top: 3px; }
+  .mc-avatar { width: 38px; height: 38px; border-radius: 50%; border: none; background: ${VERT}; color: #F3E6CC; font-family: var(--serif); font-size: 16px; text-transform: uppercase; flex-shrink: 0; }
+  .mc-main { max-width: 960px; margin: 0 auto; padding: 8px 16px calc(100px + env(safe-area-inset-bottom)); }
   .mc-topnav { display: none; }
   .mc-scroll { scrollbar-width: none; }
   .mc-scroll::-webkit-scrollbar { display: none; }
-  .mc-bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255,255,255,0.97); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    border-top: 0.5px solid #e0e0e0; display: flex; padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); }
-  .mc-tab { flex: 1; min-height: 52px; background: none; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    font-size: 11px; color: #8a8a85; position: relative; border-radius: 10px; }
-  .mc-tab.on { color: ${VERT_FONCE}; font-weight: 600; }
-  .mc-tab.on::before { content: ''; position: absolute; top: -5px; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: ${VERT}; }
-  .mc-tab:active { background: #f0f0ec; }
-  .mc-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.4); animation: mcfade .15s ease; }
-  .mc-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: white; border-radius: 18px 18px 0 0;
+  .mc-bottom { position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 30; max-width: 520px; margin: 0 auto;
+    background: #2A2118; border-radius: 26px; display: flex; gap: 2px; padding: 6px; box-shadow: 0 10px 28px rgba(42,33,24,0.28); }
+  .mc-tab { flex: 1; min-height: 50px; background: none; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 10.5px; font-weight: 500; color: #A89B8A; border-radius: 20px; transition: background .2s, color .2s; }
+  .mc-tab.on { color: #2A2118; background: #F3E6CC; font-weight: 700; }
+  .mc-tab:active { transform: scale(0.96); }
+  .mc-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(42,33,24,0.45); animation: mcfade .15s ease; }
+  .mc-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: #FCFDFA; border-radius: 24px 24px 0 0;
     padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto; animation: mcup .2s ease; max-height: 85vh; overflow-y: auto; }
   .mc-grab { width: 38px; height: 4px; border-radius: 2px; background: #d8d8d2; margin: 0 auto 12px; }
   .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .mc-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; border: 0.5px solid #e0e0e0; background: #fafaf8; text-align: left; min-height: 64px; }
-  .mc-card.on { background: ${VERT_CLAIR}; border-color: #5DCAA5; }
-  .mc-card:active { background: #f0f0ec; }
-  .mc-row { width: 100%; text-align: left; background: none; border: none; padding: 13px 6px; font-size: 15px; border-top: 0.5px solid #f0f0ec; min-height: 48px; }
+  .mc-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid #DDE2D6; background: #F6F8F2; text-align: left; min-height: 64px; }
+  .mc-card.on { background: ${VERT_CLAIR}; border-color: #9DC2A8; }
+  .mc-card:active { background: #E9ECE3; }
+  .mc-row { width: 100%; text-align: left; background: none; border: none; padding: 13px 6px; font-size: 15px; border-top: 0.5px solid #E9ECE3; min-height: 48px; }
   @keyframes mcup { from { transform: translateY(30px); opacity: 0 } to { transform: none; opacity: 1 } }
   @keyframes mcfade { from { opacity: 0 } to { opacity: 1 } }
 
@@ -100,6 +100,7 @@ const CSS = `
     input, select, textarea { font-size: 16px !important; }
     .mc-two { grid-template-columns: minmax(0, 1fr) !important; }
     .mc-main { padding-left: 12px; padding-right: 12px; }
+    .mc-title { font-size: 26px; }
   }
 
   /* Ordinateur / tablette large : onglets en haut, plus de barre du bas */
@@ -107,11 +108,16 @@ const CSS = `
     .mc-bottom { display: none; }
     .mc-main { padding-bottom: 32px; }
     .mc-topnav { display: flex; gap: 4px; max-width: 960px; margin: 0 auto; padding: 12px 14px 0; }
-    .mc-toptab { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border: none; border-radius: 10px; background: transparent; color: #777; font-size: 14px; }
-    .mc-toptab:hover { background: #ebebe6; }
+    .mc-toptab { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border: none; border-radius: 10px; background: transparent; color: #6B6556; font-size: 14px; }
+    .mc-toptab:hover { background: #E3E8DC; }
     .mc-toptab.on { background: ${VERT_CLAIR}; color: ${VERT_FONCE}; font-weight: 600; }
   }
 `
+
+function dateJour() {
+  var d = new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.charAt(0).toUpperCase() + d.slice(1)
+}
 
 function pageDepuisHash() {
   var h = (window.location.hash || '').replace('#', '')
@@ -189,8 +195,10 @@ export default function AppLayout() {
       {/* En-tête */}
       <header className="mc-header">
         <div className="mc-header-in">
-          <div className="mc-logo"><span style={{ fontSize: '16px' }}>🍳</span></div>
-          <div className="mc-title">{TITLES[page]}</div>
+          <div className="mc-titlebox">
+            <div className="mc-title">{TITLES[page]}</div>
+            <div className="mc-date">{dateJour()}</div>
+          </div>
           <button className="mc-avatar" onClick={() => setSheetOpen(true)} aria-label="Compte et menu">{initiale}</button>
         </div>
       </header>
@@ -213,13 +221,13 @@ export default function AppLayout() {
         {MAIN.map(function(n) {
           return (
             <button key={n.id} className={'mc-tab' + (page === n.id ? ' on' : '')} onClick={() => go(n.id)} aria-current={page === n.id ? 'page' : undefined}>
-              <Icon name={n.id} size={23} stroke={page === n.id ? 2.2 : 1.8} />
+              <Icon name={n.id} size={22} stroke={page === n.id ? 2.2 : 1.8} />
               {n.label}
             </button>
           )
         })}
         <button className={'mc-tab' + (inMore ? ' on' : '')} onClick={() => setSheetOpen(true)} aria-label="Plus">
-          <Icon name="plus" size={23} />
+          <Icon name="plus" size={22} />
           Plus
         </button>
       </nav>
@@ -236,7 +244,7 @@ export default function AppLayout() {
                   <button key={n.id} className={'mc-card' + (page === n.id ? ' on' : '')} onClick={() => go(n.id)}>
                     <span style={{ color: page === n.id ? VERT_FONCE : '#555', display: 'flex' }}><Icon name={n.id} size={26} /></span>
                     <span>
-                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{n.label}</span>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#2A2118' }}>{n.label}</span>
                       <span style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '2px' }}>{n.desc}</span>
                     </span>
                   </button>

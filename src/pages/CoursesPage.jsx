@@ -5,11 +5,11 @@ import { useAuth } from '../hooks/useAuth'
 const CAT_STYLE = {
   'Épicerie':          { bg: '#E6F1FB', color: '#185FA5' },
   'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits & légumes':  { bg: '#E1F5EE', color: '#085041' },
+  'Fruits & légumes':  { bg: '#E3EDE2', color: '#143626' },
   'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
   'Viande & poisson':  { bg: '#FAECE7', color: '#712B13' },
   'Surgelés':          { bg: '#EEEDFE', color: '#3C3489' },
-  'Autres':            { bg: '#f0f0ec', color: '#666' },
+  'Autres':            { bg: '#E9ECE3', color: '#666' },
 }
 
 const ING_CATS = {
@@ -47,7 +47,7 @@ function printCourses(groups, aAcheter, dejaDispo, recipeNames) {
     <div style="margin-bottom:18px">
       <div style="font-weight:600;font-size:13px;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">${cat}</div>
       ${items.map(i => `
-        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0ec">
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #E9ECE3">
           <span style="width:16px;height:16px;border:1.5px solid #ccc;display:inline-block;border-radius:3px;flex-shrink:0"></span>
           <span style="flex:1;font-size:13px">${i.name}</span>
           <span style="font-size:12px;color:#666;font-weight:500">${i.manque} ${i.unit}</span>
@@ -55,7 +55,7 @@ function printCourses(groups, aAcheter, dejaDispo, recipeNames) {
     </div>`).join('')
 
   const dispo = dejaDispo.length > 0 ? `
-    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e0e0e0">
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #DDE2D6">
       <div style="font-size:12px;color:#3B6D11;font-weight:600;margin-bottom:8px">✓ DÉJÀ EN STOCK</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${dejaDispo.map(i => `<span style="padding:3px 10px;border-radius:10px;font-size:12px;background:#EAF3DE;color:#3B6D11">${i.name}</span>`).join('')}
@@ -67,7 +67,7 @@ function printCourses(groups, aAcheter, dejaDispo, recipeNames) {
     body { font-family: system-ui, sans-serif; padding: 32px; max-width: 640px; margin: 0 auto; color: #333 }
     h2 { margin: 0 0 4px; font-size: 20px }
     .meta { color: #888; font-size: 13px; margin-bottom: 8px }
-    .recipes { color: #555; font-size: 12px; margin-bottom: 24px; padding: 8px 12px; background: #f5f5f0; border-radius: 8px }
+    .recipes { color: #555; font-size: 12px; margin-bottom: 24px; padding: 8px 12px; background: #EEF1EA; border-radius: 8px }
     @media print { button { display: none } body { padding: 16px } }
   </style>
   </head><body>
@@ -77,7 +77,7 @@ function printCourses(groups, aAcheter, dejaDispo, recipeNames) {
     ${sections}
     ${dispo}
     <br>
-    <button onclick="window.print()" style="padding:8px 16px;background:#1D9E75;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨️ Imprimer</button>
+    <button onclick="window.print()" style="padding:8px 16px;background:#2F6B4A;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨️ Imprimer</button>
   </body></html>`
 
   const w = window.open('', '_blank')
@@ -332,7 +332,7 @@ export default function CoursesPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button
                   onClick={() => setStockFaibleStep('form')}
-                  style={{ padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+                  style={{ padding: '10px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
                   ✅ Je l&apos;ai acheté — mettre à jour le stock
                 </button>
                 <button
@@ -386,7 +386,7 @@ export default function CoursesPage() {
                   <button
                     onClick={() => handleStockFaibleAchete(stockFaibleAction)}
                     disabled={!stockFaibleQty}
-                    style={{ flex: 2, padding: '10px', background: !stockFaibleQty ? '#ccc' : '#1D9E75', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: stockFaibleQty ? 'pointer' : 'default', fontWeight: '500' }}>
+                    style={{ flex: 2, padding: '10px', background: !stockFaibleQty ? '#ccc' : '#2F6B4A', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', cursor: stockFaibleQty ? 'pointer' : 'default', fontWeight: '500' }}>
                     Enregistrer
                   </button>
                 </div>
@@ -397,10 +397,10 @@ export default function CoursesPage() {
       )}
       {/* Liste depuis le planning */}
       {!loadingPlanning && planningSlots.length > 0 && (
-        <div style={{ background: 'white', border: '0.5px solid #1D9E75', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #2F6B4A', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: '#0F6E56' }}>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F4A33' }}>
                 Courses du planning
               </div>
               <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
@@ -417,10 +417,10 @@ export default function CoursesPage() {
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '12px' }}>
             {planningSlots.map(function(slot) {
               return (
-                <div key={slot.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#E1F5EE', border: '0.5px solid #5DCAA5', fontSize: '11px', color: '#0F6E56' }}>
+                <div key={slot.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px 3px 10px', borderRadius: '10px', background: '#E3EDE2', border: '0.5px solid #9DC2A8', fontSize: '11px', color: '#1F4A33' }}>
                   <span>{JOURS[slot.jour_index]} {slot.repas} ({slot.convives} pers.)</span>
                   <button onClick={function() { removeFromPlanningList(slot.id) }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5DCAA5', fontSize: '12px', padding: 0, lineHeight: 1 }}>x</button>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9DC2A8', fontSize: '12px', padding: 0, lineHeight: 1 }}>x</button>
                 </div>
               )
             })}
@@ -428,7 +428,7 @@ export default function CoursesPage() {
 
           {/* Liste ingredients */}
           {planningAacheter.length === 0 && planningDispo.length > 0 && (
-            <div style={{ fontSize: '13px', color: '#1D9E75', textAlign: 'center', padding: '8px' }}>
+            <div style={{ fontSize: '13px', color: '#2F6B4A', textAlign: 'center', padding: '8px' }}>
               Tout est deja en stock !
             </div>
           )}
@@ -439,13 +439,13 @@ export default function CoursesPage() {
             return (
               <div key={cat} style={{ marginBottom: '10px' }}>
                 <span style={{ padding: '2px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
-                <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
+                <div style={{ border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden', marginTop: '5px' }}>
                   {items.map(function(item) {
                     return (
                       <div key={item.name}
                         onClick={function() { setCheckedPlanning(function(c) { var n = new Set(c); n.has(item.name) ? n.delete(item.name) : n.add(item.name); return n }) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer', background: 'white' }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}></div>
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderBottom: '0.5px solid #E9ECE3', cursor: 'pointer', background: 'white' }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#F6F8F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}></div>
                         <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
                         <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#FCEBEB', color: '#791F1F' }}>
                           {item.manque} {item.unit}
@@ -476,7 +476,7 @@ export default function CoursesPage() {
       <div className="mc-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
 
         {/* Stock faible */}
-        <div style={{ background: 'white', border: '0.5px solid #EF9F27', borderRadius: '12px', padding: '1.25rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #C98A3A', borderRadius: '12px', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '500', color: '#854F0B' }}>
@@ -496,7 +496,7 @@ export default function CoursesPage() {
             )}
           </div>
 
-          <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden' }}>
             {stockFaible.map(item => {
               const isChecked = checkedNeutral.has(item.name)
               const manqueNeutral = Math.max(0, item.seuil - item.qty)
@@ -505,10 +505,10 @@ export default function CoursesPage() {
               return (
                 <div key={item.name} onClick={() => { setStockFaibleAction(item); setStockFaibleStep('choice'); setStockFaibleQty(String(item.seuil > 0 ? item.seuil * 2 : 1)); setStockFaibleSeuil(String(item.seuil || '')); setStockFaiblePeremption('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
-                  borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer',
+                  borderBottom: '0.5px solid #E9ECE3', cursor: 'pointer',
                   opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
                 }}>
-                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#EF9F27'), background: isChecked ? '#1D9E75' : '#FFFBF0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#2F6B4A' : '#C98A3A'), background: isChecked ? '#2F6B4A' : '#FFFBF0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
                     {isChecked ? '✓' : ''}
                   </div>
                   <div style={{ flex: 1, fontSize: '13px', fontWeight: '500' }}>{item.name}</div>
@@ -536,7 +536,7 @@ export default function CoursesPage() {
         </div>
 
         {/* Liste generale hors cuisine */}
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
             <div style={{ fontSize: '14px', fontWeight: '500' }}>Liste generale</div>
 {checkedGeneral.size > 0 && (
@@ -569,21 +569,21 @@ export default function CoursesPage() {
                 addGeneralItem(generalInput.trim())
                 setGeneralInput('')
               }
-            }} style={{ padding: '7px 12px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+</button>
+            }} style={{ padding: '7px 12px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>+</button>
           </div>
           {generalItems.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '1rem', color: '#ccc', fontSize: '12px' }}>
               Aucun article
             </div>
           ) : (
-            <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden' }}>
               {generalItems.map(function(item) {
                 const isChecked = checkedGeneral.has(item.id)
                 return (
                   <div key={item.id}
                     onClick={() => removeGeneralItem(item.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer', background: 'white' }}>
-                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: '0.5px solid #E9ECE3', cursor: 'pointer', background: 'white' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid #ddd', background: '#F6F8F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
                     </div>
                     <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
                     <button onClick={e => { e.stopPropagation(); removeGeneralItem(item.id) }}
@@ -597,7 +597,7 @@ export default function CoursesPage() {
       </div>
 
       {/* Sélection des recettes */}
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+      <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>Choisir les recettes</div>
           <span style={{ fontSize: '12px', color: '#aaa' }}>{recipes.length} recettes</span>
@@ -607,17 +607,17 @@ export default function CoursesPage() {
           value={recipeSearch}
           onChange={e => setRecipeSearch(e.target.value)}
           placeholder="Rechercher une recette..."
-          style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box', marginBottom: '10px' }}
+          style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box', marginBottom: '10px' }}
         />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {[...recipes].filter(r => !recipeSearch || r.title.toLowerCase().includes(recipeSearch.toLowerCase())).sort((a, b) => a.title.localeCompare(b.title, 'fr')).map(r => (
             <div key={r.id} onClick={() => toggleRecipe(r.id)} style={{
-              border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#e0e0e0'),
+              border: '0.5px solid ' + (selected.has(r.id) ? '#2F6B4A' : '#DDE2D6'),
               borderRadius: '10px', padding: '10px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '8px',
-              background: selected.has(r.id) ? '#E1F5EE' : 'white'
+              background: selected.has(r.id) ? '#E3EDE2' : 'white'
             }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#ddd'), background: selected.has(r.id) ? '#1D9E75' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#2F6B4A' : '#ddd'), background: selected.has(r.id) ? '#2F6B4A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
                 {selected.has(r.id) ? '✓' : ''}
               </div>
               <div style={{ fontSize: '20px' }}>{r.emoji}</div>
@@ -646,7 +646,7 @@ export default function CoursesPage() {
       ) : (
         <>
           {aAcheter.length > 0 && (
-            <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+            <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ fontSize: '14px', fontWeight: '500' }}>
                   À acheter <span style={{ fontSize: '13px', fontWeight: '400', color: '#888' }}>({done}/{aAcheter.length})</span>
@@ -663,8 +663,8 @@ export default function CoursesPage() {
                 </div>
               </div>
 
-              <div style={{ height: '8px', background: '#f0f0ec', borderRadius: '4px', marginBottom: '16px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: pct + '%', background: '#1D9E75', borderRadius: '4px', transition: 'width 0.3s' }} />
+              <div style={{ height: '8px', background: '#E9ECE3', borderRadius: '4px', marginBottom: '16px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: pct + '%', background: '#2F6B4A', borderRadius: '4px', transition: 'width 0.3s' }} />
               </div>
 
               {Object.entries(groups).map(([cat, items]) => {
@@ -672,16 +672,16 @@ export default function CoursesPage() {
                 return (
                   <div key={cat} style={{ marginBottom: '16px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', background: cs.bg, color: cs.color }}>{cat}</span>
-                    <div style={{ border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', marginTop: '6px' }}>
+                    <div style={{ border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden', marginTop: '6px' }}>
                       {items.map(item => {
                         const isChecked = checked.has(item.name)
                         return (
                           <div key={item.name} onClick={() => toggleCheck(item.name)} style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
-                            borderBottom: '0.5px solid #f0f0ec', cursor: 'pointer',
+                            borderBottom: '0.5px solid #E9ECE3', cursor: 'pointer',
                             opacity: isChecked ? 0.45 : 1, textDecoration: isChecked ? 'line-through' : 'none', background: 'white'
                           }}>
-                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#1D9E75' : '#ddd'), background: isChecked ? '#1D9E75' : '#fafaf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: '0.5px solid ' + (isChecked ? '#2F6B4A' : '#ddd'), background: isChecked ? '#2F6B4A' : '#F6F8F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
                               {isChecked ? '✓' : ''}
                             </div>
                             <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
@@ -702,10 +702,10 @@ export default function CoursesPage() {
           )}
 
           {dejaDispo.length > 0 && (
-            <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem' }}>
+            <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem' }}>
               <div style={{ fontSize: '13px', fontWeight: '500', color: '#3B6D11', marginBottom: '10px' }}>Déjà disponible en stock</div>
               {dejaDispo.map(item => (
-                <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '0.5px solid #f0f0ec' }}>
+                <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '0.5px solid #E9ECE3' }}>
                   <div style={{ width: '18px', height: '18px', borderRadius: '4px', background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#3B6D11', flexShrink: 0 }}>✓</div>
                   <div style={{ flex: 1, fontSize: '13px' }}>{item.name}</div>
                   <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: '#EAF3DE', color: '#3B6D11' }}>{item.inStock} {item.unit}</span>

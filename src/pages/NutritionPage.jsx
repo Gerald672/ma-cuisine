@@ -64,7 +64,7 @@ function formatDate(date) {
 
 function PieChart({ data, size = 120 }) {
   const total = data.reduce((s, d) => s + d.value, 0)
-  if (total === 0) return <div style={{ width: size, height: size, borderRadius: '50%', background: '#f0f0ec' }} />
+  if (total === 0) return <div style={{ width: size, height: size, borderRadius: '50%', background: '#E9ECE3' }} />
   let cumul = 0
   const slices = []
   const cx = size / 2, cy = size / 2, r = size / 2 - 4
@@ -133,7 +133,7 @@ function WeightChart({ logs, poidsActuel, poidsCible }) {
           const val = (minV + t * (maxV - minV)).toFixed(1)
           return (
             <g key={t}>
-              <line x1={PAD} y1={yv} x2={W - PAD} y2={yv} stroke="#f0f0ec" strokeWidth="1" />
+              <line x1={PAD} y1={yv} x2={W - PAD} y2={yv} stroke="#E9ECE3" strokeWidth="1" />
               <text x={PAD - 4} y={yv + 4} fontSize="9" fill="#bbb" textAnchor="end">{val}</text>
             </g>
           )
@@ -141,16 +141,16 @@ function WeightChart({ logs, poidsActuel, poidsCible }) {
         {/* Ligne cible */}
         {poidsCible && (
           <line x1={PAD} y1={y(poidsCible)} x2={W - PAD} y2={y(poidsCible)}
-            stroke="#1D9E75" strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
+            stroke="#2F6B4A" strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
         )}
         {/* Tendance */}
-        {n > 1 && <line x1={tx0} y1={ty0} x2={tx1} y2={ty1} stroke="#EF9F27" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.7" />}
+        {n > 1 && <line x1={tx0} y1={ty0} x2={tx1} y2={ty1} stroke="#C98A3A" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.7" />}
         {/* Courbe */}
-        <polyline points={points} fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinejoin="round" />
+        <polyline points={points} fill="none" stroke="#2F6B4A" strokeWidth="2" strokeLinejoin="round" />
         {/* Points */}
         {sorted.map((l, i) => (
           <g key={l.id}>
-            <circle cx={x(i)} cy={y(l.poids)} r="4" fill="white" stroke="#1D9E75" strokeWidth="2" />
+            <circle cx={x(i)} cy={y(l.poids)} r="4" fill="white" stroke="#2F6B4A" strokeWidth="2" />
             <text x={x(i)} y={y(l.poids) - 8} fontSize="9" fill="#555" textAnchor="middle">{l.poids}</text>
           </g>
         ))}
@@ -443,10 +443,10 @@ export default function NutritionPage() {
   }
 
   const S = {
-    input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafaf8' },
-    card: { background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' },
+    input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#F6F8F2' },
+    card: { background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' },
     label: { fontSize: '11px', color: '#888', display: 'block', marginBottom: '3px' },
-    stat: { background: '#fafaf8', borderRadius: '10px', padding: '10px 14px', textAlign: 'center' },
+    stat: { background: '#F6F8F2', borderRadius: '10px', padding: '10px 14px', textAlign: 'center' },
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#aaa' }}>Chargement...</div>
@@ -463,9 +463,9 @@ export default function NutritionPage() {
 
       {/* Résumé objectif */}
       {goals?.poids_cible && (
-        <div style={{ background: 'linear-gradient(135deg, #E1F5EE 0%, #f0faf5 100%)', border: '0.5px solid #5DCAA5', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ background: 'linear-gradient(135deg, #E3EDE2 0%, #f0faf5 100%)', border: '0.5px solid #9DC2A8', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56', marginBottom: '2px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#1F4A33', marginBottom: '2px' }}>
               Objectif : {goals.poids_cible} kg
               {goals.date_cible && ` d'ici le ${new Date(goals.date_cible).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })}`}
             </div>
@@ -476,7 +476,7 @@ export default function NutritionPage() {
           </div>
           {objectifCal && (
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: '#0F6E56' }}>{objectifCal}</div>
+              <div style={{ fontSize: '20px', fontWeight: '600', color: '#1F4A33' }}>{objectifCal}</div>
               <div style={{ fontSize: '11px', color: '#3B6D11' }}>kcal/jour objectif</div>
             </div>
           )}
@@ -484,7 +484,7 @@ export default function NutritionPage() {
       )}
 
       {/* Onglets */}
-      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '10px', padding: '4px', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: '4px', background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '10px', padding: '4px', marginBottom: '1rem' }}>
         {[
           { id: 'semaine', label: '📊 Semaine' },
           { id: 'menus',   label: '🍽 Menus' },
@@ -494,8 +494,8 @@ export default function NutritionPage() {
         ].map(o => (
           <button key={o.id} onClick={() => setOnglet(o.id)} style={{
             flex: 1, padding: '7px 4px', border: 'none', borderRadius: '7px', fontSize: '12px', cursor: 'pointer',
-            background: onglet === o.id ? '#E1F5EE' : 'transparent',
-            color: onglet === o.id ? '#0F6E56' : '#888',
+            background: onglet === o.id ? '#E3EDE2' : 'transparent',
+            color: onglet === o.id ? '#1F4A33' : '#888',
             fontWeight: onglet === o.id ? '500' : '400'
           }}>{o.label}</button>
         ))}
@@ -517,7 +517,7 @@ export default function NutritionPage() {
             <button onClick={() => setWeekOffset(w => w - 1)} style={{ padding: '6px 12px', border: '0.5px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>← Préc.</button>
             <div style={{ fontSize: '13px', fontWeight: '500', color: '#555' }}>
               {formatDate(lundi)} – {formatDate(new Date(lundi.getTime() + 6 * 86400000))}
-              {weekOffset === 0 && <span style={{ fontSize: '11px', color: '#1D9E75', marginLeft: '6px' }}>Cette semaine</span>}
+              {weekOffset === 0 && <span style={{ fontSize: '11px', color: '#2F6B4A', marginLeft: '6px' }}>Cette semaine</span>}
             </div>
             <button onClick={() => setWeekOffset(w => w + 1)} style={{ padding: '6px 12px', border: '0.5px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px' }}>Suiv. →</button>
           </div>
@@ -531,20 +531,20 @@ export default function NutritionPage() {
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <PieChart size={100} data={[
                   { label: 'Glucides nets', value: Math.max(0, moyenneGluc - moyenneFib) * 4, color: '#60C8E8' },
-                  { label: 'Fibres',        value: moyenneFib  * 2, color: '#34A87A' },
-                  { label: 'Protéines',     value: moyenneProt * 4, color: '#1D9E75' },
-                  { label: 'Lipides',       value: moyenneLip  * 9, color: '#EF9F27' },
+                  { label: 'Fibres',        value: moyenneFib  * 2, color: '#3F8A60' },
+                  { label: 'Protéines',     value: moyenneProt * 4, color: '#2F6B4A' },
+                  { label: 'Lipides',       value: moyenneLip  * 9, color: '#C98A3A' },
                 ]} />
                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  <div style={{ ...S.stat, background: '#E1F5EE' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#0F6E56' }}>{moyenneCal}</div>
+                  <div style={{ ...S.stat, background: '#E3EDE2' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#1F4A33' }}>{moyenneCal}</div>
                     <div style={{ fontSize: '10px', color: '#3B6D11' }}>kcal/jour</div>
-                    {objectifCal && <div style={{ fontSize: '10px', color: moyenneCal > objectifCal ? '#E24B4A' : '#1D9E75', marginTop: '2px' }}>
+                    {objectifCal && <div style={{ fontSize: '10px', color: moyenneCal > objectifCal ? '#E24B4A' : '#2F6B4A', marginTop: '2px' }}>
                       objectif {objectifCal} {moyenneCal > objectifCal ? '▲' : '✓'}
                     </div>}
                   </div>
                   <div style={S.stat}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1D9E75' }}>{moyenneProt}g</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#2F6B4A' }}>{moyenneProt}g</div>
                     <div style={{ fontSize: '10px', color: '#888' }}>protéines</div>
                   </div>
                   <div style={S.stat}>
@@ -552,11 +552,11 @@ export default function NutritionPage() {
                     <div style={{ fontSize: '10px', color: '#888' }}>glucides</div>
                   </div>
                   <div style={S.stat}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#EF9F27' }}>{moyenneLip}g</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#C98A3A' }}>{moyenneLip}g</div>
                     <div style={{ fontSize: '10px', color: '#888' }}>lipides</div>
                   </div>
                   <div style={{ ...S.stat, gridColumn: '1 / -1' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#34A87A' }}>{moyenneFib}g</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#3F8A60' }}>{moyenneFib}g</div>
                     <div style={{ fontSize: '10px', color: '#888' }}>fibres <span style={{ color: '#bbb' }}>(recommandé : 25-30g/j)</span></div>
                   </div>
                 </div>
@@ -565,9 +565,9 @@ export default function NutritionPage() {
               <div style={{ display: 'flex', gap: '12px', marginTop: '10px', fontSize: '11px', color: '#666', flexWrap: 'wrap' }}>
                 {[
                   { color: '#60C8E8', label: 'Glucides nets', val: Math.max(0, moyenneGluc - moyenneFib), kcal: 4 },
-                  { color: '#34A87A', label: 'Fibres',        val: moyenneFib,  kcal: 2 },
-                  { color: '#1D9E75', label: 'Protéines',     val: moyenneProt, kcal: 4 },
-                  { color: '#EF9F27', label: 'Lipides',       val: moyenneLip,  kcal: 9 },
+                  { color: '#3F8A60', label: 'Fibres',        val: moyenneFib,  kcal: 2 },
+                  { color: '#2F6B4A', label: 'Protéines',     val: moyenneProt, kcal: 4 },
+                  { color: '#C98A3A', label: 'Lipides',       val: moyenneLip,  kcal: 9 },
                 ].map(m => {
                   const pct = moyenneCal > 0 ? Math.round(m.val * m.kcal / moyenneCal * 100) : 0
                   return (
@@ -601,10 +601,10 @@ export default function NutritionPage() {
                       </div>
                       {jourCal > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: objectifCal && jourCal > objectifCal ? '#E24B4A' : '#1D9E75' }}>{jourCal} kcal</span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: objectifCal && jourCal > objectifCal ? '#E24B4A' : '#2F6B4A' }}>{jourCal} kcal</span>
                           {objectifCal && (
-                            <div style={{ width: '60px', height: '6px', background: '#f0f0ec', borderRadius: '3px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: Math.min(100, jourCal / objectifCal * 100) + '%', background: jourCal > objectifCal ? '#E24B4A' : '#1D9E75', borderRadius: '3px' }} />
+                            <div style={{ width: '60px', height: '6px', background: '#E9ECE3', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: Math.min(100, jourCal / objectifCal * 100) + '%', background: jourCal > objectifCal ? '#E24B4A' : '#2F6B4A', borderRadius: '3px' }} />
                             </div>
                           )}
                         </div>
@@ -615,15 +615,15 @@ export default function NutritionPage() {
                       if (!slot) return null
                       const nut = jourNut[repas]
                       return (
-                        <div key={repas} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderTop: '0.5px solid #f5f5f0', fontSize: '12px' }}>
+                        <div key={repas} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderTop: '0.5px solid #EEF1EA', fontSize: '12px' }}>
                           <span style={{ color: '#888', minWidth: '70px' }}>{REPAS_LABEL[repas]}</span>
                           <div style={{ flex: 1, color: '#555' }}>
                             {slot.recipes.map(sr => sr.recipe_id ? (recipeMap[sr.recipe_id]?.title || '') : (sr.note || 'Plat libre')).filter(Boolean).join(', ')}
                           </div>
                           {nut ? (
                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#E1F5EE', color: '#0F6E56', fontWeight: '500' }}>{nut.calories} kcal</span>
-                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#f0f0ec', color: '#666' }}>{nut.proteines}g prot</span>
+                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#E3EDE2', color: '#1F4A33', fontWeight: '500' }}>{nut.calories} kcal</span>
+                              <span style={{ padding: '1px 6px', borderRadius: '6px', background: '#E9ECE3', color: '#666' }}>{nut.proteines}g prot</span>
                             </div>
                           ) : (
                             <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic' }}>
@@ -666,7 +666,7 @@ export default function NutritionPage() {
             </div>
             <input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Note optionnelle..." style={{ ...S.input, marginBottom: '8px' }} />
             <button onClick={addWeightLog} disabled={!newPoids}
-              style={{ width: '100%', padding: '9px', background: newPoids ? '#1D9E75' : '#ddd', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: newPoids ? 'pointer' : 'default', fontWeight: '500' }}>
+              style={{ width: '100%', padding: '9px', background: newPoids ? '#2F6B4A' : '#ddd', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: newPoids ? 'pointer' : 'default', fontWeight: '500' }}>
               Enregistrer
             </button>
           </div>
@@ -682,15 +682,15 @@ export default function NutritionPage() {
               {goals?.poids_cible && (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '11px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ width: '16px', height: '2px', background: '#1D9E75' }} />
+                    <div style={{ width: '16px', height: '2px', background: '#2F6B4A' }} />
                     Poids
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ width: '16px', height: '2px', background: '#1D9E75', opacity: 0.4 }} />
+                    <div style={{ width: '16px', height: '2px', background: '#2F6B4A', opacity: 0.4 }} />
                     Objectif ({goals.poids_cible} kg)
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ width: '16px', height: '2px', background: '#EF9F27' }} />
+                    <div style={{ width: '16px', height: '2px', background: '#C98A3A' }} />
                     Tendance
                   </div>
                 </div>
@@ -707,13 +707,13 @@ export default function NutritionPage() {
                   const prev = weightLogs[weightLogs.length - 1 - i - 1]
                   const diff = prev ? parseFloat((log.poids - prev.poids).toFixed(1)) : null
                   return (
-                    <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '0.5px solid #f5f5f0' }}>
+                    <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '0.5px solid #EEF1EA' }}>
                       <div style={{ fontSize: '12px', color: '#888', minWidth: '90px' }}>
                         {new Date(log.date).toLocaleDateString('fr-CH', { day: 'numeric', month: 'short', year: '2-digit' })}
                       </div>
                       <div style={{ fontWeight: '600', fontSize: '14px', color: '#333' }}>{log.poids} kg</div>
                       {diff !== null && (
-                        <span style={{ fontSize: '11px', color: diff < 0 ? '#1D9E75' : diff > 0 ? '#E24B4A' : '#aaa', fontWeight: '500' }}>
+                        <span style={{ fontSize: '11px', color: diff < 0 ? '#2F6B4A' : diff > 0 ? '#E24B4A' : '#aaa', fontWeight: '500' }}>
                           {diff > 0 ? '+' : ''}{diff} kg
                         </span>
                       )}
@@ -736,7 +736,7 @@ export default function NutritionPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
             <div>
                 <label style={S.label}>Poids actuel (kg)</label>
-                <div style={{ ...S.input, background: '#f0f0ec', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ ...S.input, background: '#E9ECE3', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>{formGoals.poids_actuel || '—'}</span>
                   <span style={{ fontSize: '10px', color: '#aaa' }}>mis à jour via l'onglet Poids</span>
                 </div>
@@ -764,7 +764,7 @@ export default function NutritionPage() {
           {/* Estimation TDEE */}
           {formGoals.poids_actuel && (
             <div style={{ background: '#f5faf8', border: '0.5px solid #b8e8d8', borderRadius: '10px', padding: '12px', marginBottom: '14px', fontSize: '12px' }}>
-              <div style={{ fontWeight: '500', color: '#0F6E56', marginBottom: '4px' }}>Estimation de tes besoins</div>
+              <div style={{ fontWeight: '500', color: '#1F4A33', marginBottom: '4px' }}>Estimation de tes besoins</div>
               <div style={{ color: '#555' }}>
                 TDEE : ~{calcTDEE(parseFloat(formGoals.poids_actuel), formGoals.sport)} kcal/jour
                 {formGoals.poids_cible && formGoals.date_cible && (
@@ -783,7 +783,7 @@ export default function NutritionPage() {
           )}
 
           <button onClick={saveGoals} disabled={saving}
-            style={{ width: '100%', padding: '10px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1 }}>
+            style={{ width: '100%', padding: '10px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Enregistrement...' : 'Enregistrer le profil'}
           </button>
         </div>
@@ -796,7 +796,7 @@ export default function NutritionPage() {
             <div style={{ ...S.card, textAlign: 'center', padding: '3rem' }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>👤</div>
               <div style={{ fontSize: '13px', color: '#888' }}>Complète ton profil pour recevoir des conseils personnalisés</div>
-              <button onClick={() => setOnglet('profil')} style={{ marginTop: '12px', padding: '8px 16px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+              <button onClick={() => setOnglet('profil')} style={{ marginTop: '12px', padding: '8px 16px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
                 Compléter le profil
               </button>
             </div>
@@ -811,11 +811,11 @@ export default function NutritionPage() {
                     <div style={{ fontSize: '10px', color: '#888' }}>kcal moy./jour</div>
                   </div>
                   <div style={S.stat}>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#1D9E75' }}>{objectifCal || '–'}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#2F6B4A' }}>{objectifCal || '–'}</div>
                     <div style={{ fontSize: '10px', color: '#888' }}>kcal objectif</div>
                   </div>
-                  <div style={{ ...S.stat, background: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#FCEBEB' : '#E1F5EE') : '#f5f5f0' }}>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#E24B4A' : '#1D9E75') : '#aaa' }}>
+                  <div style={{ ...S.stat, background: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#FCEBEB' : '#E3EDE2') : '#EEF1EA' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '#E24B4A' : '#2F6B4A') : '#aaa' }}>
                       {moyenneCal && objectifCal ? (moyenneCal > objectifCal ? '+' : '') + (moyenneCal - objectifCal) : '–'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#888' }}>écart kcal</div>
@@ -835,9 +835,9 @@ export default function NutritionPage() {
                     {getConseils().map((c, i) => (
                       <div key={i} style={{
                         padding: '10px 12px', borderRadius: '8px', fontSize: '13px', lineHeight: 1.5,
-                        background: c.type === 'warning' ? '#FAEEDA' : c.type === 'ok' ? '#E1F5EE' : '#E6F1FB',
-                        color: c.type === 'warning' ? '#633806' : c.type === 'ok' ? '#0F6E56' : '#185FA5',
-                        borderLeft: '3px solid ' + (c.type === 'warning' ? '#EF9F27' : c.type === 'ok' ? '#1D9E75' : '#4A90D9')
+                        background: c.type === 'warning' ? '#FAEEDA' : c.type === 'ok' ? '#E3EDE2' : '#E6F1FB',
+                        color: c.type === 'warning' ? '#633806' : c.type === 'ok' ? '#1F4A33' : '#185FA5',
+                        borderLeft: '3px solid ' + (c.type === 'warning' ? '#C98A3A' : c.type === 'ok' ? '#2F6B4A' : '#4A90D9')
                       }}>
                         {c.type === 'warning' ? '⚠️ ' : c.type === 'ok' ? '✅ ' : 'ℹ️ '}{c.txt}
                       </div>

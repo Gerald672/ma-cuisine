@@ -8,7 +8,7 @@ const UNITES = ['g', 'kg', 'ml', 'L', 'unite(s)', 'sachet(s)', 'boite(s)']
 const CAT_STYLE = {
   'Épicerie':          { bg: '#E6F1FB', color: '#185FA5' },
   'Frais':             { bg: '#EAF3DE', color: '#3B6D11' },
-  'Fruits & légumes':  { bg: '#E1F5EE', color: '#085041' },
+  'Fruits & légumes':  { bg: '#E3EDE2', color: '#143626' },
   'Produits laitiers': { bg: '#FAEEDA', color: '#854F0B' },
   'Viande & poisson':  { bg: '#FAECE7', color: '#712B13' },
   'Surgelés':          { bg: '#EEEDFE', color: '#3C3489' },
@@ -165,7 +165,7 @@ function BarcodeScanner({ onResult, onClose }) {
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
             <button onClick={submitManual} disabled={manualCode.length < 8}
-              style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
+              style={{ padding: '10px 18px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
               Rechercher
             </button>
             <button onClick={onClose} style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
@@ -194,10 +194,10 @@ function BarcodeScanner({ onResult, onClose }) {
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <div style={{ width: '260px', height: '120px', position: 'relative' }}>
               <div style={{ position: 'absolute', inset: 0, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }} />
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '28px', height: '28px', borderTop: '3px solid #2F6B4A', borderLeft: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #2F6B4A', borderRight: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #2F6B4A', borderLeft: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #2F6B4A', borderRight: '3px solid #2F6B4A' }} />
               <div style={{ position: 'absolute', top: '50%', left: '5%', right: '5%', height: '2px', background: 'rgba(29,158,117,0.8)', transform: 'translateY(-50%)' }} />
             </div>
           </div>
@@ -212,10 +212,10 @@ function BarcodeScanner({ onResult, onClose }) {
 
       {/* Bouton capture + hint */}
       <div style={{ background: 'rgba(0,0,0,0.85)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-        {hint && <div style={{ color: '#EF9F27', fontSize: '12px', textAlign: 'center' }}>{hint}</div>}
+        {hint && <div style={{ color: '#C98A3A', fontSize: '12px', textAlign: 'center' }}>{hint}</div>}
 
         <button onClick={captureAndScan} disabled={!ready || scanning}
-          style={{ width: '64px', height: '64px', borderRadius: '50%', background: scanning ? '#888' : '#1D9E75', border: '4px solid white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+          style={{ width: '64px', height: '64px', borderRadius: '50%', background: scanning ? '#888' : '#2F6B4A', border: '4px solid white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
           {scanning ? '⏳' : '📷'}
         </button>
         <div style={{ color: '#aaa', fontSize: '12px' }}>
@@ -228,7 +228,7 @@ function BarcodeScanner({ onResult, onClose }) {
             placeholder="Ou saisir le code..." maxLength={14}
             style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }} />
           <button onClick={submitManual} disabled={manualCode.length < 8}
-            style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
+            style={{ padding: '8px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
             OK
           </button>
         </div>
@@ -432,7 +432,7 @@ function getEtat(item) {
 
       {/* Alerte stock faible */}
       {alerts.length > 0 && (
-        <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#633806', marginBottom: '1rem' }}>
+        <div style={{ background: '#FAEEDA', border: '0.5px solid #C98A3A', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#633806', marginBottom: '1rem' }}>
           Stock faible : {alerts.map(a => <strong key={a.id}>{a.name}</strong>).reduce((a, b) => [a, ', ', b])}
         </div>
       )}
@@ -456,7 +456,7 @@ function getEtat(item) {
 
       {/* Message apres scan */}
       {scanStatus && (
-        <div style={{ background: scanLoading ? '#E1F5EE' : '#f0f0ec', border: '0.5px solid ' + (scanLoading ? '#5DCAA5' : '#ddd'), borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#333', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: scanLoading ? '#E3EDE2' : '#E9ECE3', border: '0.5px solid ' + (scanLoading ? '#9DC2A8' : '#ddd'), borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#333', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{scanLoading ? 'Recherche...' : scanStatus}</span>
           <button onClick={() => setScanStatus('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '16px' }}>x</button>
         </div>
@@ -464,29 +464,29 @@ function getEtat(item) {
 
       {/* Barre d'actions */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un ingredient..."
-          style={{ flex: 1, minWidth: '180px', padding: '9px 14px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8' }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
+          style={{ flex: 1, minWidth: '180px', padding: '9px 14px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2' }} />
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-          style={{ padding: '9px 12px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8' }}>
+          style={{ padding: '9px 12px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2' }}>
           <option value="all">Toutes categories</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-        <div style={{ display: 'flex', border: '0.5px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', border: '0.5px solid #DDE2D6', borderRadius: '8px', overflow: 'hidden' }}>
           <button onClick={() => setSortStock('cat')}
-            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', background: sortStock === 'cat' ? '#1D9E75' : 'white', color: sortStock === 'cat' ? 'white' : '#666', fontWeight: sortStock === 'cat' ? '500' : '400' }}>
+            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', background: sortStock === 'cat' ? '#2F6B4A' : 'white', color: sortStock === 'cat' ? 'white' : '#666', fontWeight: sortStock === 'cat' ? '500' : '400' }}>
             Categorie
           </button>
           <button onClick={() => setSortStock('alpha')}
-            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', borderLeft: '0.5px solid #e0e0e0', background: sortStock === 'alpha' ? '#1D9E75' : 'white', color: sortStock === 'alpha' ? 'white' : '#666', fontWeight: sortStock === 'alpha' ? '500' : '400' }}>
+            style={{ padding: '9px 12px', fontSize: '12px', cursor: 'pointer', border: 'none', borderLeft: '0.5px solid #DDE2D6', background: sortStock === 'alpha' ? '#2F6B4A' : 'white', color: sortStock === 'alpha' ? 'white' : '#666', fontWeight: sortStock === 'alpha' ? '500' : '400' }}>
             A - Z
           </button>
         </div>
         <button onClick={() => { setScanStatus(''); setShowScanner(true) }}
-          style={{ background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+          style={{ background: 'white', color: '#2F6B4A', border: '0.5px solid #2F6B4A', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
           Scanner
         </button>
         <button onClick={openAdd}
-          style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
+          style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>
           + Ajouter
         </button>
       </div>
@@ -495,22 +495,22 @@ function getEtat(item) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
       ) : (
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {['Ingredient', 'Categorie', 'Quantite', 'Unite', 'Seuil', 'Peremption', 'Etat', ''].map(h => (
-                    <th key={h} style={{ padding: '9px 12px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #e0e0e0' }}>{h}</th>
+                    <th key={h} style={{ padding: '9px 12px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #DDE2D6' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(item => {
                   const etat = getEtat(item)
-                  const catStyle = CAT_STYLE[item.cat] || { bg: '#f0f0ec', color: '#888' }
+                  const catStyle = CAT_STYLE[item.cat] || { bg: '#E9ECE3', color: '#888' }
                   return (
-                    <tr key={item.id} style={{ borderBottom: '0.5px solid #f0f0ec' }}>
+                    <tr key={item.id} style={{ borderBottom: '0.5px solid #E9ECE3' }}>
                       <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: '500' }}>{item.name}</td>
                       <td style={{ padding: '10px 12px' }}>
                         <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '500', background: catStyle.bg, color: catStyle.color }}>{item.cat}</span>
@@ -519,7 +519,7 @@ function getEtat(item) {
                         <input type="number" defaultValue={item.qty} min="0"
                           onBlur={e => updateQty(item.id, e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') { updateQty(item.id, e.target.value); e.target.blur() } }}
-                          style={{ width: '65px', padding: '4px 6px', border: '0.5px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', textAlign: 'right' }} />
+                          style={{ width: '65px', padding: '4px 6px', border: '0.5px solid #DDE2D6', borderRadius: '6px', fontSize: '13px', textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '10px 12px', fontSize: '12px', color: '#888' }}>{item.unit}</td>
                       <td style={{ padding: '10px 12px', fontSize: '12px', color: '#888' }}>{item.seuil} {item.unit}</td>
@@ -610,7 +610,7 @@ function getEtat(item) {
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button onClick={closeModal} style={{ background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}>Annuler</button>
-              <button onClick={saveItem} style={{ background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
+              <button onClick={saveItem} style={{ background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>Enregistrer</button>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Noix from '../components/Noix'
 import { supabase } from '../lib/supabase'
 
 export default function ResetPasswordPage() {
@@ -34,19 +35,15 @@ export default function ResetPasswordPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#f5f5f0', padding: '1rem'
+      justifyContent: 'center', background: '#EEF1EA', padding: '1rem'
     }}>
       <div style={{
-        background: 'white', borderRadius: '16px', padding: '2rem',
-        width: '100%', maxWidth: '400px', border: '0.5px solid #e0e0e0'
+        background: 'white', borderRadius: '24px', padding: '2rem',
+        width: '100%', maxWidth: '400px', border: '1px solid #DDE2D6', boxShadow: '0 12px 32px rgba(42,33,24,0.08)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{
-            width: '56px', height: '56px', background: '#1D9E75', borderRadius: '14px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '28px', margin: '0 auto 12px'
-          }}>🍳</div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Ma cuisine</h1>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}><Noix size={64} /></div>
+          <h1 style={{ fontSize: '28px', margin: 0 }}>Ma cuisine</h1>
           <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>Choisir un nouveau mot de passe</p>
         </div>
 
@@ -88,7 +85,7 @@ export default function ResetPasswordPage() {
             )}
 
             <button type="submit" disabled={loading} style={{
-              width: '100%', background: '#1D9E75', color: 'white', border: 'none',
+              width: '100%', background: '#2F6B4A', color: 'white', border: 'none',
               borderRadius: '8px', padding: '11px', fontSize: '14px', fontWeight: '500',
               cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
             }}>
@@ -100,10 +97,10 @@ export default function ResetPasswordPage() {
         {/* Succès */}
         {message && (
           <div>
-            <div style={{ background: '#E1F5EE', color: '#085041', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', lineHeight: '1.5' }}>
+            <div style={{ background: '#E3EDE2', color: '#143626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', lineHeight: '1.5' }}>
               ✓ {message}
             </div>
-            <a href="/" style={{ display: 'block', textAlign: 'center', background: '#1D9E75', color: 'white', borderRadius: '8px', padding: '11px', fontSize: '14px', fontWeight: '500', textDecoration: 'none' }}>
+            <a href="/" style={{ display: 'block', textAlign: 'center', background: '#2F6B4A', color: 'white', borderRadius: '8px', padding: '11px', fontSize: '14px', fontWeight: '500', textDecoration: 'none' }}>
               Retour à la connexion
             </a>
           </div>

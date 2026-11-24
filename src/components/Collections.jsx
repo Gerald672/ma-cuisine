@@ -7,10 +7,10 @@ const PRESETS = [
   { nom: 'Noël', emoji: '🎄' }, { nom: 'Nouvel an', emoji: '🥂' }, { nom: 'Anniversaire', emoji: '🎂' }, { nom: 'Pâques', emoji: '🐣' },
 ]
 
-const card = { background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem', marginBottom: '10px' }
-const btnP = { background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
+const card = { background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1rem', marginBottom: '10px' }
+const btnP = { background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
 const btnG = { background: 'white', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer' }
-const inputS = { width: '100%', padding: '9px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fafaf8', boxSizing: 'border-box' }
+const inputS = { width: '100%', padding: '9px 12px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#F6F8F2', boxSizing: 'border-box' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: '1rem' }
 const box = { background: 'white', borderRadius: '16px', padding: '1.25rem', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }
 
@@ -103,7 +103,7 @@ function FormCollection({ user, init, onClose, onSaved }) {
         <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex. Noël 2026" style={{ ...inputS, marginBottom: '10px' }} />
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {EMOJIS.map(function(e) {
-            return <button key={e} onClick={() => setEmoji(e)} style={{ width: '38px', height: '38px', borderRadius: '10px', fontSize: '20px', cursor: 'pointer', border: '0.5px solid ' + (emoji === e ? '#1D9E75' : '#e0e0e0'), background: emoji === e ? '#E1F5EE' : 'white' }}>{e}</button>
+            return <button key={e} onClick={() => setEmoji(e)} style={{ width: '38px', height: '38px', borderRadius: '10px', fontSize: '20px', cursor: 'pointer', border: '0.5px solid ' + (emoji === e ? '#2F6B4A' : '#DDE2D6'), background: emoji === e ? '#E3EDE2' : 'white' }}>{e}</button>
           })}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -164,11 +164,11 @@ function Picker({ user, col, recipes, deja, onClose, onAdded }) {
             {SECTIONS.map(function(s) { return <option key={s} value={s}>{s}</option> })}
           </select>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', maxHeight: '45vh', border: '0.5px solid #f0f0ec', borderRadius: '10px', marginBottom: '10px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', maxHeight: '45vh', border: '0.5px solid #E9ECE3', borderRadius: '10px', marginBottom: '10px' }}>
           {dispo.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', fontSize: '12px', color: '#aaa' }}>Aucune recette à ajouter.</div>}
           {dispo.map(function(r) {
             return (
-              <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderTop: '0.5px solid #f5f5f0', cursor: 'pointer', background: sel[r.id] ? '#E1F5EE' : 'white' }}>
+              <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderTop: '0.5px solid #EEF1EA', cursor: 'pointer', background: sel[r.id] ? '#E3EDE2' : 'white' }}>
                 <input type="checkbox" checked={!!sel[r.id]} onChange={() => setSel(function(s) { return { ...s, [r.id]: !s[r.id] } })} style={{ width: '18px', height: '18px' }} />
                 <span style={{ fontSize: '18px' }}>{r.emoji || '🍳'}</span>
                 <span style={{ fontSize: '13px', flex: 1 }}>{r.title}</span>
@@ -229,7 +229,7 @@ export default function CollectionsView({ user, recipes, onOpenRecipe }) {
   if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Chargement...</div>
 
   var msgBox = msg ? (
-    <div style={{ background: '#E1F5EE', border: '0.5px solid #5DCAA5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#085041', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+    <div style={{ background: '#E3EDE2', border: '0.5px solid #9DC2A8', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#143626', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
       <span>{msg}</span><button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>x</button>
     </div>
   ) : null
@@ -248,18 +248,18 @@ export default function CollectionsView({ user, recipes, onOpenRecipe }) {
       <div>
         {msgBox}
         <button onClick={() => setOpenId(null)} style={{ ...btnG, marginBottom: '10px' }}>‹ Collections</button>
-        <div style={{ ...card, background: '#E1F5EE', borderColor: '#5DCAA5' }}>
+        <div style={{ ...card, background: '#E3EDE2', borderColor: '#9DC2A8' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '34px' }}>{col.emoji}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '17px', fontWeight: '600', color: '#085041' }}>{col.nom}</div>
+              <div style={{ fontSize: '17px', fontWeight: '600', color: '#143626' }}>{col.nom}</div>
               <div style={{ fontSize: '12px', color: '#3B6D11' }}>
                 {col.date_evenement ? dateLisible(col.date_evenement) + (jr !== null && jr >= 0 ? ' · ' + labelJours(jr) : '') : 'Sans date'}
                 {col.convives ? ' · ' + col.convives + ' convives' : ''}
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '12px', color: '#085041' }}>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '12px', color: '#143626' }}>
             <span><strong>{its.length}</strong> recette{its.length > 1 ? 's' : ''}</span>
             {cout > 0 && <span>≈ <strong>{Math.round(cout)} CHF</strong> (indicatif)</span>}
           </div>
@@ -284,11 +284,11 @@ export default function CollectionsView({ user, recipes, onOpenRecipe }) {
           return (
             <div key={s} style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', padding: '0 4px 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s} ({l.length})</div>
-              <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', overflow: 'hidden' }}>
                 {l.map(function(i, k) {
                   var r = recipeMap[i.recipe_id]
                   return (
-                    <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderTop: k ? '0.5px solid #f0f0ec' : 'none' }}>
+                    <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderTop: k ? '0.5px solid #E9ECE3' : 'none' }}>
                       <div onClick={() => onOpenRecipe(r)} style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' }}>
                         <span style={{ fontSize: '22px' }}>{r.emoji || '🍳'}</span>
                         <div style={{ minWidth: 0 }}>
@@ -297,7 +297,7 @@ export default function CollectionsView({ user, recipes, onOpenRecipe }) {
                         </div>
                       </div>
                       <select value={i.section} onChange={e => changerSection(i.id, e.target.value)} aria-label="Rubrique"
-                        style={{ padding: '5px 6px', border: '0.5px solid #e0e0e0', borderRadius: '8px', fontSize: '11px', background: 'white', color: '#666', maxWidth: '96px' }}>
+                        style={{ padding: '5px 6px', border: '0.5px solid #DDE2D6', borderRadius: '8px', fontSize: '11px', background: 'white', color: '#666', maxWidth: '96px' }}>
                         {SECTIONS.map(function(x) { return <option key={x} value={x}>{x}</option> })}
                       </select>
                       <button onClick={() => retirer(i.id)} aria-label="Retirer de la collection" style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '18px', cursor: 'pointer', padding: '0 4px' }}>×</button>
@@ -343,7 +343,7 @@ export default function CollectionsView({ user, recipes, onOpenRecipe }) {
                 {its.length} recette{its.length > 1 ? 's' : ''}{c.date_evenement ? ' · ' + dateLisible(c.date_evenement) : ''}
               </div>
             </div>
-            {jr !== null && jr >= 0 && <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: '#E1F5EE', color: '#0F6E56', whiteSpace: 'nowrap' }}>{jr === 0 ? "Aujourd'hui" : 'J-' + jr}</span>}
+            {jr !== null && jr >= 0 && <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '500', background: '#E3EDE2', color: '#1F4A33', whiteSpace: 'nowrap' }}>{jr === 0 ? "Aujourd'hui" : 'J-' + jr}</span>}
             <span style={{ color: '#ccc', fontSize: '18px' }}>›</span>
           </div>
         )
@@ -375,17 +375,17 @@ export function AddToCollectionModal({ user, recipe, onClose }) {
         <h3 style={{ fontSize: '15px', fontWeight: '500', marginBottom: '4px' }}>Ajouter à une collection</h3>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>{recipe.emoji || '🍳'} {recipe.title}</div>
         {erreur && <div style={{ background: '#FCEBEB', color: '#791F1F', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginBottom: '10px' }}>Collections non activées : exécute supabase-collections.sql dans Supabase.</div>}
-        {msg && <div style={{ background: '#E1F5EE', color: '#085041', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginBottom: '10px' }}>{msg}</div>}
+        {msg && <div style={{ background: '#E3EDE2', color: '#143626', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginBottom: '10px' }}>{msg}</div>}
         {loading ? <div style={{ color: '#888', fontSize: '13px' }}>Chargement...</div> : (
           <div style={{ marginBottom: '12px' }}>
             {cols.length === 0 && !erreur && <div style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>Aucune collection : crées-en une.</div>}
             {cols.map(function(c) {
               var dedans = items.some(function(i) { return i.collection_id === c.id && i.recipe_id === recipe.id })
               return (
-                <button key={c.id} onClick={() => basculer(c)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: '6px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', border: '0.5px solid ' + (dedans ? '#1D9E75' : '#e0e0e0'), background: dedans ? '#E1F5EE' : 'white' }}>
+                <button key={c.id} onClick={() => basculer(c)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: '6px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', border: '0.5px solid ' + (dedans ? '#2F6B4A' : '#DDE2D6'), background: dedans ? '#E3EDE2' : 'white' }}>
                   <span style={{ fontSize: '20px' }}>{c.emoji}</span>
                   <span style={{ flex: 1 }}>{c.nom}</span>
-                  <span style={{ color: '#0F6E56', fontWeight: '600' }}>{dedans ? '✓' : '+'}</span>
+                  <span style={{ color: '#1F4A33', fontWeight: '600' }}>{dedans ? '✓' : '+'}</span>
                 </button>
               )
             })}

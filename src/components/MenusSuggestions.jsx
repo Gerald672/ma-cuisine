@@ -8,9 +8,9 @@ const PART = { 'Petit-dejeuner': 0.2, 'Diner': 0.4, 'Souper': 0.4 }   // part de
 const A_EXCLURE = ['dessert', 'sauce', 'aperitif', 'viennoiserie', 'accompagnement', 'entree']
 const NB_MENUS = 7
 
-const card = { background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem', marginBottom: '12px' }
-const btnP = { background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
-const btnO = { background: 'white', color: '#1D9E75', border: '0.5px solid #1D9E75', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }
+const card = { background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1rem', marginBottom: '12px' }
+const btnP = { background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }
+const btnO = { background: 'white', color: '#2F6B4A', border: '0.5px solid #2F6B4A', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }
 const btnG = { background: 'white', color: '#555', border: '0.5px solid #ddd', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer' }
 
 function aleatoire(liste) { return liste[Math.floor(Math.random() * liste.length)] }
@@ -173,13 +173,13 @@ export default function MenusSuggestions({ user, recipes, nutOf, objectifCal, lu
   }
 
   var chip = function(on) {
-    return { padding: '6px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid ' + (on ? '#1D9E75' : '#e0e0e0'), background: on ? '#E1F5EE' : 'white', color: on ? '#0F6E56' : '#666', fontWeight: on ? '500' : '400' }
+    return { padding: '6px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid ' + (on ? '#2F6B4A' : '#DDE2D6'), background: on ? '#E3EDE2' : 'white', color: on ? '#1F4A33' : '#666', fontWeight: on ? '500' : '400' }
   }
 
   return (
     <div>
       {msg && (
-        <div style={{ background: msg.indexOf('✓') === 0 ? '#E1F5EE' : '#FAEEDA', border: '0.5px solid ' + (msg.indexOf('✓') === 0 ? '#5DCAA5' : '#EF9F27'), borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#333', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ background: msg.indexOf('✓') === 0 ? '#E3EDE2' : '#FAEEDA', border: '0.5px solid ' + (msg.indexOf('✓') === 0 ? '#9DC2A8' : '#C98A3A'), borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#333', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
           <span>{msg}</span>
           <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>x</button>
         </div>
@@ -194,7 +194,7 @@ export default function MenusSuggestions({ user, recipes, nutOf, objectifCal, lu
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
           <label style={{ fontSize: '12px', color: '#666' }}>Objectif du jour</label>
           <input type="number" value={cible} onChange={e => setCible(e.target.value)} min="800" max="5000" step="50"
-            style={{ width: '90px', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', background: '#fafaf8', textAlign: 'right' }} />
+            style={{ width: '90px', padding: '7px 10px', border: '0.5px solid #ddd', borderRadius: '8px', fontSize: '13px', background: '#F6F8F2', textAlign: 'right' }} />
           <span style={{ fontSize: '12px', color: '#888' }}>kcal {objectifCal ? '(calculé depuis ton profil : ' + objectifCal + ')' : ''}</span>
         </div>
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>Repas à planifier</div>
@@ -230,7 +230,7 @@ export default function MenusSuggestions({ user, recipes, nutOf, objectifCal, lu
           <div key={idx} style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px' }}>
               <div style={{ fontSize: '14px', fontWeight: '600' }}>Menu {idx + 1}</div>
-              <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', background: bon ? '#E1F5EE' : '#FAEEDA', color: bon ? '#0F6E56' : '#854F0B' }}>
+              <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', background: bon ? '#E3EDE2' : '#FAEEDA', color: bon ? '#1F4A33' : '#854F0B' }}>
                 {Math.round(t.calories)} kcal {bon ? '✓' : (ecart > 0 ? '(+' + Math.round(ecart) + ')' : '(' + Math.round(ecart) + ')')}
               </span>
             </div>
@@ -238,7 +238,7 @@ export default function MenusSuggestions({ user, recipes, nutOf, objectifCal, lu
               var x = menu[rep]
               if (!x) return null
               return (
-                <div key={rep} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderTop: '0.5px solid #f0f0ec' }}>
+                <div key={rep} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderTop: '0.5px solid #E9ECE3' }}>
                   <div style={{ fontSize: '20px' }}>{x.r.emoji || '🍽'}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '11px', color: '#888' }}>{REPAS_LABEL[rep]}</div>
@@ -286,7 +286,7 @@ export default function MenusSuggestions({ user, recipes, nutOf, objectifCal, lu
                 return (
                   <button key={j} onClick={() => setJourSel(i)} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer', textAlign: 'left',
-                    border: '0.5px solid ' + (on ? '#1D9E75' : '#e0e0e0'), background: on ? '#E1F5EE' : 'white', color: on ? '#0F6E56' : '#333', fontWeight: on ? '600' : '400'
+                    border: '0.5px solid ' + (on ? '#2F6B4A' : '#DDE2D6'), background: on ? '#E3EDE2' : 'white', color: on ? '#1F4A33' : '#333', fontWeight: on ? '600' : '400'
                   }}>
                     <span>{j} <span style={{ fontSize: '12px', color: '#999', fontWeight: '400' }}>{dateJour(i)}</span></span>
                     {rempli && <span style={{ fontSize: '11px', color: '#854F0B', background: '#FAEEDA', padding: '2px 8px', borderRadius: '8px' }}>déjà prévu</span>}

@@ -133,7 +133,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
             <button onClick={submitManual} disabled={manualCode.length < 8}
-              style={{ padding: '10px 18px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
+              style={{ padding: '10px 18px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.5 : 1 }}>
               Rechercher
             </button>
             <button onClick={onClose} style={{ padding: '10px 14px', background: 'none', border: '0.5px solid #ddd', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
@@ -162,10 +162,10 @@ export default function BarcodeScanner({ onResult, onClose }) {
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <div style={{ width: '260px', height: '120px', position: 'relative' }}>
               <div style={{ position: 'absolute', inset: 0, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }} />
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderLeft: '3px solid #1D9E75' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #1D9E75', borderRight: '3px solid #1D9E75' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '28px', height: '28px', borderTop: '3px solid #2F6B4A', borderLeft: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '28px', height: '28px', borderTop: '3px solid #2F6B4A', borderRight: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '28px', height: '28px', borderBottom: '3px solid #2F6B4A', borderLeft: '3px solid #2F6B4A' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '28px', height: '28px', borderBottom: '3px solid #2F6B4A', borderRight: '3px solid #2F6B4A' }} />
               <div style={{ position: 'absolute', top: '50%', left: '5%', right: '5%', height: '2px', background: 'rgba(29,158,117,0.8)', transform: 'translateY(-50%)' }} />
             </div>
           </div>
@@ -180,10 +180,10 @@ export default function BarcodeScanner({ onResult, onClose }) {
 
       {/* Bouton capture + hint */}
       <div style={{ background: 'rgba(0,0,0,0.85)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-        {hint && <div style={{ color: '#EF9F27', fontSize: '12px', textAlign: 'center' }}>{hint}</div>}
+        {hint && <div style={{ color: '#C98A3A', fontSize: '12px', textAlign: 'center' }}>{hint}</div>}
 
         <button onClick={captureAndScan} disabled={!ready || scanning}
-          style={{ width: '64px', height: '64px', borderRadius: '50%', background: scanning ? '#888' : '#1D9E75', border: '4px solid white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+          style={{ width: '64px', height: '64px', borderRadius: '50%', background: scanning ? '#888' : '#2F6B4A', border: '4px solid white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
           {scanning ? '⏳' : '📷'}
         </button>
         <div style={{ color: '#aaa', fontSize: '12px' }}>
@@ -196,7 +196,7 @@ export default function BarcodeScanner({ onResult, onClose }) {
             placeholder="Ou saisir le code..." maxLength={14}
             style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', outline: 'none', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', color: 'white' }} />
           <button onClick={submitManual} disabled={manualCode.length < 8}
-            style={{ padding: '8px 14px', background: '#1D9E75', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
+            style={{ padding: '8px 14px', background: '#2F6B4A', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', opacity: manualCode.length < 8 ? 0.4 : 1 }}>
             OK
           </button>
         </div>

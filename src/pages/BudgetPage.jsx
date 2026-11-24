@@ -242,7 +242,7 @@ export default function BudgetPage() {
   const perPerson = persons > 0 ? grandTotal / persons : 0
   const reste     = budgetMax - grandTotal
   const pct       = Math.min(100, Math.round(grandTotal / budgetMax * 100))
-  const fillColor = pct < 80 ? '#1D9E75' : pct < 100 ? '#BA7517' : '#E24B4A'
+  const fillColor = pct < 80 ? '#2F6B4A' : pct < 100 ? '#BA7517' : '#E24B4A'
 
   const allPrices = Object.values(priceMap).map(p => ({
     ...p, displayed: overrides[p.name] !== undefined ? overrides[p.name] : p.price_per_unit
@@ -279,16 +279,16 @@ export default function BudgetPage() {
     <div>
       {/* Budget depuis le planning */}
       {!loadingPlanning && planningSlots.length > 0 && (
-        <div style={{ background: 'white', border: '0.5px solid #1D9E75', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #2F6B4A', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: '#0F6E56' }}>Budget de la semaine</div>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F4A33' }}>Budget de la semaine</div>
               <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
                 {planningSlots.length} repas planifies · {planningPersonnes} pers. en moyenne
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '28px', fontWeight: '600', color: '#0F6E56' }}>
+              <div style={{ fontSize: '28px', fontWeight: '600', color: '#1F4A33' }}>
                 {toDisplay(planningTotal).toFixed(2)} {sym}
               </div>
               {planningPersonnes > 0 && (
@@ -309,7 +309,7 @@ export default function BudgetPage() {
                 }, 0)
               }, 0)
               return (
-                <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f5f5f0', borderRadius: '8px' }}>
+                <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#EEF1EA', borderRadius: '8px' }}>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: '12px', fontWeight: '500', color: '#333' }}>
                       {JOURS[slot.jour_index]} - {slot.repas}
@@ -321,7 +321,7 @@ export default function BudgetPage() {
                       {slot.recipes.map(function(r) { return (r.emoji || '') + ' ' + r.title }).join(', ')}
                     </div>
                   </div>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#0F6E56', flexShrink: 0, marginLeft: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#1F4A33', flexShrink: 0, marginLeft: '12px' }}>
                     {toDisplay(slotTotal).toFixed(2)} {sym}
                   </span>
                 </div>
@@ -332,12 +332,12 @@ export default function BudgetPage() {
       )}
 
       {!loadingPlanning && planningSlots.length === 0 && (
-        <div style={{ background: '#f5f5f0', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', textAlign: 'center', fontSize: '13px', color: '#aaa' }}>
+        <div style={{ background: '#EEF1EA', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', textAlign: 'center', fontSize: '13px', color: '#aaa' }}>
           Aucun repas dans ta liste de courses. Ajoute des repas depuis le planning pour voir le budget ici.
         </div>
       )}
 
-      <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+      <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>Simuler le cout d'un repas</div>
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -346,9 +346,9 @@ export default function BudgetPage() {
               <button key={c} onClick={() => saveCurrencyPref(c)} style={{
                 padding: '3px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
                 fontWeight: currency === c ? '600' : '400',
-                border: '0.5px solid ' + (currency === c ? '#1D9E75' : '#ddd'),
-                background: currency === c ? '#E1F5EE' : 'white',
-                color: currency === c ? '#0F6E56' : '#888'
+                border: '0.5px solid ' + (currency === c ? '#2F6B4A' : '#ddd'),
+                background: currency === c ? '#E3EDE2' : 'white',
+                color: currency === c ? '#1F4A33' : '#888'
               }}>{c}</button>
             ))}
           </div>
@@ -361,12 +361,12 @@ export default function BudgetPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {recipes.map(r => (
             <div key={r.id} onClick={() => toggleRecipe(r.id)} style={{
-              border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#e0e0e0'),
+              border: '0.5px solid ' + (selected.has(r.id) ? '#2F6B4A' : '#DDE2D6'),
               borderRadius: '10px', padding: '10px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '8px',
-              background: selected.has(r.id) ? '#E1F5EE' : 'white'
+              background: selected.has(r.id) ? '#E3EDE2' : 'white'
             }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#1D9E75' : '#ddd'), background: selected.has(r.id) ? '#1D9E75' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: '0.5px solid ' + (selected.has(r.id) ? '#2F6B4A' : '#ddd'), background: selected.has(r.id) ? '#2F6B4A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px' }}>
                 {selected.has(r.id) ? '✓' : ''}
               </div>
               <div style={{ fontSize: '20px' }}>{r.emoji}</div>
@@ -399,7 +399,7 @@ export default function BudgetPage() {
       </div>
 
       {showPrixDB && (
-        <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '500' }}>Base de prix — {sym}</div>
@@ -419,7 +419,7 @@ export default function BudgetPage() {
               <thead>
                 <tr>
                   {['Ingredient', 'Prix unitaire', 'Unite', 'Source'].map(h => (
-                    <th key={h} style={{ padding: '8px 10px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #e0e0e0' }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 10px', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: 'left', borderBottom: '0.5px solid #DDE2D6' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -439,9 +439,9 @@ export default function BudgetPage() {
                           <input type="number" step="0.01" defaultValue={dispVal.toFixed(2)}
                             onBlur={e => handlePriceChange({ name: p.name, unit: p.unit }, e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { handlePriceChange({ name: p.name, unit: p.unit }, e.target.value); e.target.blur() } }}
-                            style={{ width: '75px', padding: '3px 6px', border: '0.5px solid #ddd', borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isModified ? '#FFFBF0' : '#fafaf8' }}
+                            style={{ width: '75px', padding: '3px 6px', border: '0.5px solid #ddd', borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isModified ? '#FFFBF0' : '#F6F8F2' }}
                           />
-                          {savingPrice === p.name && <span style={{ fontSize: '10px', color: '#1D9E75' }}>...</span>}
+                          {savingPrice === p.name && <span style={{ fontSize: '10px', color: '#2F6B4A' }}>...</span>}
                         </div>
                       </td>
                       <td style={{ padding: '8px 10px', color: '#888', fontSize: '12px' }}>{dispUnit}</td>
@@ -461,16 +461,16 @@ export default function BudgetPage() {
 
       {selected.size > 0 && (
         <>
-          <div style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
+          <div style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', padding: '1.25rem', marginBottom: '1rem' }}>
             <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px' }}>Recapitulatif</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
               {[
                 { label: 'Cout total estime',  value: toDisplay(grandTotal).toFixed(2) + ' ' + sym },
                 { label: 'Cout par personne',  value: toDisplay(perPerson).toFixed(2) + ' ' + sym },
-                { label: 'Budget restant', value: (reste >= 0 ? '+' : '') + toDisplay(reste).toFixed(2) + ' ' + sym, color: reste >= 0 ? '#0F6E56' : '#A32D2D' },
+                { label: 'Budget restant', value: (reste >= 0 ? '+' : '') + toDisplay(reste).toFixed(2) + ' ' + sym, color: reste >= 0 ? '#1F4A33' : '#A32D2D' },
                 { label: 'Recettes', value: selected.size + ' recette' + (selected.size > 1 ? 's' : '') },
               ].map(item => (
-                <div key={item.label} style={{ background: '#fafaf8', borderRadius: '8px', padding: '12px' }}>
+                <div key={item.label} style={{ background: '#F6F8F2', borderRadius: '8px', padding: '12px' }}>
                   <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{item.label}</div>
                   <div style={{ fontSize: '18px', fontWeight: '500', color: item.color || 'inherit' }}>{item.value}</div>
                 </div>
@@ -479,7 +479,7 @@ export default function BudgetPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888', marginBottom: '4px' }}>
               <span>0 {sym}</span><span>{budgetMax} {sym}</span>
             </div>
-            <div style={{ height: '10px', background: '#f0f0ec', borderRadius: '5px', overflow: 'hidden', marginBottom: '6px' }}>
+            <div style={{ height: '10px', background: '#E9ECE3', borderRadius: '5px', overflow: 'hidden', marginBottom: '6px' }}>
               <div style={{ height: '100%', width: pct + '%', background: fillColor, borderRadius: '5px', transition: 'width 0.4s' }} />
             </div>
             <div style={{ fontSize: '12px', color: fillColor }}>
@@ -494,15 +494,15 @@ export default function BudgetPage() {
             const recipeTotal = (r.ingredients || []).reduce((s, ing) =>
               s + calculerCout(ing, factor, priceMap, overrides), 0)
             return (
-              <div key={r.id} style={{ background: 'white', border: '0.5px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
-                <div style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '0.5px solid #e0e0e0' }}>
+              <div key={r.id} style={{ background: 'white', border: '0.5px solid #DDE2D6', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '0.5px solid #DDE2D6' }}>
                   <div style={{ fontSize: '28px' }}>{r.emoji}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '14px', fontWeight: '500' }}>{r.title}</div>
                     <div style={{ fontSize: '12px', color: '#888' }}>{persons} personne{persons > 1 ? 's' : ''} · {r.time} min</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</div>
+                    <div style={{ fontSize: '18px', fontWeight: '500', color: '#1F4A33' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</div>
                     <div style={{ fontSize: '11px', color: '#888' }}>{toDisplay(recipeTotal / persons).toFixed(2)} {sym}/pers.</div>
                   </div>
                 </div>
@@ -510,7 +510,7 @@ export default function BudgetPage() {
                   <thead>
                     <tr>
                       {['Ingredient', 'Quantite', 'Prix unitaire', 'Cout'].map(h => (
-                        <th key={h} style={{ padding: '7px 1.25rem', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: h === 'Cout' || h === 'Prix unitaire' ? 'right' : 'left', borderBottom: '0.5px solid #e0e0e0' }}>{h}</th>
+                        <th key={h} style={{ padding: '7px 1.25rem', fontSize: '11px', fontWeight: '500', color: '#888', textAlign: h === 'Cout' || h === 'Prix unitaire' ? 'right' : 'left', borderBottom: '0.5px solid #DDE2D6' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -537,10 +537,10 @@ export default function BudgetPage() {
                               <input type="number" step="0.01" defaultValue={dispVal.toFixed(2)}
                                 onBlur={e => handlePriceChange(ing, e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') { handlePriceChange(ing, e.target.value); e.target.blur() } }}
-                                style={{ width: '65px', padding: '3px 6px', border: '0.5px solid ' + (unknown ? '#FCA5A5' : '#ddd'), borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isOverrid ? '#FFFBF0' : '#fafaf8' }}
+                                style={{ width: '65px', padding: '3px 6px', border: '0.5px solid ' + (unknown ? '#FCA5A5' : '#ddd'), borderRadius: '5px', fontSize: '12px', textAlign: 'right', outline: 'none', background: isOverrid ? '#FFFBF0' : '#F6F8F2' }}
                               />
                               <span style={{ fontSize: '10px', color: '#888' }}>{dispUnit}</span>
-                              {savingPrice === ing.name && <span style={{ fontSize: '10px', color: '#1D9E75' }}>...</span>}
+                              {savingPrice === ing.name && <span style={{ fontSize: '10px', color: '#2F6B4A' }}>...</span>}
                             </div>
                           </td>
                           <td style={{ padding: '9px 1.25rem', textAlign: 'right', fontWeight: '500', fontSize: '13px', color: unknown ? '#aaa' : 'inherit' }}>
@@ -551,9 +551,9 @@ export default function BudgetPage() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr style={{ background: '#fafaf8' }}>
+                    <tr style={{ background: '#F6F8F2' }}>
                       <td colSpan="3" style={{ padding: '10px 1.25rem', fontWeight: '500', fontSize: '13px' }}>Total recette</td>
-                      <td style={{ padding: '10px 1.25rem', textAlign: 'right', fontSize: '18px', fontWeight: '500', color: '#0F6E56' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</td>
+                      <td style={{ padding: '10px 1.25rem', textAlign: 'right', fontSize: '18px', fontWeight: '500', color: '#1F4A33' }}>{toDisplay(recipeTotal).toFixed(2)} {sym}</td>
                     </tr>
                   </tfoot>
                 </table>
