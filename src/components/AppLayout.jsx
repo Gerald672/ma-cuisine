@@ -139,6 +139,28 @@ export default function AppLayout() {
     return function() { window.removeEventListener('hashchange', onHash) }
   }, [])
 
+  // Molette de la souris : fait défiler les rangées horizontales (filtres, onglets, tableaux)
+  useEffect(function() {
+    function onWheel(e) {
+      if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      var el = e.target
+      while (el && el !== document.body) {
+        var cs = window.getComputedStyle(el)
+        var ox = cs.overflowX === 'auto' || cs.overflowX === 'scroll'
+        var oy = cs.overflowY === 'auto' || cs.overflowY === 'scroll'
+        if (ox && el.scrollWidth > el.clientWidth + 1 && !(oy && el.scrollHeight > el.clientHeight + 1)) {
+          var max = el.scrollWidth - el.clientWidth
+          var next = Math.max(0, Math.min(max, el.scrollLeft + e.deltaY))
+          if (next !== el.scrollLeft) { el.scrollLeft = next; e.preventDefault() }
+          return
+        }
+        el = el.parentElement
+      }
+    }
+    document.addEventListener('wheel', onWheel, { passive: false })
+    return function() { document.removeEventListener('wheel', onWheel) }
+  }, [])
+
   function go(id) {
     setSheetOpen(false)
     if (id === page) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
