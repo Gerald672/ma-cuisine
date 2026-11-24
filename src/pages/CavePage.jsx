@@ -446,7 +446,7 @@ export default function CavePage() {
 
   return (
     <div>
-      {scanMode && <BarcodeScanner onResult={handleBarcode} onClose={() => setScanMode(null)} />}
+      {scanMode && <BarcodeScanner onResult={handleBarcode} onClose={() => setScanMode(null)} onLabel={scanMode === 'out' ? null : function() { setScanMode(null); openForm({ ...FORM_VIDE }); toast('Appuie sur « Photo de l’étiquette » pour la photographier.') }} />}
 
       {msg && (
         <div style={{ background: '#E3EDE2', border: '0.5px solid #9DC2A8', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#143626', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
