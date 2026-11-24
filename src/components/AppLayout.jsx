@@ -63,8 +63,9 @@ const TITLES = {
 
 const CSS = `
   html { -webkit-text-size-adjust: 100%; }
+  html, body { overflow-x: hidden; max-width: 100%; }
   body { background: #f5f5f0; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
-  .mc-shell { min-height: 100vh; min-height: 100dvh; background: #f5f5f0; }
+  .mc-shell { overflow-x: clip; min-height: 100vh; min-height: 100dvh; background: #f5f5f0; }
   .mc-header { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,0.96); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border-bottom: 0.5px solid #e0e0e0; padding-top: env(safe-area-inset-top); }
   .mc-header-in { max-width: 960px; margin: 0 auto; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; }
@@ -97,6 +98,7 @@ const CSS = `
   /* Téléphone : champs à 16px (évite le zoom automatique), listes défilantes à l'aise */
   @media (max-width: 767px) {
     input, select, textarea { font-size: 16px !important; }
+    .mc-two { grid-template-columns: minmax(0, 1fr) !important; }
     .mc-main { padding-left: 12px; padding-right: 12px; }
   }
 

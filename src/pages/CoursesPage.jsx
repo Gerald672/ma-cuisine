@@ -473,7 +473,7 @@ export default function CoursesPage() {
       )}
 
       {/* Grille 2 colonnes : stock faible + liste generale */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
+      <div className="mc-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
 
         {/* Stock faible */}
         <div style={{ background: 'white', border: '0.5px solid #EF9F27', borderRadius: '12px', padding: '1.25rem' }}>
